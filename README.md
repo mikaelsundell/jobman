@@ -104,25 +104,6 @@ Preset files support various variables that can be used to customize arguments d
 
 Each variable is designed to simplify the scripting and automation within preset configurations, ensuring that file paths and details are handled efficiently without manual specification in every command.
 
-
-Jobman Advanced
---------
-
-## Build configuration ##
-
-To initiate the build process, use the following command in your terminal, specifying either debug or release mode according to your requirements:
-
-
-```shell
-./build.sh debug|release
-```
-
-For deployment into a Disk Image (DMG), include the --deploy flag along with your selected build mode. This step packages the application into a DMG file, suitable for distribution or installation on macOS systems:
-
-```shell
-./build.sh debug|release --deploy
-```
-
 Web Resources
 -------------
 
