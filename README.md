@@ -1,7 +1,17 @@
-# <img src="resources/AppIcon.png" valign="middle" alt="Icon" width="50" height="50"> Jobman #
+# <img src="resources/AppIcon.png" valign="middle" alt="Icon" width="50" height="50"> Jobman: Batch Processing #
 
 [![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg?style=flat-square)](https://github.com/mikaelsundell/jobman/blob/master/README.md)
 
+Table of Contents
+=================
+
+- [ Jobman: Batch Processing](#-jobman-batch-processing)
+- [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Documentation](#documentation)
+  - [Web Resources](#web-resources)
+  - [Copyright](#copyright)
+  
 Introduction
 ------------
 
