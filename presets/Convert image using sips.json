@@ -1,5 +1,41 @@
 {
     "name": "Convert image using sips",
+    "options": [
+      {
+        "name": "JPEG Quality",
+        "type": "Slider",
+        "default": 80,
+        "minimum": 0,
+        "maximum": 100,
+        "value": 80
+      },
+      {
+        "name": "Resample Width",
+        "type": "Dropdown",
+        "default": "medium",
+        "options": [
+          {
+            "label": "small",
+            "value": 200
+          },
+          {
+            "label": "medium",
+            "value": 400
+          },
+          {
+            "label": "large",
+            "value": 800
+          }
+        ],
+        "value": "medium"
+      },
+      {
+        "name": "Prefix",
+        "type": "Text",
+        "default": "",
+        "value": "img_"
+      }
+    ],
     "tasks": [
       {
         "id": "@1",

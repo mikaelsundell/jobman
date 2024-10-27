@@ -40,6 +40,8 @@ set (app_sources
     main.cpp
     monitor.h
     monitor.cpp
+    options.h
+    options.cpp
     preferences.h
     preferences.cpp
     preset.h
@@ -57,6 +59,7 @@ set (app_sources
     question.ui
     preferences.ui
     progressbar.ui
+    options.ui
     jobman.qrc
 )
 
@@ -77,6 +80,11 @@ file( GLOB app_presets
 set (bundle_sources
     "${CMAKE_SOURCE_DIR}/resources/MacOSXBundle.plist.in"
 )
+
+# source groups
+source_group("ICC Files" FILES ${app_iccprofiles})
+source_group("Resouce Files" FILES ${app_resources})
+source_group("Preset Files" FILES ${app_presets})
 
 if (APPLE)
     set (MACOSX_BUNDLE_GUI_IDENTIFIER "com.github.mikaelsundell.jobman")

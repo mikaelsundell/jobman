@@ -7,6 +7,8 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 machine_arch=$(uname -m)
 macos_version=$(sw_vers -productVersion)
 major_version=$(echo "$macos_version" | cut -d '.' -f 1)
+app_name="Jobman"
+pkg_name="jobman"
 
 # signing
 sign_code=OFF
@@ -31,7 +33,6 @@ merge_app() {
                         lipo -create "$file" "$merge_file" -output "$file.tmp"
                         mv "$file.tmp" "$file"
                     fi
-                    echo ""
                 fi
             done
             ;;
@@ -51,7 +52,6 @@ merge_app() {
                 else
                     echo -e "framework $merge_framework does not exist, will not be merged"
                 fi
-                echo ""
             done
             ;;
         executables)
@@ -64,7 +64,6 @@ merge_app() {
                         lipo -create "$file" "$merge_file" -output "$file.tmp"
                         mv "$file.tmp" "$file"
                     fi
-                    echo ""
                 fi
             done
             ;;
@@ -161,7 +160,7 @@ build_jobman() {
         exit 1
     fi
 
-    pkg_file="$script_dir/Jobman_macOS${major_version}_universal.pkg"
+    pkg_file="$script_dir/${pkg_name}_macOS${major_version}_universal.pkg"
     if [ -f "$pkg_file" ]; then
         rm -f "$pkg_file"
     fi
@@ -193,7 +192,7 @@ build_jobman() {
             merge_app "$build_app" "$x86_64_app" "executables" "$mac_developer_identity"
             permission_app "$build_app"
             codesign --force --deep --sign "$mac_developer_identity" "$build_app"
-            codesign --force --sign "$mac_developer_identity" --entitlements $entitlements "$build_app/Contents/MacOS/Jobman"
+            codesign --force --sign "$mac_developer_identity" --entitlements $entitlements "$build_app/Contents/MacOS/${app_name}"
             codesign --verify "$build_app"
         fi
     else 

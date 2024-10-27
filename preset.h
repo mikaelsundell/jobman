@@ -7,6 +7,21 @@
 #include <QList>
 #include <QScopedPointer>
 #include <QString>
+#include <QVariant>
+
+struct Option {
+    public:
+        Option() = default;
+        
+    public:
+        QString name;
+        QString type;
+        QVariant value;
+        QVariant defaultValue;
+        QVariant minimum;
+        QVariant maximum;
+        QList<QPair<QString, QVariant>> options;
+};
 
 class Task {
     public:
@@ -36,7 +51,8 @@ class Preset
 
     public:
         QString name() const;
-        QList<Task> tasks();
+        QList<Option> options() const;
+        QList<Task> tasks() const;
     
     private:
         QScopedPointer<PresetPrivate> p;

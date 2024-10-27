@@ -9,6 +9,7 @@
 #include "icctransform.h"
 #include "mac.h"
 #include "monitor.h"
+#include "options.h"
 #include "preferences.h"
 #include "preset.h"
 #include "process.h"
@@ -57,6 +58,7 @@ class JobmanPrivate : public QObject
         void togglePreset();
         void toggleFiledrop();
         void showMonitor();
+        void showOptions();
         void run(const QList<QString>& files);
         void jobProcessed(const QUuid& uuid);
         void addFiles();
@@ -115,8 +117,9 @@ class JobmanPrivate : public QObject
         QPointer<Queue> queue;
         QPointer<Jobman> window;
         QScopedPointer<About> about;
-        QScopedPointer<Preferences> preferences;
         QScopedPointer<Monitor> monitor;
+        QScopedPointer<Options> options;
+        QScopedPointer<Preferences> preferences;
         QScopedPointer<Dropfilter> dropfilter;
         QScopedPointer<Eventfilter> presetfilter;
         QScopedPointer<Eventfilter> filedropfilter;
@@ -147,11 +150,13 @@ JobmanPrivate::init()
     ui->setupUi(window);
     // about
     about.reset(new About(window.data()));
-    // preferences
-    preferences.reset(new Preferences(window.data()));
     // monitor
     monitor.reset(new Monitor(window.data()));
     monitor->setModal(false);
+    // options
+    options.reset(new Options(window.data()));
+    // preferences
+    preferences.reset(new Preferences(window.data()));
     // settings
     loadSettings();
     // layout
@@ -185,8 +190,9 @@ JobmanPrivate::init()
     connect(ui->createFolders, &QCheckBox::stateChanged, this, &JobmanPrivate::createFolderChanged);
     connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::run);
     connect(ui->threads, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::threadsChanged);
-    connect(ui->monitor, &QPushButton::clicked, this, &JobmanPrivate::showMonitor);
     connect(ui->about, &QAction::triggered, this, &JobmanPrivate::showAbout);
+    connect(ui->monitor, &QPushButton::clicked, this, &JobmanPrivate::showMonitor);
+    connect(ui->options, &QPushButton::clicked, this, &JobmanPrivate::showOptions);
     connect(ui->preferences, &QAction::triggered, this, &JobmanPrivate::showPreferences);
     connect(ui->openGithubReadme, &QAction::triggered, this, &JobmanPrivate::openGithubReadme);
     connect(ui->openGithubIssues, &QAction::triggered, this, &JobmanPrivate::openGithubIssues);
@@ -442,6 +448,21 @@ void
 JobmanPrivate::run(const QList<QString>& files)
 {
     QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
+    
+
+    for (const Option &option : preset->options()) {
+        qDebug() << "Option Name:" << option.name;
+        qDebug() << "Option Type:" << option.type;
+        qDebug() << "Option Value:" << option.value;
+        if (option.type == "Dropdown") {
+            for (const auto &optPair : option.options) {
+                qDebug() << " - Label:" << optPair.first << "Value:" << optPair.second;
+            }
+        }
+    }
+
+    
+    
     QString outputDir = saveto;
     processedfiles.clear();
     int count = 0;
@@ -668,6 +689,12 @@ JobmanPrivate::toggleFiledrop()
 }
 
 void
+JobmanPrivate::showAbout()
+{
+    about->exec();
+}
+
+void
 JobmanPrivate::showMonitor()
 {
     if (monitor->isVisible()) {
@@ -678,9 +705,9 @@ JobmanPrivate::showMonitor()
 }
 
 void
-JobmanPrivate::showAbout()
+JobmanPrivate::showOptions()
 {
-    about->exec();
+    options->exec();
 }
 
 void

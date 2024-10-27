@@ -792,6 +792,17 @@
              </spacer>
             </item>
             <item>
+             <widget class="QToolButton" name="options">
+              <property name="text">
+               <string>...</string>
+              </property>
+              <property name="icon">
+               <iconset resource="jobman.qrc">
+                <normaloff>:/icons/resources/Options.png</normaloff>:/icons/resources/Options.png</iconset>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QToolButton" name="monitor">
               <property name="toolTip">
                <string>Open monitor</string>

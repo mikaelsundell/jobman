@@ -23,6 +23,7 @@ class PresetPrivate : public QObject
         QString filename;
         QString name;
         QList<QString> description;
+        QList<Option> options;
         QList<Task> tasks;
         bool valid;
 };
@@ -72,6 +73,51 @@ PresetPrivate::read()
     if (json.contains("name") && json["name"].isString()) {
         name = json["name"].toString();
     }
+    
+    if (json.contains("options") && json["options"].isArray()) {
+        QJsonArray optionsArray = json["options"].toArray();
+        for (const QJsonValue &value : optionsArray) {
+            QJsonObject jsonOption = value.toObject();
+            Option option;
+            
+            if (jsonOption.contains("name") && jsonOption["name"].isString())
+                option.name = jsonOption["name"].toString();
+
+            if (jsonOption.contains("type") && jsonOption["type"].isString())
+                option.type = jsonOption["type"].toString();
+
+            if (jsonOption.contains("value"))
+                option.value = jsonOption["value"].toVariant();
+
+            if (jsonOption.contains("default"))
+                option.defaultValue = jsonOption["default"].toVariant();
+
+            if (jsonOption.contains("minimum"))
+                option.minimum = jsonOption["minimum"].toVariant();
+
+            if (jsonOption.contains("maximum"))
+                option.maximum = jsonOption["maximum"].toVariant();
+
+            if (jsonOption.contains("options") && jsonOption["options"].isArray()) {
+                QJsonArray optionsArray = jsonOption["options"].toArray();
+                for (const QJsonValue &opt : optionsArray) {
+                    QJsonObject optObj = opt.toObject();
+                    QString label;
+                    QVariant optValue;
+
+                    if (optObj.contains("label") && optObj["label"].isString())
+                        label = optObj["label"].toString();
+
+                    if (optObj.contains("value"))
+                        optValue = optObj["value"].toVariant();
+
+                    option.options.append(qMakePair(label, optValue));
+                }
+            }
+            options.append(option);
+        }
+    }
+    
     if (json.contains("tasks") && json["tasks"].isArray()) {
         QJsonArray tasksArray = json["tasks"].toArray();
         for (int i = 0; i < tasksArray.size(); ++i) {
@@ -182,8 +228,14 @@ Preset::name() const
     return p->name;
 }
 
+QList<Option>
+Preset::options() const
+{
+    return p->options;
+}
+
 QList<Task>
-Preset::tasks()
+Preset::tasks() const
 {
     return p->tasks;
 }
