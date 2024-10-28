@@ -54,6 +54,15 @@ QLabel#saveTo {
     color: hsl(0, 0%, 80%);
 }
 
+/* QLineEdit widgets */
+QLineEdit
+{
+    background-color: hsl(220, 8%, 15%);
+    padding: 4px;
+    padding-left: 10px;
+    border-radius: 0px;
+}
+
 /* QListWidget widgets */
 QListView
 {
@@ -109,8 +118,10 @@ QMenu::right-arrow {
 }
 
 /* QWidgets widgets */
+QWidget#errorBar,
 QWidget#filedropBar,
 QWidget#logBar,
+QWidget#monitorBar,
 QWidget#preferencesBar,
 QWidget#presetBar
 {
@@ -130,6 +141,11 @@ QWidget#presetWidget
     border-radius: 5px;
     border-top-left-radius: 0px;
     border-top-right-radius: 0px;
+}
+
+QWidget#optionswidget
+{
+    background-color: hsl(220, 30%, 8%);
 }
 
 /* QPushButton widgets */
@@ -176,6 +192,13 @@ QProgressBar {
 QProgressBar::chunk {
     border-radius: 4px;
     background-color: hsl(216, 82%, 20%);
+}
+
+/* QScrollArea widgets */
+QScrollArea
+{
+    background-color: hsl(220, 30%, 8%);
+    border: 0px;
 }
 
 /* QTreeView widgets */

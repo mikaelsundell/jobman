@@ -72,9 +72,15 @@
        <number>10</number>
       </property>
       <item>
-       <widget class="QLabel" name="label">
+       <widget class="QLabel" name="name">
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
         <property name="text">
-         <string>Options</string>
+         <string/>
         </property>
        </widget>
       </item>
@@ -100,9 +106,21 @@
        <number>10</number>
       </property>
       <item>
-       <widget class="QScrollArea" name="scrollArea">
+       <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Options</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QScrollArea" name="scrollarea">
         <property name="styleSheet">
-         <string notr="true">background: gray;</string>
+         <string notr="true"/>
         </property>
         <property name="widgetResizable">
          <bool>true</bool>
@@ -113,7 +131,7 @@
            <x>0</x>
            <y>0</y>
            <width>354</width>
-           <height>474</height>
+           <height>452</height>
           </rect>
          </property>
         </widget>
@@ -146,18 +164,16 @@
       </item>
       <item>
        <widget class="QPushButton" name="close">
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+         </font>
+        </property>
         <property name="toolTip">
          <string>Close</string>
         </property>
         <property name="text">
          <string>Close</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton">
-        <property name="text">
-         <string>Save</string>
         </property>
        </widget>
       </item>

@@ -1,5 +1,6 @@
 {
-    "name": "Convert image using sips",
+    "id": "@convert_image_using_sips",
+    "name": "Built-in: Convert image using sips",
     "options": [
       {
         "name": "JPEG Quality",
@@ -10,30 +11,37 @@
         "value": 80
       },
       {
-        "name": "Resample Width",
+        "name": "Thumbnail",
         "type": "Dropdown",
-        "default": "medium",
+        "default": "Medium",
         "options": [
           {
-            "label": "small",
+            "label": "Small",
             "value": 200
           },
           {
-            "label": "medium",
+            "label": "Medium",
             "value": 400
           },
           {
-            "label": "large",
+            "label": "Large",
             "value": 800
           }
         ],
-        "value": "medium"
+        "value": "400"
       },
       {
         "name": "Prefix",
         "type": "Text",
         "default": "",
-        "value": "img_"
+        "value": ""
+      },
+      {
+        "name": "Color matrix file",
+        "type": "File",
+        "default": "",
+        "value": "",
+        "flag": "--ccm"
       }
     ],
     "tasks": [

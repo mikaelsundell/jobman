@@ -15,9 +15,10 @@ struct Option {
         
     public:
         QString name;
+        QString flag;
         QString type;
         QVariant value;
-        QVariant defaultValue;
+        QVariant defaultvalue;
         QVariant minimum;
         QVariant maximum;
         QList<QPair<QString, QVariant>> options;
@@ -46,8 +47,10 @@ class Preset
         virtual ~Preset();
         bool read(const QString& filename);
         bool valid() const;
+        QString id() const;
         QString error() const;
         QString filename() const;
+        QUuid uuid() const;
 
     public:
         QString name() const;

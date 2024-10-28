@@ -70,6 +70,7 @@ class JobmanPrivate : public QObject
         void setSaveto(const QString& text);
         void saveToChanged(const QString& text);
         void createFolderChanged(int state);
+        void presetsChanged(int index);
         void threadsChanged(int index);
         void showAbout();
         void showPreferences();
@@ -88,6 +89,7 @@ class JobmanPrivate : public QObject
                 QScopedPointer<Ui_About> about;
                 about.reset(new Ui_About());
                 about->setupUi(this);
+                about->name->setText(MACOSX_BUNDLE_BUNDLE_NAME);
                 about->version->setText(MACOSX_BUNDLE_LONG_VERSION_STRING);
                 about->copyright->setText(MACOSX_BUNDLE_COPYRIGHT);
                 QString url = GITHUBURL;
@@ -189,9 +191,12 @@ JobmanPrivate::init()
     connect(dropfilter.data(), &Dropfilter::textChanged, this, &JobmanPrivate::saveToChanged);
     connect(ui->createFolders, &QCheckBox::stateChanged, this, &JobmanPrivate::createFolderChanged);
     connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::run);
+    connect(ui->presets, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::presetsChanged);
     connect(ui->threads, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::threadsChanged);
     connect(ui->about, &QAction::triggered, this, &JobmanPrivate::showAbout);
+    connect(ui->showMonitor, &QAction::triggered, this, &JobmanPrivate::showMonitor);
     connect(ui->monitor, &QPushButton::clicked, this, &JobmanPrivate::showMonitor);
+    connect(ui->showOptions, &QAction::triggered, this, &JobmanPrivate::showOptions);
     connect(ui->options, &QPushButton::clicked, this, &JobmanPrivate::showOptions);
     connect(ui->preferences, &QAction::triggered, this, &JobmanPrivate::showPreferences);
     connect(ui->openGithubReadme, &QAction::triggered, this, &JobmanPrivate::openGithubReadme);
@@ -448,21 +453,6 @@ void
 JobmanPrivate::run(const QList<QString>& files)
 {
     QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
-    
-
-    for (const Option &option : preset->options()) {
-        qDebug() << "Option Name:" << option.name;
-        qDebug() << "Option Type:" << option.type;
-        qDebug() << "Option Value:" << option.value;
-        if (option.type == "Dropdown") {
-            for (const auto &optPair : option.options) {
-                qDebug() << " - Label:" << optPair.first << "Value:" << optPair.second;
-            }
-        }
-    }
-
-    
-    
     QString outputDir = saveto;
     processedfiles.clear();
     int count = 0;
@@ -497,7 +487,6 @@ JobmanPrivate::run(const QList<QString>& files)
             QString startin = replaceInput(task.startin, inputinfo, outputinfo);
             QSharedPointer<Job> job(new Job());
             {
-                job->setUuid(QUuid::createUuid());
                 job->setId(task.id);
                 job->setFilename(inputinfo.fileName());
                 job->setName(task.name);
@@ -649,6 +638,18 @@ JobmanPrivate::createFolderChanged(int state)
 }
 
 void
+JobmanPrivate::presetsChanged(int index)
+{
+    QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
+    bool enabled = false;
+    if (preset->options().size()) {
+        enabled = true;
+    }
+    ui->showOptions->setEnabled(enabled);
+    ui->options->setEnabled(enabled);
+}
+
+void
 JobmanPrivate::threadsChanged(int index)
 {
     queue->setThreads(ui->threads->itemText(index).toInt());
@@ -707,6 +708,8 @@ JobmanPrivate::showMonitor()
 void
 JobmanPrivate::showOptions()
 {
+    QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
+    options->update(preset);
     options->exec();
 }
 

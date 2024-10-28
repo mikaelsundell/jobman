@@ -79,6 +79,12 @@
       </property>
       <item>
        <widget class="QLabel" name="title">
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
         <property name="text">
          <string/>
         </property>
@@ -141,6 +147,11 @@
       </item>
       <item>
        <widget class="QPushButton" name="close">
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+         </font>
+        </property>
         <property name="toolTip">
          <string>Close</string>
         </property>

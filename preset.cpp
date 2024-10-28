@@ -19,17 +19,20 @@ class PresetPrivate : public QObject
         bool read();
     
     public:
+        QString id;
         QString error;
         QString filename;
         QString name;
         QList<QString> description;
         QList<Option> options;
         QList<Task> tasks;
+        QUuid uuid;
         bool valid;
 };
 
 PresetPrivate::PresetPrivate()
 : valid(false)
+, uuid(QUuid::createUuid())
 {
 }
 
@@ -49,7 +52,6 @@ PresetPrivate::read()
     }
     QByteArray jsonData = file.readAll();
     file.close();
-
     QJsonParseError jsonError;
     QJsonDocument document = QJsonDocument::fromJson(jsonData, &jsonError);
     if (document.isNull()) {
@@ -68,56 +70,78 @@ PresetPrivate::read()
         valid = false;
         return valid;
     }
-    
     QJsonObject json = document.object();
+    if (json.contains("id") && json["id"].isString()) {
+        id = json["id"].toString();
+    }
+    else {
+        error = QString("Json for preset: \"%1\" contains no a unique id").arg(filename);
+        valid = false;
+        return valid;
+    }
     if (json.contains("name") && json["name"].isString()) {
         name = json["name"].toString();
     }
-    
     if (json.contains("options") && json["options"].isArray()) {
         QJsonArray optionsArray = json["options"].toArray();
-        for (const QJsonValue &value : optionsArray) {
-            QJsonObject jsonOption = value.toObject();
+        for (int i = 0; i < optionsArray.size(); ++i) {
+            QJsonObject jsonoption = optionsArray[i].toObject();
             Option option;
-            
-            if (jsonOption.contains("name") && jsonOption["name"].isString())
-                option.name = jsonOption["name"].toString();
-
-            if (jsonOption.contains("type") && jsonOption["type"].isString())
-                option.type = jsonOption["type"].toString();
-
-            if (jsonOption.contains("value"))
-                option.value = jsonOption["value"].toVariant();
-
-            if (jsonOption.contains("default"))
-                option.defaultValue = jsonOption["default"].toVariant();
-
-            if (jsonOption.contains("minimum"))
-                option.minimum = jsonOption["minimum"].toVariant();
-
-            if (jsonOption.contains("maximum"))
-                option.maximum = jsonOption["maximum"].toVariant();
-
-            if (jsonOption.contains("options") && jsonOption["options"].isArray()) {
-                QJsonArray optionsArray = jsonOption["options"].toArray();
+            if (jsonoption.contains("name") && jsonoption["name"].isString()) option.name = jsonoption["name"].toString();
+            if (jsonoption.contains("flag") && jsonoption["flag"].isString()) option.flag = jsonoption["flag"].toString();
+            if (jsonoption.contains("type") && jsonoption["type"].isString()) option.type = jsonoption["type"].toString();
+            if (jsonoption.contains("value")) option.value = jsonoption["value"].toVariant();
+            if (jsonoption.contains("default")) option.defaultvalue = jsonoption["default"].toVariant();
+            if (jsonoption.contains("minimum")) option.minimum = jsonoption["minimum"].toVariant();
+            if (jsonoption.contains("maximum")) option.maximum = jsonoption["maximum"].toVariant();
+            if (jsonoption.contains("options") && jsonoption["options"].isArray()) {
+                QJsonArray optionsArray = jsonoption["options"].toArray();
                 for (const QJsonValue &opt : optionsArray) {
                     QJsonObject optObj = opt.toObject();
                     QString label;
                     QVariant optValue;
-
                     if (optObj.contains("label") && optObj["label"].isString())
                         label = optObj["label"].toString();
-
                     if (optObj.contains("value"))
                         optValue = optObj["value"].toVariant();
-
                     option.options.append(qMakePair(label, optValue));
+                }
+            }
+            if (!option.name.isEmpty() && !option.type.isEmpty() && !option.defaultvalue.isValid() && !option.value.isValid()) {
+                if (option.name.length() > 0) {
+                    error = QString("Json for option: \"%1\" does not contain all required attributes").arg(option.name);
+                } else {
+                    error = QString("Json for option: %1 does not contain all required attributes").arg(i);
+                }
+                
+                if (option.name.isEmpty()) {
+                    error += QString("\nMissing attribute: %1").arg("name");
+                }
+                
+                if (option.type.isEmpty()) {
+                    error += QString("\nMissing attribute: %1").arg("type");
+                }
+                
+                if (option.defaultvalue.isValid()) {
+                    error += QString("\nMissing attribute: %1").arg("default");
+                }
+                
+                if (option.value.isValid()) {
+                    error += QString("\nMissing attribute: %1").arg("value");
+                }
+                valid = false;
+                return valid;
+            }
+            else {
+                if (!(option.type == "Slider" || option.type == "Dropdown" || option.type == "Text" || option.type == "File")) {
+                    error = QString("Json for option: %1 contains an invalid type: %1, valid types are Slider, Dropdown, Text and File").arg(i);
+                    valid = false;
+                    return valid;
                 }
             }
             options.append(option);
         }
     }
-    
     if (json.contains("tasks") && json["tasks"].isArray()) {
         QJsonArray tasksArray = json["tasks"].toArray();
         for (int i = 0; i < tasksArray.size(); ++i) {
@@ -217,6 +241,12 @@ Preset::error() const
 }
 
 QString
+Preset::id() const
+{
+    return p->id;
+}
+
+QString
 Preset::filename() const
 {
     return p->filename;
@@ -238,4 +268,10 @@ QList<Task>
 Preset::tasks() const
 {
     return p->tasks;
+}
+
+QUuid
+Preset::uuid() const
+{
+    return p->uuid;
 }

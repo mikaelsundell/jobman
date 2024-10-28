@@ -1,0 +1,57 @@
+{
+    "id": "@convert_image",
+    "name": "Built-in: Convert image",
+    "options": [
+      {
+        "name": "JPEG Quality",
+        "type": "Slider",
+        "default": 80,
+        "minimum": 0,
+        "maximum": 100,
+        "value": 80
+      },
+      {
+        "name": "Thumbnail",
+        "type": "Dropdown",
+        "default": "Medium",
+        "options": [
+          {
+            "label": "Small",
+            "value": 200
+          },
+          {
+            "label": "Medium",
+            "value": 400
+          },
+          {
+            "label": "Large",
+            "value": 800
+          }
+        ],
+        "value": "400"
+      },
+      {
+        "name": "Prefix",
+        "type": "Text",
+        "default": "",
+        "value": ""
+      }
+    ],
+    "tasks": [
+      {
+        "id": "@1",
+        "name": "Convert to JPEG",
+        "command": "sips",
+        "extension": "jpg",
+        "arguments": "-s format jpeg %inputfile% --out %outputdir%/%outputbase%.%outputext%",
+        "startin": "",
+        "documentation": [
+          "sips -s format jpeg inputfile --out outputfile",
+          "Converts the input file to JPEG format using the sips command",
+          "-s format jpeg: Specifies the format to convert to",
+          "--out: Specifies the output file path"
+        ]
+      }
+    ]
+  }
+  

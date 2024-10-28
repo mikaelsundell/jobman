@@ -34,13 +34,14 @@ class JobPrivate : public QObject
         int priority;
         Job::Status status;
         QPointer<Job> job;
-    mutable QMutex mutex;
+        mutable QMutex mutex;
 };
 
 JobPrivate::JobPrivate()
 : pid(0)
 , priority(10)
 , status(Job::Waiting)
+, uuid(QUuid::createUuid())
 {
     created = QDateTime::currentDateTime();
 }
@@ -279,15 +280,5 @@ Job::setStatus(Status status)
     if (p->status != status) {
         p->status = status;
         statusChanged(status);
-    }
-}
-
-void
-Job::setUuid(QUuid uuid)
-{
-    QMutexLocker locker(&p->mutex);
-    if (p->uuid != uuid) {
-        p->uuid = uuid;
-        uuidChanged(uuid);
     }
 }

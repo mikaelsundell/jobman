@@ -102,6 +102,7 @@ if (APPLE)
     set_source_files_properties(${app_presets} PROPERTIES MACOSX_PACKAGE_LOCATION "Presets")
     add_executable (${project_name} MACOSX_BUNDLE ${app_sources} ${app_resources} ${app_presets})
     # definitions
+    add_definitions(-DMACOSX_BUNDLE_BUNDLE_NAME="${MACOSX_BUNDLE_BUNDLE_NAME}")
     add_definitions(-DMACOSX_BUNDLE_GUI_IDENTIFIER="${MACOSX_BUNDLE_GUI_IDENTIFIER}")
     add_definitions(-DMACOSX_BUNDLE_COPYRIGHT="${MACOSX_BUNDLE_COPYRIGHT}")
     add_definitions(-DMACOSX_BUNDLE_LONG_VERSION_STRING="${MACOSX_BUNDLE_LONG_VERSION_STRING}")

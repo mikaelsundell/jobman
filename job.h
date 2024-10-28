@@ -54,7 +54,6 @@ class Job : public QObject {
         void setPriority(int priority);
         void setStartin(const QString& startin);
         void setStatus(Status status);
-        void setUuid(QUuid uuid);
     
     Q_SIGNALS:
         void argumentsChanged(const QStringList& arguments);
@@ -69,7 +68,6 @@ class Job : public QObject {
         void priorityChanged(int priority);
         void startinChanged(const QString& startin);
         void statusChanged(Status status);
-        void uuidChanged(QUuid uuid);
     
     private:
         QScopedPointer<JobPrivate> p;
