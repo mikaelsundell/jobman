@@ -415,8 +415,8 @@ void
 QueuePrivate::processNextJobs()
 {
     QMutexLocker locker(&mutex);
-    int free = threadPool.maxThreadCount() - threadPool.activeThreadCount();
-    int jobsprocess = qMin(waitingJobs.size(), free);
+    qint64 free = threadPool.maxThreadCount() - threadPool.activeThreadCount();
+    qint64 jobsprocess = qMin(waitingJobs.size(), free);
     if (jobsprocess == 0) {
         return;
     }
