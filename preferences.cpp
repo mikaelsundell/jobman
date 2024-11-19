@@ -4,7 +4,9 @@
 
 #include "preferences.h"
 
+#include <QCheckbox>
 #include <QFileDialog>
+#include <QMouseEvent>
 #include <QPointer>
 #include <QSettings>
 #include <QStandardPaths>
@@ -24,14 +26,20 @@ class PreferencesPrivate : public QObject
         void saveSettings();
 
     public Q_SLOTS:
-        void selectionChanged();
-        void add();
-        void remove();
+        void searchpathChanged();
+        void environmentvarsChanged();
+        void addSearchpath();
+        void removeSearchpath();
+        void addEnvironmentvar();
+        void removeEnvironmentvar();
         void close();
 
     public:
+        QString open(const QString& path);
+        void removeSelection(QListWidget* widget);
         QString searchpathfrom;
         QStringList searchpaths;
+        QVariantList environmentvars;
         QPointer<Preferences> dialog;
         QScopedPointer<Ui_Preferences> ui;
 };
@@ -54,10 +62,22 @@ PreferencesPrivate::init()
     for(QString searchpath : searchpaths) {
         ui->searchpaths->addItem(searchpath);
     }
+    for (const QVariant& environmentvar : environmentvars) {
+        QVariantMap pairmap = environmentvar.toMap();
+        PairItem* pairitem = new PairItem(pairmap["name"].toString(), pairmap["value"].toString());
+        pairitem->setChecked(pairmap["checked"].toBool());
+        QListWidgetItem* item = new QListWidgetItem(ui->environmentvars);
+        item->setSizeHint(pairitem->sizeHint());
+        ui->environmentvars->addItem(item);
+        ui->environmentvars->setItemWidget(item, pairitem);
+    }
     // connect
-    connect(ui->searchpaths, &QListWidget::itemSelectionChanged, this, &PreferencesPrivate::selectionChanged);
-    connect(ui->add, &QPushButton::pressed, this, &PreferencesPrivate::add);
-    connect(ui->remove, &QPushButton::pressed, this, &PreferencesPrivate::remove);
+    connect(ui->searchpaths, &QListWidget::itemSelectionChanged, this, &PreferencesPrivate::searchpathChanged);
+    connect(ui->environmentvars, &QListWidget::itemSelectionChanged, this, &PreferencesPrivate::environmentvarsChanged);
+    connect(ui->addSearchpath, &QPushButton::pressed, this, &PreferencesPrivate::addSearchpath);
+    connect(ui->removeSearchpath, &QPushButton::pressed, this, &PreferencesPrivate::removeSearchpath);
+    connect(ui->addEnvironmentvar, &QPushButton::pressed, this, &PreferencesPrivate::addEnvironmentvar);
+    connect(ui->removeEnvironmentvar, &QPushButton::pressed, this, &PreferencesPrivate::removeEnvironmentvar);
     connect(ui->close, &QPushButton::pressed, this, &PreferencesPrivate::close);
 }
 
@@ -67,87 +87,136 @@ PreferencesPrivate::eventFilter(QObject* object, QEvent* event)
     if (event->type() == QEvent::Hide) {
         saveSettings();
     }
-    return false;
+    return QObject::eventFilter(object, event); // Pass other events to base class
 }
 
 void
 PreferencesPrivate::loadSettings()
 {
     QString documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, "Jobman");
+    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
     searchpathfrom = settings.value("searchpathFrom", documents).toString();
-    searchpaths = settings.value("searchpaths", documents).toStringList();
+    searchpaths = settings.value("searchpaths").toStringList();
+    environmentvars = settings.value("environmentvars").toList();
 }
 
 void
 PreferencesPrivate::saveSettings()
 {
-    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, "Jobman");
-    settings.setValue("searchpathFrom", searchpathfrom);
+    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
     searchpaths.clear();
     for (int i = 0; i < ui->searchpaths->count(); ++i) {
         QListWidgetItem* item = ui->searchpaths->item(i);
-        if (item) {
-            searchpaths.append(item->text());
-        }
+        searchpaths.append(item->text());
     }
     settings.setValue("searchpaths", searchpaths);
+    environmentvars.clear();
+    for (int i = 0; i < ui->environmentvars->count(); ++i) {
+        QListWidgetItem* item = ui->environmentvars->item(i);
+        PairItem* pairitem = qobject_cast<PairItem*>(ui->environmentvars->itemWidget(item));
+        QVariantMap pairmap;
+        pairmap["checked"] = pairitem->isChecked();
+        pairmap["name"] = pairitem->name();
+        pairmap["value"] = pairitem->value();
+        environmentvars.append(pairmap);
+    }
+    settings.setValue("environmentvars", environmentvars);
 }
 
 void
-PreferencesPrivate::selectionChanged()
+PreferencesPrivate::searchpathChanged()
 {
     QList<QListWidgetItem*> selectedItems = ui->searchpaths->selectedItems();
     if (!selectedItems.isEmpty()) {
-        ui->remove->setEnabled(true);
+        ui->removeSearchpath->setEnabled(true);
     } else {
-        ui->remove->setEnabled(false);
+        ui->removeSearchpath->setEnabled(false);
     }
 }
 
 void
-PreferencesPrivate::add()
+PreferencesPrivate::environmentvarsChanged()
+{
+    QList<QListWidgetItem*> selectedItems = ui->environmentvars->selectedItems();
+    if (!selectedItems.isEmpty()) {
+        ui->removeEnvironmentvar->setEnabled(true);
+    } else {
+        ui->removeEnvironmentvar->setEnabled(false);
+    }
+}
+
+void
+PreferencesPrivate::addSearchpath()
 {
     QString dir = QFileDialog::getExistingDirectory(
-                    dialog.data(),
-                    tr("Add folder"),
-                    searchpathfrom,
-                    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
-    );
-    if (!dir.isEmpty()) {
-        bool found = false;
-        for (int i = 0; i < ui->searchpaths->count(); ++i) {
-            QListWidgetItem *item = ui->searchpaths->item(i);
-            if (item->text() == dir) {
-                found = true;
-                break;
+                        dialog.data(),
+                        tr("Add folder"),
+                        searchpathfrom,
+                        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+        );
+        if (!dir.isEmpty()) {
+            bool found = false;
+            for (int i = 0; i < ui->searchpaths->count(); ++i) {
+                QListWidgetItem *item = ui->searchpaths->item(i);
+                if (item->text() == dir) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                ui->searchpaths->addItem(dir);
+                searchpathfrom = dir;
             }
         }
-        if (!found) {
-            ui->searchpaths->addItem(dir);
-            searchpathfrom = dir;
-        }
-    }
 }
 
 void
-PreferencesPrivate::remove()
+PreferencesPrivate::removeSearchpath()
 {
-    QListWidget* searchpath = ui->searchpaths;
-    QString dir = searchpath->currentItem()->text();
-    if (!dir.isEmpty()) {
-        QList<QListWidgetItem*> items = searchpath->findItems(dir, Qt::MatchExactly);
-        foreach (QListWidgetItem* item, items) {
-            delete searchpath->takeItem(ui->searchpaths->row(item));
-        }
-    }
+    removeSelection(ui->searchpaths);
 }
 
+void
+PreferencesPrivate::addEnvironmentvar()
+{
+    PairItem* pairitem = new PairItem();
+    QListWidgetItem* item = new QListWidgetItem(ui->environmentvars);
+    item->setSizeHint(pairitem->sizeHint());
+    ui->environmentvars->addItem(item);
+    ui->environmentvars->setItemWidget(item, pairitem);
+    
+}
+
+void
+PreferencesPrivate::removeEnvironmentvar()
+{
+    removeSelection(ui->environmentvars);
+}
 
 void
 PreferencesPrivate::close()
 {
     dialog->close();
+}
+
+void
+PreferencesPrivate::removeSelection(QListWidget* widget)
+{
+    QList<QListWidgetItem*> selectedItems = widget->selectedItems();
+    for (QListWidgetItem* item : selectedItems) {
+        delete widget->takeItem(widget->row(item));
+    }
+}
+
+QString
+PreferencesPrivate::open(const QString& path)
+{
+    return QFileDialog::getExistingDirectory(
+      dialog.data(),
+      tr("Add folder"),
+      path,
+      QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+    );
 }
 
 #include "preferences.moc"

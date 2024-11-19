@@ -238,9 +238,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
     } else {
         QString command = job->command();
         if (!commandInfo.isAbsolute()) {
-            QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, "Jobman");
-            QStringList searchpaths = settings.value("searchpaths", QStringList()).toStringList();
-            for(QString searchpath : searchpaths) {
+            for(QString searchpath : job->os()->searchpaths) {
                 QString filepath = QDir::cleanPath(QDir(searchpath).filePath(command));
                 if (QFile::exists(filepath)) {
                     command = filepath;
@@ -249,83 +247,134 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
             }
         }
         job->setStatus(Job::Running);
-        bool exists = false;
+        bool valid = false;
+        // test output
         QString output = job->output();
-        QFileInfo dirInfo(output);
-        if (!dirInfo.exists()) {
-            QDir dir;
-            if (!dir.mkdir(output)) {
-                log += QString("\nStatus:\n"
-                               "Could not create directory: %1\n")
-                               .arg(output);
-                
-                job->setStatus(Job::Failed);
-            } else {
-                exists = true;
+        if (output.size()) {
+            if (!job->overwrite()) {
+                QFileInfo fileInfo(output);
+                if (fileInfo.exists()) {
+                    log += QString("\nStatus:\n"
+                                   "Output file already exists: %1\n")
+                                   .arg(output);
+                    job->setStatus(Job::Failed);
+                }
+                else {
+                    valid = true;
+                }
             }
-        } else if (!dirInfo.isDir()) {
-            log += QString("\nStatus:\n"
-                               "Output exists but is not a directory: %1\n")
-                               .arg(output);
-            job->setStatus(Job::Failed);
-        } else {
-            exists = true;
+            else {
+                valid = true;
+            }
         }
-        if (exists)
-        {
+        // test dir
+        if (valid) {
+            QString dirname = job->dir();
+            QFileInfo dirInfo(dirname);
+            if (!dirInfo.exists()) {
+                QDir dir;
+                if (!dir.mkdir(dirname)) {
+                    log += QString("\nStatus:\n"
+                                   "Could not create directory: %1\n")
+                                   .arg(dirname);
+                    job->setStatus(Job::Failed);
+                }
+                else {
+                    valid = true;
+                }
+            }
+            else if (!dirInfo.isDir()) {
+                log += QString("\nStatus:\n"
+                               "Output exists but is not a directory: %1\n")
+                               .arg(dirname);
+                job->setStatus(Job::Failed);
+            }
+            else {
+                valid = true;
+            }
+        }
+        // process
+        if (valid) {
             bool failed = false;
             bool stopped = false;
-            QScopedPointer<Process> process(new Process());
-            QString standardoutput;
-            QString standarderror;
-            if (process->exists(command)) {
-                process->run(command, job->arguments(), job->startin());
-                int pid = process->pid();
-                job->setPid(pid);
-                log += QString("\nProcess id:\n%1\n").arg(pid);
-                job->setLog(log);
-                if (process->wait()) {
-                    job->setStatus(Job::Completed);
-                    log += QString("\nStatus:\n%1\n").arg("Command completed");
-                } else {
-                    if (job->status() == Job::Stopped) {
-                        stopped = true;
-                    } else {
-                        failed = true;
-                    }
+            // pre process
+            Preprocess::Copyoriginal& copyoriginal = job->preprocess()->copyoriginal;
+            if (copyoriginal.run()) {
+                QFileInfo fileInfo(copyoriginal.filename);
+                QString originalname = QDir(job->dir()).filePath(fileInfo.baseName() + "_original." + fileInfo.suffix());
+                QFile file(fileInfo.filePath());
+                log += QString("\nPre-process:");
+                log += QString("\nCopy original: %1 to %2\n").arg(copyoriginal.filename).arg(originalname);
+                if (!file.copy(originalname)) {
+                    log += QString("\nPre-process output:\n%1\n").arg(file.errorString());
+                    log += QString("\nStatus:\n%1\n").arg("Pre-process failed");
+                    job->setStatus(Job::Failed);
+                    failed = true;
                 }
-                standardoutput = process->standardOutput();
-                standarderror = process->standardError();
-            } else {
-                standarderror = "Command does not exists, make sure command can be "
-                                "found in system or application search paths";
-                failed = true;
             }
-            if (failed) {
-                log += QString("\nStatus:\n%1\n").arg("Command failed");
-                log += QString("\nExit code:\n%1\n").arg(process->exitCode());
-                switch(process->exitStatus())
-                {
-                    case Process::Normal: {
-                        log += QString("\nExit status:\n%1\n").arg("Normal");
+            if (!failed) {
+                // process
+                QScopedPointer<Process> process(new Process());
+                QString standardoutput;
+                QString standarderror;
+                if (process->exists(command)) {
+                    process->run(command, job->arguments(), job->startin(), job->os()->environmentvars);
+                    int pid = process->pid();
+                    job->setPid(pid);
+                    QList<QPair<QString, QString>> environmentvars = job->os()->environmentvars;
+                    if (environmentvars.count()) {
+                        log += QString("\nEnvironment:\n");
+                        for (const QPair<QString, QString>& environmentvar : environmentvars) {
+                            log += QString("\%1=%2\n").arg(environmentvar.first).arg(environmentvar.second);
+                        }
                     }
-                    break;
-                    case Process::Crash: {
-                        log += QString("\nExit status:\n%1\n").arg("Crash");
+                    log += QString("\nProcess id:\n%1\n").arg(pid);
+                    job->setLog(log);
+                    if (process->wait()) {
+                        job->setStatus(Job::Completed);
+                        log += QString("\nStatus:\n%1\n").arg("Command completed");
                     }
-                    break;
+                    else {
+                        if (job->status() == Job::Stopped) {
+                            stopped = true;
+                        } else {
+                            failed = true;
+                        }
+                    }
+                    standardoutput = process->standardOutput();
+                    standarderror = process->standardError();
                 }
-                job->setStatus(Job::Failed);
-                
-            }
-            if (stopped) {
-                log += QString("\nStatus:\n%1\n").arg("Command stopped");
-            }
-            if (!standardoutput.isEmpty()) {
-                log += QString("\nCommand output:\n%1").arg(standardoutput);
-            }
-            if (!standarderror.isEmpty()) {
-                log += QString("\nCommand error:\n%1").arg(standarderror);
+                else {
+                    standarderror = "Command does not exists, make sure command can be "
+                                    "found in system or application search paths";
+                    failed = true;
+                }
+                if (failed) {
+                    log += QString("\nStatus:\n%1\n").arg("Command failed");
+                    log += QString("\nExit code:\n%1\n").arg(process->exitCode());
+                    switch(process->exitStatus())
+                    {
+                        case Process::Normal: {
+                            log += QString("\nExit status:\n%1\n").arg("Normal");
+                        }
+                        break;
+                        case Process::Crash: {
+                            log += QString("\nExit status:\n%1\n").arg("Crash");
+                        }
+                        break;
+                    }
+                    job->setStatus(Job::Failed);
+                    
+                }
+                if (stopped) {
+                    log += QString("\nStatus:\n%1\n").arg("Command stopped");
+                }
+                if (!standardoutput.isEmpty()) {
+                    log += QString("\nCommand output:\n%1").arg(standardoutput);
+                }
+                if (!standarderror.isEmpty()) {
+                    log += QString("\nCommand error:\n%1").arg(standarderror);
+                }
             }
         }
     }
@@ -335,7 +384,8 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
             failCompletedJobs(job->uuid(), job->dependson());
         }
     }
-    if (job->status() != Job::Stopped) {
+    if (job->status() != Job::Stopped ||
+        job->status() != Job::Failed) {
         queue->jobProcessed(job->uuid());
     }
 }

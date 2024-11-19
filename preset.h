@@ -9,11 +9,12 @@
 #include <QString>
 #include <QVariant>
 
-struct Option {
+struct Option : public QObject {
     public:
-        Option() = default;
-        
+        Option(QObject* parent = nullptr);
+
     public:
+        QString id;
         QString name;
         QString flag;
         QString type;
@@ -24,15 +25,16 @@ struct Option {
         QList<QPair<QString, QVariant>> options;
 };
 
-class Task {
+class Task : public QObject {
     public:
-        Task() = default;
+        Task(QObject* parent = nullptr);
     
     public:
         QString id;
         QString name;
         QString command;
         QString extension;
+        QString output;
         QString arguments;
         QString startin;
         QString dependson;
@@ -40,8 +42,9 @@ class Task {
 };
 
 class PresetPrivate;
-class Preset
+class Preset : public QObject
 {
+    Q_OBJECT
     public:
         Preset();
         virtual ~Preset();
@@ -54,8 +57,8 @@ class Preset
 
     public:
         QString name() const;
-        QList<Option> options() const;
-        QList<Task> tasks() const;
+        QList<Option*> options() const;
+        QList<Task*> tasks() const;
     
     private:
         QScopedPointer<PresetPrivate> p;

@@ -75,8 +75,8 @@
        <widget class="QLabel" name="name">
         <property name="font">
          <font>
-          <pointsize>12</pointsize>
-          <bold>true</bold>
+          <pointsize>13</pointsize>
+          <bold>false</bold>
          </font>
         </property>
         <property name="text">
@@ -88,7 +88,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QWidget" name="preferencesWidget" native="true">
+    <widget class="QWidget" name="optionsWidget" native="true">
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <property name="spacing">
        <number>10</number>
@@ -109,7 +109,8 @@
        <widget class="QLabel" name="label">
         <property name="font">
          <font>
-          <pointsize>11</pointsize>
+          <pointsize>10</pointsize>
+          <bold>true</bold>
          </font>
         </property>
         <property name="text">
@@ -122,6 +123,9 @@
         <property name="styleSheet">
          <string notr="true"/>
         </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
         <property name="widgetResizable">
          <bool>true</bool>
         </property>
@@ -130,11 +134,58 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>354</width>
-           <height>452</height>
+           <width>356</width>
+           <height>400</height>
           </rect>
          </property>
         </widget>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="widget" native="true">
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="defaults">
+           <property name="font">
+            <font>
+             <pointsize>11</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>Defaults</string>
+           </property>
+           <property name="autoDefault">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_4">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>
@@ -166,7 +217,7 @@
        <widget class="QPushButton" name="close">
         <property name="font">
          <font>
-          <pointsize>12</pointsize>
+          <pointsize>11</pointsize>
          </font>
         </property>
         <property name="toolTip">
@@ -174,6 +225,12 @@
         </property>
         <property name="text">
          <string>Close</string>
+        </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
+        <property name="default">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

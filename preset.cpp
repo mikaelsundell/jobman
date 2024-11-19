@@ -8,10 +8,21 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QFile>
+#include <QPointer>
 
 #include <QDebug>
 
-class PresetPrivate : public QObject
+Option::Option(QObject* parent)
+: QObject(parent)
+{
+}
+
+Task::Task(QObject* parent)
+: QObject(parent)
+{
+}
+
+class PresetPrivate
 {
     public:
         PresetPrivate();
@@ -24,10 +35,11 @@ class PresetPrivate : public QObject
         QString filename;
         QString name;
         QList<QString> description;
-        QList<Option> options;
-        QList<Task> tasks;
+        QList<Option*> options;
+        QList<Task*> tasks;
         QUuid uuid;
         bool valid;
+        QPointer<Preset> preset;
 };
 
 PresetPrivate::PresetPrivate()
@@ -86,14 +98,15 @@ PresetPrivate::read()
         QJsonArray optionsArray = json["options"].toArray();
         for (int i = 0; i < optionsArray.size(); ++i) {
             QJsonObject jsonoption = optionsArray[i].toObject();
-            Option option;
-            if (jsonoption.contains("name") && jsonoption["name"].isString()) option.name = jsonoption["name"].toString();
-            if (jsonoption.contains("flag") && jsonoption["flag"].isString()) option.flag = jsonoption["flag"].toString();
-            if (jsonoption.contains("type") && jsonoption["type"].isString()) option.type = jsonoption["type"].toString();
-            if (jsonoption.contains("value")) option.value = jsonoption["value"].toVariant();
-            if (jsonoption.contains("default")) option.defaultvalue = jsonoption["default"].toVariant();
-            if (jsonoption.contains("minimum")) option.minimum = jsonoption["minimum"].toVariant();
-            if (jsonoption.contains("maximum")) option.maximum = jsonoption["maximum"].toVariant();
+            Option* option = new Option(preset.data());
+            if (jsonoption.contains("id") && jsonoption["id"].isString()) option->id = jsonoption["id"].toString();
+            if (jsonoption.contains("name") && jsonoption["name"].isString()) option->name = jsonoption["name"].toString();
+            if (jsonoption.contains("flag") && jsonoption["flag"].isString()) option->flag = jsonoption["flag"].toString();
+            if (jsonoption.contains("type") && jsonoption["type"].isString()) option->type = jsonoption["type"].toString();
+            if (jsonoption.contains("value")) option->value = jsonoption["value"].toVariant();
+            if (jsonoption.contains("default")) option->defaultvalue = jsonoption["default"].toVariant();
+            if (jsonoption.contains("minimum")) option->minimum = jsonoption["minimum"].toVariant();
+            if (jsonoption.contains("maximum")) option->maximum = jsonoption["maximum"].toVariant();
             if (jsonoption.contains("options") && jsonoption["options"].isArray()) {
                 QJsonArray optionsArray = jsonoption["options"].toArray();
                 for (const QJsonValue &opt : optionsArray) {
@@ -104,36 +117,32 @@ PresetPrivate::read()
                         label = optObj["label"].toString();
                     if (optObj.contains("value"))
                         optValue = optObj["value"].toVariant();
-                    option.options.append(qMakePair(label, optValue));
+                    option->options.append(qMakePair(label, optValue));
                 }
             }
-            if (!option.name.isEmpty() && !option.type.isEmpty() && !option.defaultvalue.isValid() && !option.value.isValid()) {
-                if (option.name.length() > 0) {
-                    error = QString("Json for option: \"%1\" does not contain all required attributes").arg(option.name);
+            if (!option->name.isEmpty() && !option->type.isEmpty() && !option->defaultvalue.isValid() && !option->value.isValid()) {
+                if (option->name.length() > 0) {
+                    error = QString("Json for option: \"%1\" does not contain all required attributes").arg(option->name);
                 } else {
                     error = QString("Json for option: %1 does not contain all required attributes").arg(i);
                 }
-                
-                if (option.name.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("name");
+                if (option->id.isEmpty()) {
+                    error += QString("\nMissing attribute: %1").arg("id");
                 }
-                
-                if (option.type.isEmpty()) {
+                if (option->type.isEmpty()) {
                     error += QString("\nMissing attribute: %1").arg("type");
                 }
-                
-                if (option.defaultvalue.isValid()) {
+                if (option->defaultvalue.isValid()) {
                     error += QString("\nMissing attribute: %1").arg("default");
                 }
-                
-                if (option.value.isValid()) {
+                if (option->value.isValid()) {
                     error += QString("\nMissing attribute: %1").arg("value");
                 }
                 valid = false;
                 return valid;
             }
             else {
-                if (!(option.type == "Slider" || option.type == "Dropdown" || option.type == "Text" || option.type == "File")) {
+                if (!(option->type == "Checkbox" || option->type == "Double" || option->type == "File" || option->type == "Slider" || option->type == "Dropdown" || option->type == "Text") ) {
                     error = QString("Json for option: %1 contains an invalid type: %1, valid types are Slider, Dropdown, Text and File").arg(i);
                     valid = false;
                     return valid;
@@ -146,59 +155,56 @@ PresetPrivate::read()
         QJsonArray tasksArray = json["tasks"].toArray();
         for (int i = 0; i < tasksArray.size(); ++i) {
             QJsonObject jsontask = tasksArray[i].toObject();
-            Task task;
-            if (jsontask.contains("id") && jsontask["id"].isString()) task.id = jsontask["id"].toString();
-            if (jsontask.contains("name") && jsontask["name"].isString()) task.name = jsontask["name"].toString();
-            if (jsontask.contains("command") && jsontask["command"].isString()) task.command = jsontask["command"].toString();
-            if (jsontask.contains("extension") && jsontask["extension"].isString()) task.extension = jsontask["extension"].toString();
-            if (jsontask.contains("arguments") && jsontask["arguments"].isString()) task.arguments = jsontask["arguments"].toString();
-            if (jsontask.contains("startin") && jsontask["startin"].isString()) task.startin = jsontask["startin"].toString();
-            if (jsontask.contains("dependson") && jsontask["dependson"].isString()) task.dependson = jsontask["dependson"].toString();
+            Task* task = new Task(preset.data());
+            if (jsontask.contains("id") && jsontask["id"].isString()) task->id = jsontask["id"].toString();
+            if (jsontask.contains("name") && jsontask["name"].isString()) task->name = jsontask["name"].toString();
+            if (jsontask.contains("command") && jsontask["command"].isString()) task->command = jsontask["command"].toString();
+            if (jsontask.contains("extension") && jsontask["extension"].isString()) task->extension = jsontask["extension"].toString();
+            if (jsontask.contains("output") && jsontask["output"].isString()) task->output = jsontask["output"].toString();
+            if (jsontask.contains("arguments") && jsontask["arguments"].isString()) task->arguments = jsontask["arguments"].toString();
+            if (jsontask.contains("startin") && jsontask["startin"].isString()) task->startin = jsontask["startin"].toString();
+            if (jsontask.contains("dependson") && jsontask["dependson"].isString()) task->dependson = jsontask["dependson"].toString();
             if (jsontask.contains("documentation") && jsontask["documentation"].isArray()) {
                 QJsonArray docarray = jsontask["documentation"].toArray();
                 for (int i = 0; i < docarray.size(); ++i) {
-                    task.documentation.append(docarray[i].toString());
+                    task->documentation.append(docarray[i].toString());
                 }
             }
-            if (!task.id.isEmpty() && !task.name.isEmpty() && !task.command.isEmpty() && !task.extension.isEmpty() && !task.arguments.isEmpty()) {
-                if (task.dependson.length() > 0) {
+            if (!task->id.isEmpty() && !task->name.isEmpty() && !task->command.isEmpty() && !task->extension.isEmpty() && !task->arguments.isEmpty()) {
+                if (task->dependson.length() > 0) {
                     bool found = false;
                     for (int j = 0; j < tasks.size(); ++j) {
-                        if (tasks[j].id == task.dependson) {
+                        if (tasks[j]->id == task->dependson) {
                             found = true;
                             break;
                         }
                     }
                     if (!found) {
-                        error = QString("Json for task: \"%1\" contains a dependson id that can not be found").arg(task.name);
+                        error = QString("Json for task: \"%1\" contains a dependson id that can not be found").arg(task->name);
                         valid = false;
                         return valid;
                     }
                 }
                 tasks.append(task);
             } else {
-                if (task.name.length() > 0) {
-                    error = QString("Json for task: \"%1\" does not contain all required attributes").arg(task.name);
+                if (task->name.length() > 0) {
+                    error = QString("Json for task: \"%1\" does not contain all required attributes").arg(task->name);
                 } else {
                     error = QString("Json for task: %1 does not contain all required attributes").arg(i);
                 }
-                if (task.id.isEmpty()) {
+                if (task->id.isEmpty()) {
                     error += QString("\nMissing attribute: %1").arg("id");
                 }
-                
-                if (task.name.isEmpty()) {
+                if (task->name.isEmpty()) {
                     error += QString("\nMissing attribute: %1").arg("name");
                 }
-                
-                if (task.command.isEmpty()) {
+                if (task->command.isEmpty()) {
                     error += QString("\nMissing attribute: %1").arg("command");
                 }
-                
-                if (task.extension.isEmpty()) {
+                if (task->extension.isEmpty()) {
                     error += QString("\nMissing attribute: %1").arg("extension");
                 }
-                
-                if (task.arguments.isEmpty()) {
+                if (task->arguments.isEmpty()) {
                     error += QString("\nMissing attribute: %1").arg("arguments");
                 }
                 valid = false;
@@ -214,6 +220,7 @@ PresetPrivate::read()
 Preset::Preset()
 : p(new PresetPrivate())
 {
+    p->preset = this;
     p->init();
 }
 
@@ -258,13 +265,13 @@ Preset::name() const
     return p->name;
 }
 
-QList<Option>
+QList<Option*>
 Preset::options() const
 {
     return p->options;
 }
 
-QList<Task>
+QList<Task*>
 Preset::tasks() const
 {
     return p->tasks;

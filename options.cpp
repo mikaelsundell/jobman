@@ -3,8 +3,10 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "options.h"
+#include "question.h"
 
 #include <QComboBox>
+#include <QCheckBox>
 #include <QFileDialog>
 #include <QLineEdit>
 #include <QPointer>
@@ -29,6 +31,7 @@ class OptionsPrivate : public QObject
     public Q_SLOTS:
         void valueChanged(const QString& name, const QVariant& value);
         void close();
+        void defaults();
 
     public:
         QMap<QString, QWidget*> optionwidgets;
@@ -53,6 +56,7 @@ OptionsPrivate::init()
     preset.reset(new Preset());
     // connect
     connect(ui->close, &QPushButton::pressed, this, &OptionsPrivate::close);
+    connect(ui->defaults, &QPushButton::pressed, this, &OptionsPrivate::defaults);
 }
 
 void
@@ -64,36 +68,55 @@ OptionsPrivate::update() {
     optionwidgets.clear();
     QWidget* containerwidget = new QWidget();
     containerwidget->setObjectName("optionswidget");
-    QVBoxLayout* layout = new QVBoxLayout(containerwidget);
-    
-    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, "Jobman");
-    settings.beginGroup(preset->id());
-    for (Option &option : preset->options()) {
-        QVariant savedvalue = settings.value(option.name, option.value);
-        option.value = savedvalue;
-        QLabel* label = new QLabel(option.name, containerwidget);
+    QGridLayout* layout = new QGridLayout(containerwidget);
+    int row = 0;
+    for (Option* option : preset->options()) {
+        QLabel* label = new QLabel(option->name, containerwidget);
         QFont font;
-        font.setPointSize(12);
-        font.setBold(true);
+        font.setPointSize(10);
         label->setFont(font);
-        layout->addWidget(label);
-        if (option.type == "Slider") {
-            QSlider *slider = new QSlider(Qt::Horizontal, containerwidget);
-            slider->setRange(option.minimum.toInt(), option.maximum.toInt());
-            slider->setValue(option.value.toInt());
-            connect(slider, &QSlider::valueChanged, this, [this, option](int value) {
-                valueChanged(option.name, value);
+        layout->addWidget(label, row, 0);
+
+        if (option->type == "Checkbox") {
+            QCheckBox* checkbox = new QCheckBox(containerwidget);
+            checkbox->setChecked(option->value.toBool());
+            connect(checkbox, &QCheckBox::toggled, this, [this, option](bool checked) {
+                valueChanged(option->id, checked);
             });
-            optionwidgets[option.name] = slider;
-            layout->addWidget(slider);
+            optionwidgets[option->id] = checkbox;
+            layout->addWidget(checkbox, row, 1);
         }
-        else if (option.type == "Dropdown") {
+        else if (option->type == "Double") {
+            QLineEdit* lineedit = new QLineEdit(option->value.toString(), containerwidget);
+            QDoubleValidator* validator = new QDoubleValidator(option->minimum.toDouble(), option->maximum.toDouble(), 3, lineedit);
+            validator->setNotation(QDoubleValidator::StandardNotation);
+            validator->setLocale(QLocale::C); // use '.' instead of ','
+            lineedit->setValidator(validator);
+            lineedit->setFont(font);
+            connect(lineedit, &QLineEdit::textEdited, this, [lineedit]() {
+                QString text = lineedit->text();
+                if (text.contains(',')) { // needed, will still allow ','
+                    text.replace(',', '.');
+                    lineedit->setText(text);
+                }
+            });
+            connect(lineedit, &QLineEdit::textChanged, this, [this, option](const QString &text) {
+                bool valid;
+                double value = text.toDouble(&valid);
+                if (valid) {
+                    valueChanged(option->id, value);
+                }
+            });
+            optionwidgets[option->id] = lineedit;
+            layout->addWidget(lineedit, row, 1);
+        }
+        else if (option->type == "Dropdown") {
             QComboBox* combobox = new QComboBox(containerwidget);
             int currentindex = -1;
-            for (int i = 0; i < option.options.size(); ++i) {
-                const auto &optPair = option.options[i];
+            for (int i = 0; i < option->options.size(); ++i) {
+                const auto &optPair = option->options[i];
                 combobox->addItem(optPair.first, optPair.second);
-                if (optPair.second == option.value) {
+                if (optPair.second == option->value) {
                     currentindex = i;
                 }
             }
@@ -101,26 +124,20 @@ OptionsPrivate::update() {
                 combobox->setCurrentIndex(currentindex);
             }
             connect(combobox, &QComboBox::currentIndexChanged, this, [this, option, combobox](int index) {
-                valueChanged(option.name, combobox->itemData(index));  // use itemData to get value
+                valueChanged(option->id, combobox->itemData(index));
             });
-            optionwidgets[option.name] = combobox;
-            layout->addWidget(combobox);
-
+            optionwidgets[option->id] = combobox;
+            layout->addWidget(combobox, row, 1);
         }
-        else if (option.type == "Text") {
-            QLineEdit* lineedit = new QLineEdit(option.value.toString(), containerwidget);
-            connect(lineedit, &QLineEdit::textChanged, this, [this, option](const QString &text) {
-                valueChanged(option.name, text);
-            });
-            optionwidgets[option.name] = lineedit;
-            layout->addWidget(lineedit);
-        }
-        else if (option.type == "File") {
+        else if (option->type == "File") {
             QWidget* filewidget = new QWidget(containerwidget);
             QHBoxLayout* filelayout = new QHBoxLayout(filewidget);
             filelayout->setContentsMargins(0, 0, 0, 0);
-            QLineEdit* lineedit = new QLineEdit(option.value.toString(), filewidget);
+
+            QLineEdit* lineedit = new QLineEdit(option->value.toString(), filewidget);
+            lineedit->setReadOnly(true);
             filelayout->addWidget(lineedit);
+
             QIcon icon;
             icon.addFile(QString::fromUtf8(":/icons/resources/Folder.png"), QSize(), QIcon::Normal, QIcon::Off);
             QToolButton* button = new QToolButton(filewidget);
@@ -131,33 +148,62 @@ OptionsPrivate::update() {
                 QString filepath = QFileDialog::getOpenFileName(nullptr, tr("Select File"));
                 if (!filepath.isEmpty()) {
                     lineedit->setText(filepath);
-                    valueChanged(option.name, filepath);
+                    valueChanged(option->id, filepath);
                 }
             });
             connect(lineedit, &QLineEdit::textChanged, this, [this, option](const QString &text) {
-                valueChanged(option.name, text);
+                valueChanged(option->id, text);
             });
-            optionwidgets[option.name] = lineedit;
-            layout->addWidget(filewidget);
+            optionwidgets[option->id] = lineedit;
+            layout->addWidget(filewidget, row, 1);
         }
+        else if (option->type == "Slider") {
+            QHBoxLayout* sliderlayout = new QHBoxLayout();
+            QSlider* slider = new QSlider(Qt::Horizontal, containerwidget);
+            slider->setRange(option->minimum.toInt(), option->maximum.toInt());
+            slider->setValue(option->value.toInt());
+
+            QLabel* sliderValueLabel = new QLabel(QString::number(slider->value()), containerwidget);
+            sliderValueLabel->setFont(font);
+            sliderValueLabel->setFixedWidth(20);
+            sliderValueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            connect(slider, &QSlider::valueChanged, this, [this, option, sliderValueLabel](int value) {
+                sliderValueLabel->setText(QString::number(value));
+                valueChanged(option->id, value);
+            });
+            optionwidgets[option->id] = slider;
+            sliderlayout->addWidget(slider);
+            sliderlayout->addWidget(sliderValueLabel);
+            layout->addLayout(sliderlayout, row, 1);
+        }
+        else if (option->type == "Text") {
+            QLineEdit* lineedit = new QLineEdit(option->value.toString(), containerwidget);
+            lineedit->setFont(font);
+            connect(lineedit, &QLineEdit::textChanged, this, [this, option](const QString &text) {
+                valueChanged(option->id, text);
+            });
+            optionwidgets[option->id] = lineedit;
+            layout->addWidget(lineedit, row, 1);
+        }
+        row++;
     }
-    layout->addStretch();
+    layout->setColumnStretch(0, 1);
+    layout->setColumnStretch(1, 3);
+    layout->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding), row, 0, 1, 2);
+
     containerwidget->setLayout(layout);
     ui->scrollarea->setWidget(containerwidget);
     ui->scrollarea->setWidgetResizable(true);
-    settings.endGroup();
 }
 
 void
-OptionsPrivate::valueChanged(const QString& name, const QVariant& value)
+OptionsPrivate::valueChanged(const QString& id, const QVariant& value)
 {
-    for (Option &option : preset->options()) {
-        if (option.name == name) {
-            option.value = value;
-            QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, "Jobman");
-            settings.beginGroup(preset->id());
-            settings.setValue(name, value);
-            settings.endGroup();
+    QList<Option*> options = preset->options();
+    for (Option* option : options) {
+        if (option->id == id) {
+            option->value = value;
             break;
         }
     }
@@ -167,6 +213,20 @@ void
 OptionsPrivate::close()
 {
     dialog->close();
+}
+
+void
+OptionsPrivate::defaults()
+{
+    if (Question::askQuestion(dialog.data(),
+        "All values will be reset to their default settings.\n"
+        "Do you want to continue?"
+    )) {
+        for (Option* option : preset->options()) {
+            option->value = option->defaultvalue;
+        }
+        update();
+    }
 }
 
 #include "options.moc"

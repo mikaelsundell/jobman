@@ -28,7 +28,7 @@
   <property name="maximumSize">
    <size>
     <width>400</width>
-    <height>200172</height>
+    <height>200</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -89,7 +89,7 @@
      <item>
       <widget class="QLabel" name="question">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -97,8 +97,14 @@
        <property name="text">
         <string/>
        </property>
+       <property name="scaledContents">
+        <bool>false</bool>
+       </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -126,16 +132,29 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="yes">
+      <widget class="QPushButton" name="no">
+       <property name="font">
+        <font>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
        <property name="text">
-        <string>Yes</string>
+        <string>No</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="no">
+      <widget class="QPushButton" name="yes">
+       <property name="font">
+        <font>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
        <property name="text">
-        <string>No</string>
+        <string>Yes</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
        </property>
       </widget>
      </item>

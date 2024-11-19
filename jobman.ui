@@ -139,7 +139,7 @@
           <widget class="QWidget" name="widget_6" native="true">
            <property name="minimumSize">
             <size>
-             <width>100</width>
+             <width>80</width>
              <height>0</height>
             </size>
            </property>
@@ -160,7 +160,7 @@
              <widget class="QLabel" name="label_2">
               <property name="font">
                <font>
-                <pointsize>12</pointsize>
+                <pointsize>11</pointsize>
                 <bold>true</bold>
                </font>
               </property>
@@ -177,7 +177,7 @@
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>50</height>
+             <height>40</height>
             </size>
            </property>
            <layout class="QHBoxLayout" name="horizontalLayout">
@@ -270,9 +270,9 @@
              </spacer>
             </item>
             <item>
-             <widget class="QToolButton" name="openSaveto">
+             <widget class="QToolButton" name="selectSaveto">
               <property name="toolTip">
-               <string>Open save to folder</string>
+               <string>Select save to folder</string>
               </property>
               <property name="text">
                <string>...</string>
@@ -314,7 +314,7 @@
               </property>
               <property name="font">
                <font>
-                <pointsize>12</pointsize>
+                <pointsize>11</pointsize>
                </font>
               </property>
              </widget>
@@ -402,9 +402,9 @@
              </spacer>
             </item>
             <item>
-             <widget class="QToolButton" name="openPresetfrom">
+             <widget class="QToolButton" name="selectPresetfrom">
               <property name="toolTip">
-               <string>Open preset folder</string>
+               <string>Select preset folder</string>
               </property>
               <property name="text">
                <string>...</string>
@@ -424,6 +424,9 @@
             <property name="spacing">
              <number>0</number>
             </property>
+            <property name="leftMargin">
+             <number>10</number>
+            </property>
             <property name="topMargin">
              <number>0</number>
             </property>
@@ -434,7 +437,7 @@
              <widget class="QLabel" name="label_3">
               <property name="font">
                <font>
-                <pointsize>12</pointsize>
+                <pointsize>11</pointsize>
                 <bold>true</bold>
                </font>
               </property>
@@ -453,9 +456,9 @@
              <pointsize>12</pointsize>
             </font>
            </property>
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <layout class="QVBoxLayout" name="verticalLayout_7">
             <property name="spacing">
-             <number>0</number>
+             <number>12</number>
             </property>
             <property name="leftMargin">
              <number>10</number>
@@ -467,14 +470,38 @@
              <number>10</number>
             </property>
             <item>
-             <widget class="QCheckBox" name="createFolders">
+             <widget class="QCheckBox" name="copyOriginal">
               <property name="font">
                <font>
-                <pointsize>12</pointsize>
+                <pointsize>10</pointsize>
                </font>
               </property>
               <property name="text">
-               <string> Create new folders</string>
+               <string> Copy original</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="createFolders">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string> Create folders</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="overwrite">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string> Overwrite</string>
               </property>
              </widget>
             </item>
@@ -743,7 +770,8 @@
              <widget class="QLabel" name="label_5">
               <property name="font">
                <font>
-                <pointsize>12</pointsize>
+                <pointsize>10</pointsize>
+                <bold>true</bold>
                </font>
               </property>
               <property name="text">
@@ -761,7 +789,7 @@
               </property>
               <property name="font">
                <font>
-                <pointsize>12</pointsize>
+                <pointsize>11</pointsize>
                </font>
               </property>
              </widget>
@@ -792,7 +820,7 @@
              </spacer>
             </item>
             <item>
-             <widget class="QToolButton" name="options">
+             <widget class="QToolButton" name="openOptions">
               <property name="toolTip">
                <string>Show options</string>
               </property>
@@ -806,7 +834,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QToolButton" name="monitor">
+             <widget class="QToolButton" name="openMonitor">
               <property name="toolTip">
                <string>Show monitor</string>
               </property>
@@ -842,222 +870,43 @@
     <property name="title">
      <string>Help</string>
     </property>
+    <widget class="QMenu" name="preferences">
+     <property name="title">
+      <string>Preferences...</string>
+     </property>
+     <addaction name="separator"/>
+     <addaction name="open"/>
+     <addaction name="separator"/>
+     <addaction name="save"/>
+     <addaction name="clear"/>
+     <addaction name="separator"/>
+     <addaction name="import_"/>
+     <addaction name="export_"/>
+    </widget>
     <addaction name="about"/>
-    <addaction name="preferences"/>
     <addaction name="openGithubReadme"/>
     <addaction name="openGithubIssues"/>
+    <addaction name="preferences"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
      <string>Edit</string>
     </property>
-    <addaction name="addfiles"/>
+    <addaction name="addFiles"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>View</string>
     </property>
-    <addaction name="showMonitor"/>
-    <addaction name="showOptions"/>
+    <addaction name="monitor"/>
+    <addaction name="options"/>
    </widget>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
    <addaction name="menuHelp"/>
   </widget>
-  <action name="copyRGBAsText">
-   <property name="text">
-    <string>Copy RGB as text</string>
-   </property>
-   <property name="shortcut">
-    <string>R</string>
-   </property>
-  </action>
-  <action name="copyHSVAsText">
-   <property name="text">
-    <string>Copy HSV as text</string>
-   </property>
-   <property name="shortcut">
-    <string>H</string>
-   </property>
-  </action>
-  <action name="copyColorAsBitmap">
-   <property name="text">
-    <string>Copy Color as bitmap</string>
-   </property>
-   <property name="shortcut">
-    <string>B</string>
-   </property>
-  </action>
-  <action name="active">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>:/icons/resources/Active.png</normaloff>:/icons/resources/Active.png</iconset>
-   </property>
-   <property name="text">
-    <string>Active</string>
-   </property>
-   <property name="shortcut">
-    <string>Space</string>
-   </property>
-  </action>
-  <action name="toggleMouseLocation">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Show mouse location</string>
-   </property>
-   <property name="shortcut">
-    <string>M</string>
-   </property>
-  </action>
-  <action name="copyIccAsText">
-   <property name="text">
-    <string>Copy ICC profile as text</string>
-   </property>
-  </action>
-  <action name="as8bitValues">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>as 8-bit</string>
-   </property>
-   <property name="toolTip">
-    <string>Display as 8-bit</string>
-   </property>
-  </action>
-  <action name="as10bitValues">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>as 10-bit</string>
-   </property>
-   <property name="toolTip">
-    <string>Display as 10-bit</string>
-   </property>
-  </action>
-  <action name="asFloatValues">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>as Float</string>
-   </property>
-   <property name="toolTip">
-    <string>Display as Decimal</string>
-   </property>
-  </action>
-  <action name="asHexadecimalValues">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>as Hexadecimal</string>
-   </property>
-   <property name="toolTip">
-    <string>Display as Hexadecimal</string>
-   </property>
-  </action>
-  <action name="asPercentageValues">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>as Percentage</string>
-   </property>
-   <property name="toolTip">
-    <string>Display as Percentage</string>
-   </property>
-  </action>
-  <action name="magnify1x">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>1x</string>
-   </property>
-   <property name="toolTip">
-    <string>Zoom 100%</string>
-   </property>
-   <property name="shortcut">
-    <string>1</string>
-   </property>
-  </action>
-  <action name="magnify2x">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>2x</string>
-   </property>
-   <property name="toolTip">
-    <string>Zoom 200%</string>
-   </property>
-   <property name="shortcut">
-    <string>2</string>
-   </property>
-  </action>
-  <action name="magnify3x">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>3x</string>
-   </property>
-   <property name="toolTip">
-    <string>Zoom 400%</string>
-   </property>
-   <property name="shortcut">
-    <string>3</string>
-   </property>
-  </action>
-  <action name="magnify4x">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>4x</string>
-   </property>
-   <property name="toolTip">
-    <string>Zoom 800%</string>
-   </property>
-   <property name="shortcut">
-    <string>4</string>
-   </property>
-  </action>
-  <action name="magnify5x">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>5x</string>
-   </property>
-   <property name="toolTip">
-    <string>Zoom 1600%</string>
-   </property>
-   <property name="shortcut">
-    <string>5</string>
-   </property>
-  </action>
   <action name="openGithubReadme">
    <property name="text">
     <string>Open Github README</string>
@@ -1076,30 +925,41 @@
     <string>About</string>
    </property>
   </action>
-  <action name="pick">
+  <action name="addFiles">
    <property name="text">
-    <string>Capture from pick</string>
+    <string>Add files</string>
    </property>
    <property name="shortcut">
-    <string>Return</string>
+    <string>F</string>
    </property>
   </action>
-  <action name="pin">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>:/icons/resources/Pin.png</normaloff>:/icons/resources/Pin.png</iconset>
-   </property>
+  <action name="options">
    <property name="text">
-    <string>Pin</string>
+    <string>Options ...</string>
+   </property>
+   <property name="shortcut">
+    <string>O</string>
+   </property>
+  </action>
+  <action name="monitor">
+   <property name="text">
+    <string>Monitor ...</string>
+   </property>
+   <property name="shortcut">
+    <string>M</string>
+   </property>
+  </action>
+  <action name="open">
+   <property name="text">
+    <string>Open ...</string>
    </property>
    <property name="shortcut">
     <string>P</string>
+   </property>
+  </action>
+  <action name="save">
+   <property name="text">
+    <string>Save</string>
    </property>
   </action>
   <action name="clear">
@@ -1107,56 +967,14 @@
     <string>Clear</string>
    </property>
   </action>
-  <action name="copyHSLAsText">
+  <action name="export_">
    <property name="text">
-    <string>Copy HSL as text</string>
+    <string>Export ...</string>
    </property>
   </action>
-  <action name="copyHexAsText">
+  <action name="import_">
    <property name="text">
-    <string>Copy HEX as text</string>
-   </property>
-  </action>
-  <action name="drag">
-   <property name="text">
-    <string>Capture from drag</string>
-   </property>
-   <property name="shortcut">
-    <string>Shift+Return</string>
-   </property>
-  </action>
-  <action name="addfiles">
-   <property name="text">
-    <string>Add files ...</string>
-   </property>
-   <property name="shortcut">
-    <string>F</string>
-   </property>
-  </action>
-  <action name="preferences">
-   <property name="text">
-    <string>Preferences...</string>
-   </property>
-  </action>
-  <action name="showOptions">
-   <property name="text">
-    <string>Show options ...</string>
-   </property>
-   <property name="shortcut">
-    <string>O</string>
-   </property>
-  </action>
-  <action name="actionTest">
-   <property name="text">
-    <string>Options ...</string>
-   </property>
-  </action>
-  <action name="showMonitor">
-   <property name="text">
-    <string>Show monitor ...</string>
-   </property>
-   <property name="shortcut">
-    <string>M</string>
+    <string>Import ...</string>
    </property>
   </action>
  </widget>

@@ -20,7 +20,7 @@ class Process : public QObject {
     public:
         Process();
         virtual ~Process();
-        void run(const QString& command, const QStringList& arguments, const QString& startin = QString());
+        void run(const QString& command, const QStringList& arguments, const QString& startin = QString(), const QList<QPair<QString, QString>>& environmentvars = QList<QPair<QString, QString>>());
         bool wait();
         bool exists(const QString& command);
         void kill();

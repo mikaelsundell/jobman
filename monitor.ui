@@ -102,8 +102,8 @@
           <widget class="QLabel" name="label">
            <property name="font">
             <font>
-             <pointsize>12</pointsize>
-             <bold>true</bold>
+             <pointsize>13</pointsize>
+             <bold>false</bold>
             </font>
            </property>
            <property name="text">
@@ -443,11 +443,25 @@
       </item>
       <item>
        <widget class="QPushButton" name="close">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
         <property name="toolTip">
          <string>Close</string>
         </property>
         <property name="text">
          <string>Close</string>
+        </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
+        <property name="default">
+         <bool>true</bool>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
         </property>
        </widget>
       </item>

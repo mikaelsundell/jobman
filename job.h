@@ -6,9 +6,37 @@
 
 #include <QList>
 #include <QObject>
+#include <QPair>
 #include <QScopedPointer>
 #include <QString>
 #include <QUuid>
+
+struct OS : public QObject {
+    public:
+        OS(QObject* parent = nullptr);
+    public:
+        QStringList searchpaths;
+        QList<QPair<QString, QString>> environmentvars;
+};
+
+struct Preprocess : public QObject {
+    public:
+        Preprocess(QObject* parent = nullptr);
+
+    public:
+        struct Copyoriginal {
+            QString filename;
+            bool run() const {
+                return (!filename.isEmpty());
+            }
+        };
+        Copyoriginal copyoriginal;
+};
+
+struct Postprocess : public QObject {
+    public:
+        Postprocess(QObject* parent = nullptr);
+};
 
 class JobPrivate;
 class Job : public QObject {
@@ -32,24 +60,31 @@ class Job : public QObject {
         QString command() const;
         QDateTime created() const;
         QUuid dependson() const;
+        QString dir() const;
         QString filename() const;
         QString id() const;
         QString name() const;
         QString log() const;
         QString output() const;
+        bool overwrite() const;
         int pid() const;
         int priority() const;
         QString startin() const;
         Status status() const;
         QUuid uuid() const;
+        OS* os();
+        Preprocess* preprocess();
+        Postprocess* postprocess();
         void setArguments(const QStringList& arguments);
         void setCommand(const QString& command);
         void setDependson(QUuid dependson);
+        void setDir(const QString& dir);
         void setFilename(const QString& filename);
         void setId(const QString& id);
         void setLog(const QString& log);
         void setName(const QString& name);
         void setOutput(const QString& output);
+        void setOverwrite(bool overwrite);
         void setPid(int pid);
         void setPriority(int priority);
         void setStartin(const QString& startin);
@@ -59,11 +94,13 @@ class Job : public QObject {
         void argumentsChanged(const QStringList& arguments);
         void commandChanged(const QString& command);
         void dependsonChanged(QUuid uuid);
+        void dirChanged(QString dir);
         void filenameChanged(const QString& filename);
         void idChanged(const QString& id);
         void logChanged(const QString& log);
         void nameChanged(const QString& name);
         void outputChanged(const QString& output);
+        void overwriteChanged(bool overwrite);
         void pidChanged(int pid);
         void priorityChanged(int priority);
         void startinChanged(const QString& startin);

@@ -35,6 +35,8 @@ set (app_sources
     job.cpp
     jobtree.h
     jobtree.cpp
+    listwidget.h
+    listwidget.cpp
     mac.h
     mac.mm
     main.cpp

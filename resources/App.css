@@ -13,7 +13,9 @@ QDialog
 /* QCheckBox widgets */
 QCheckBox
 {
+    font-size: 11px;
     spacing: 5px;
+    padding-left: 2px;
 }
 
 QCheckBox::indicator {
@@ -29,10 +31,13 @@ QCheckBox::indicator:checked {
 /* QComboBox widgets */
 QComboBox
 {
+    font-size: 11px;
     background-color: hsl(220, 8%, 15%);
     padding: 4px;
     padding-left: 10px;
+    margin-bottom: 2px;
     border-radius: 0px;
+    selection-background-color: hsl(220, 30%, 12%);
 }
 
 QComboBox::down-arrow {
@@ -57,22 +62,23 @@ QLabel#saveTo {
 /* QLineEdit widgets */
 QLineEdit
 {
+    font-size: 11px;
     background-color: hsl(220, 8%, 15%);
     padding: 4px;
     padding-left: 10px;
     border-radius: 0px;
+    selection-background-color: hsl(220, 30%, 12%);
 }
 
 /* QListWidget widgets */
 QListView
 {
-    color: hsl(0, 0%, 80%);
     font-weight: normal;
-    selection-background-color: hsl(216, 82%, 80%);
+    selection-background-color: hsl(220, 30%, 8%);
 }
 
 QListView::item {
-    height: 20px;
+    height: 25px;
     background: hsl(220, 30%, 8%);
 }
 
@@ -134,6 +140,7 @@ QWidget#presetBar
 QWidget#filedropWidget,
 QWidget#logWidget,
 QWidget#monitorWidget,
+QWidget#optionsWidget,
 QWidget#preferencesWidget,
 QWidget#presetWidget
 {
@@ -164,6 +171,13 @@ QPushButton
     padding: 2px;
     padding-left: 5px;
     padding-right: 5px;
+}
+
+QPushButton:default
+{
+    font-weight: bold;
+    padding-left: 8px;
+    padding-right: 8px;
 }
 
 QPushButton:disabled
@@ -240,6 +254,7 @@ QTextBrowser
 {
     color: hsl(0, 0%, 80%);
     font-weight: normal;
+    selection-background-color: hsl(220, 30%, 12%);
 }
 
 /* QToolButton widgets */
@@ -268,6 +283,11 @@ QToolButton#toggleLog
 }
 
 /* QSlider widgets */
+QSlider
+{
+    margin: 0px;
+}
+
 QSlider::groove:horizontal
 {
     height: 5px;

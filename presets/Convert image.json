@@ -1,55 +1,101 @@
 {
-    "id": "@convert_image",
-    "name": "Built-in: Convert image",
+    "id": "convertimage",
+    "name": "Internal: Convert image",
     "options": [
       {
+        "id": "jpegquality",
         "name": "JPEG Quality",
         "type": "Slider",
         "default": 80,
         "minimum": 0,
         "maximum": 100,
-        "value": 80
+        "value": 80,
+        "flag": "--setProperty formatOptions"
       },
       {
-        "name": "Thumbnail",
+        "id": "resizewidth",
+        "name": "Resize width",
         "type": "Dropdown",
         "default": "Medium",
         "options": [
           {
-            "label": "Small",
+            "label": "Small 200px",
             "value": 200
           },
           {
-            "label": "Medium",
+            "label": "Medium 400px",
             "value": 400
           },
           {
-            "label": "Large",
+            "label": "Large 800px",
             "value": 800
           }
         ],
-        "value": "400"
+        "value": "400",
+        "flag": "--resampleWidth"
       },
       {
-        "name": "Prefix",
-        "type": "Text",
-        "default": "",
-        "value": ""
+        "id": "verbose",
+        "name": "Verbose",
+        "type": "Checkbox",
+        "default": "true",
+        "value": "true",
+        "flag": "--verbose"
+      },
+      {
+        "id": "value as double",
+        "name": "Double",
+        "type": "Double",
+        "default": "1.0",
+        "minimum": 0,
+        "maximum": 100,
+        "value": "1.0",
+        "flag": "--double"
       }
     ],
     "tasks": [
       {
-        "id": "@1",
+        "id": "1",
         "name": "Convert to JPEG",
         "command": "sips",
         "extension": "jpg",
-        "arguments": "-s format jpeg %inputfile% --out %outputdir%/%outputbase%.%outputext%",
+        "output": "%outputdir%/%outputbase%.%outputext%",
+        "arguments": "-s format jpeg %inputfile% --out %task:output%",
         "startin": "",
         "documentation": [
           "sips -s format jpeg inputfile --out outputfile",
           "Converts the input file to JPEG format using the sips command",
           "-s format jpeg: Specifies the format to convert to",
           "--out: Specifies the output file path"
+        ]
+      },
+      {
+        "id": "2",
+        "name": "Adjust JPEG quality",
+        "command": "sips",
+        "extension": "jpg",
+        "output": "%outputdir%/%outputbase%.%outputext%",
+        "arguments": "%options:jpegquality% %task:output%",
+        "dependson": "1",
+        "documentation": [
+          "sips --setProperty formatOptions 80 outputfile",
+          "Adjusts the JPEG quality to 80 (out of 100)",
+          "--setProperty formatOptions: Sets the JPEG quality level"
+        ]
+      },
+      {
+        "id": "3",
+        "name": "Generate thumbnail",
+        "command": "sips",
+        "extension": "jpg",
+        "output": "%outputdir%/%outputbase%_thumbnail.%outputext%",
+        "arguments": "%options:resizewidth% %outputdir%/%outputbase%.%outputext% --out %task:output%",
+        "dependson": "2",
+        "documentation": [
+          "sips --resampleWidth 200 outputfile --out thumbnailfile",
+          "Generates a thumbnail by resizing the width of the pixels",
+          "--resampleWidth: Specifies the width of the thumbnail",
+          "--out: Specifies the output file path for the thumbnail"
         ]
       }
     ]

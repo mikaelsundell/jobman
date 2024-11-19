@@ -5,9 +5,11 @@
 #include "monitor.h"
 #include "icctransform.h"
 #include "queue.h"
+#include "question.h"
 
 #include <QDateTime>
-#include <QElapsedTimer>
+#include <QDir>
+#include <QDesktopServices>
 #include <QMenu>
 #include <QPainter>
 #include <QPointer>
@@ -67,6 +69,7 @@ class MonitorPrivate : public QObject
         void restart();
         void priority();
         void remove();
+        void showInFinder();
         void running();
         void restore();
         void stopped();
@@ -198,7 +201,6 @@ class MonitorPrivate : public QObject
                 }
             }
         }
-        //QTreeWidgetItem* findItemByUuid(const QUuid& uuid, QTreeWidgetItem* parent = nullptr);
         QTreeWidgetItem* findTopLevelItem(QTreeWidgetItem* item);
         QTreeWidgetItem* findItemByUuid(const QUuid& uuid);
         QSharedPointer<Job> itemJob(QTreeWidgetItem* item);
@@ -703,6 +705,27 @@ MonitorPrivate::remove()
     toggleButtons();
 }
 
+void MonitorPrivate::showInFinder()
+{
+    QList<QString> outputs;
+    selectedItems([this, &outputs](const QTreeWidgetItem *item, const QSharedPointer<Job> &job) {
+        QString output = job->output();
+        if (QDir(output).exists()) {
+            outputs.append(output);
+        }
+        return false;
+    });
+    if (outputs.count() > 10) {
+        if (!Question::askQuestion(dialog.data(),
+            QString("%1 jobs are selected. Are you sure you want to show all of them in Finder?").arg(outputs.count()))) {
+            return;
+        }
+    }
+    for (const QString &output : outputs) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(output));
+    }
+}
+
 void
 MonitorPrivate::running()
 {
@@ -860,6 +883,12 @@ MonitorPrivate::showMenu(const QPoint& pos)
         connect(remove, &QAction::triggered, this, &MonitorPrivate::remove);
         remove->setEnabled(ui->remove->isEnabled());
         contextMenu.addAction(remove);
+        
+        contextMenu.addSeparator();
+        
+        QAction* finder = new QAction("Show in finder", this);
+        connect(finder, &QAction::triggered, this, &MonitorPrivate::showInFinder);
+        contextMenu.addAction(finder);
         contextMenu.exec(ui->items->mapToGlobal(pos));
     }
 }

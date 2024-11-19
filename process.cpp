@@ -23,14 +23,15 @@ class ProcessPrivate : public QObject
         ProcessPrivate();
         ~ProcessPrivate();
         void init();
-        void run(const QString& command, const QStringList& arguments, const QString& startin);
+        void run(const QString& command, const QStringList& arguments, const QString& startin, const QList<QPair<QString, QString>>& environmentvars);
         bool wait();
         void kill();
         void kill(int pid);
     public:
         QString mapCommand(const QString& command);
+        char** mapEnvironment(QList<QPair<QString, QString>> environment);
         pid_t pid;
-        int exitCode;
+        int exitcode;
         QString outputBuffer;
         QString errorBuffer;
         bool running;
@@ -40,15 +41,19 @@ class ProcessPrivate : public QObject
 
 ProcessPrivate::ProcessPrivate()
 : pid(-1)
-, exitCode(-1)
+, exitcode(-1)
 , running(false)
 {
 }
 
 ProcessPrivate::~ProcessPrivate()
 {
-    if (outputpipe[0] != -1) close(outputpipe[0]);
-    if (errorpipe[0] != -1) close(errorpipe[0]);
+    if (outputpipe[0] != -1) {
+        close(outputpipe[0]);
+    }
+    if (errorpipe[0] != -1) {
+        close(errorpipe[0]);
+    }
 }
 
 void
@@ -57,7 +62,7 @@ ProcessPrivate::init()
 }
 
 void
-ProcessPrivate::run(const QString& command, const QStringList& arguments, const QString& startin)
+ProcessPrivate::run(const QString& command, const QStringList& arguments, const QString& startin, const QList<QPair<QString, QString>>& environment)
 {
     running = false;
     outputBuffer.clear();
@@ -72,38 +77,31 @@ ProcessPrivate::run(const QString& command, const QStringList& arguments, const 
         argv.push_back(argbytes.back().data());
     }
     argv.push_back(nullptr);
-
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_init(&actions);
-
-    // Check if pipes are created successfully
     if (pipe(outputpipe) == -1 || pipe(errorpipe) == -1) {
-        qDebug() << "Error creating pipes";
-        return;  // Handle pipe creation failure
+        return; // error creating pipes
     }
-
     posix_spawn_file_actions_adddup2(&actions, outputpipe[1], STDOUT_FILENO);
     posix_spawn_file_actions_adddup2(&actions, errorpipe[1], STDERR_FILENO);
     posix_spawn_file_actions_addclose(&actions, outputpipe[0]);
     posix_spawn_file_actions_addclose(&actions, errorpipe[0]);
-
     if (!startin.isEmpty()) {
         chdir(startin.toLocal8Bit().data());
     }
-
-    char** environ = *_NSGetEnviron();
+    char** environ = mapEnvironment(environment);
     int status = posix_spawn(&pid, commandbytes.data(), &actions, nullptr, argv.data(), environ);
     posix_spawn_file_actions_destroy(&actions);
-
-    // Close write ends of pipes immediately after spawning the process
+    for (int i = 0; environ[i] != nullptr; ++i) {
+        free(environ[i]); // take care of environ
+    }
     close(outputpipe[1]);
     close(errorpipe[1]);
-
     if (status == 0) {
         running = true;
-    } else {
-        exitCode = -1;
-        qDebug() << "Process failed to start";
+    }
+    else {
+        exitcode = -1; // process failed to start
     }
 }
 
@@ -133,13 +131,15 @@ ProcessPrivate::wait()
             errorpipe[0] = -1;
         }
         if (WIFEXITED(status)) {
-            exitCode = WEXITSTATUS(status);
-        } else if (WIFSIGNALED(status)) {
-            exitCode = -WTERMSIG(status);
-        } else {
-            exitCode = -1;
+            exitcode = WEXITSTATUS(status);
         }
-        return exitCode == 0;
+        else if (WIFSIGNALED(status)) {
+            exitcode = -WTERMSIG(status);
+        }
+        else {
+            exitcode = -1;
+        }
+        return exitcode == 0;
     }
     return false;
 }
@@ -168,6 +168,26 @@ ProcessPrivate::mapCommand(const QString& command)
     return command;
 }
 
+char**
+ProcessPrivate::mapEnvironment(QList<QPair<QString, QString>> environment)
+{
+    char **environ = *_NSGetEnviron();
+    QVector<QByteArray> envlist;
+    for (int i = 0; environ[i] != nullptr; ++i) {
+        envlist.append(QByteArray(environ[i]));
+    }
+    for (const QPair<QString, QString>& pair : environment) {
+        QByteArray envvar = pair.first.toUtf8() + "=" + pair.second.toUtf8();
+        envlist.append(envvar);
+    }
+    char **envp = new char*[envlist.size() + 1];
+    for (int i = 0; i < envlist.size(); ++i) {
+        envp[i] = strdup(envlist[i].constData());
+    }
+    envp[envlist.size()] = nullptr;
+    return envp;
+}
+
 #include "process.moc"
 
 Process::Process()
@@ -180,9 +200,9 @@ Process::~Process()
 }
 
 void
-Process::run(const QString& command, const QStringList& arguments, const QString& startin)
+Process::run(const QString& command, const QStringList& arguments, const QString& startin, const QList<QPair<QString, QString>>& environmentvars)
 {
-    p->run(command, arguments, startin);
+    p->run(command, arguments, startin, environmentvars);
 }
 
 bool
@@ -226,13 +246,13 @@ Process::standardError() const
 int
 Process::exitCode() const
 {
-    return p->exitCode;
+    return p->exitcode;
 }
 
 Process::Status
 Process::exitStatus() const
 {
-    return (p->exitCode == 0) ? Process::Normal : Process::Crash;
+    return (p->exitcode == 0) ? Process::Normal : Process::Crash;
 }
 
 void

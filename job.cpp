@@ -11,6 +11,21 @@
 
 #include <QDebug>
 
+OS::OS(QObject* parent)
+: QObject(parent)
+{
+}
+
+Preprocess::Preprocess(QObject* parent)
+: QObject(parent)
+{
+}
+
+Postprocess::Postprocess(QObject* parent)
+: QObject(parent)
+{
+}
+
 class JobPrivate : public QObject
 {
     Q_OBJECT
@@ -26,13 +41,18 @@ class JobPrivate : public QObject
         QString filename;
         QString name;
         QString command;
+        QString dir;
         QStringList arguments;
         QString output;
         QString startin;
         QString log;
+        bool overwrite;
         int pid;
         int priority;
         Job::Status status;
+        OS* os;
+        Preprocess* preprocess;
+        Postprocess* postprocess;
         QPointer<Job> job;
         mutable QMutex mutex;
 };
@@ -41,6 +61,7 @@ JobPrivate::JobPrivate()
 : pid(0)
 , priority(10)
 , status(Job::Waiting)
+, overwrite(false)
 , uuid(QUuid::createUuid())
 {
     created = QDateTime::currentDateTime();
@@ -49,6 +70,9 @@ JobPrivate::JobPrivate()
 void
 JobPrivate::init()
 {
+    os = new OS(job.data());
+    preprocess = new Preprocess(job.data());
+    postprocess = new Postprocess(job.data());
 }
 
 #include "job.moc"
@@ -93,6 +117,13 @@ Job::dependson() const
 }
 
 QString
+Job::dir() const
+{
+    QMutexLocker locker(&p->mutex);
+    return p->dir;
+}
+
+QString
 Job::filename() const
 {
     QMutexLocker locker(&p->mutex);
@@ -125,6 +156,13 @@ Job::output() const
 {
     QMutexLocker locker(&p->mutex);
     return p->output;
+}
+
+bool
+Job::overwrite() const
+{
+    QMutexLocker locker(&p->mutex);
+    return p->overwrite;
 }
 
 int
@@ -163,6 +201,27 @@ Job::uuid() const
     return p->uuid;
 }
 
+OS*
+Job::os()
+{
+    QMutexLocker locker(&p->mutex);
+    return p->os;
+}
+
+Preprocess*
+Job::preprocess()
+{
+    QMutexLocker locker(&p->mutex);
+    return p->preprocess;
+}
+
+Postprocess*
+Job::postprocess()
+{
+    QMutexLocker locker(&p->mutex);
+    return p->postprocess;
+}
+
 void
 Job::setArguments(const QStringList& arguments)
 {
@@ -190,6 +249,16 @@ Job::setDependson(QUuid dependson)
     if (p->dependson != dependson) {
         p->dependson = dependson;
         dependsonChanged(dependson);
+    }
+}
+
+void
+Job::setDir(const QString& dir)
+{
+    QMutexLocker locker(&p->mutex);
+    if (p->dir != dir) {
+        p->dir = dir;
+        dirChanged(dir);
     }
 }
 
@@ -240,6 +309,16 @@ Job::setOutput(const QString& output)
     if (p->output != output) {
         p->output = output;
         outputChanged(output);
+    }
+}
+
+void
+Job::setOverwrite(bool overwrite)
+{
+    QMutexLocker locker(&p->mutex);
+    if (p->overwrite != overwrite) {
+        p->overwrite = overwrite;
+        overwriteChanged(overwrite);
     }
 }
 

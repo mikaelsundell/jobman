@@ -28,7 +28,29 @@ Jobman is a user-friendly Mac application designed for batch processing files ac
 Documentation
 -------------
 
-**Getting Started**
+**Introduction**
+
+Jobman is a tool designed to manage and monitor processing tasks with customizable presets and user-defined parameters. It features a main interface for configuring tasks and a monitor interface for managing job execution.
+
+**The Jobman main interface**
+
+- **Preset**: Select or define the current preset configuration for processing.
+- **Save to**: Specify the output directory where processed files will be saved.
+- **Copy original**: Enable this option to copy the original (unprocessed) files to the output directory.
+- **Create folders**: Automatically create a new folder in the output directory for processed files.
+- **Overwrite**: Allow overwriting of existing files. The preset task output must be explicitly configured for this option.
+- **Max threads**: Define the number of threads to use for processing tasks, optimizing performance based on available system threads.
+
+**The jobman monitor interface**
+
+The monitor interface provides tools for controlling and prioritizing jobs.
+
+- <img src="resources/Start.png" width="16" valign="center" style="padding-right: 4px;" /> **Start**: Begin processing for selected jobs that are currently stopped.
+- <img src="resources/Stop.png" width="16" valign="center" style="padding-right: 4px;" /> **Stop**: Halt the execution of selected jobs.
+- <img src="resources/Restart.png" width="16" valign="center" style="padding-right: 4px;" /> **Restart**: Restart selected jobs from the beginning.
+- <img src="resources/Priority.png" width="16" valign="center" style="padding-right: 4px;" /> **Priority**: Adjust the priority level for selected jobs, influencing the order in which they are processed.
+
+**Quick start**
 
 Begin by selecting a preset, then drag and drop your files onto the designated file drop area within Jobman. The application will automatically commence processing your files in accordance with the chosen preset's specifications and associated tasks.
 
@@ -41,76 +63,144 @@ Here's an example of a preset file format, tailored for converting image files:
 
 ```shell
 {
-  "name": "Convert image using sips",
-  "tasks": [
-    {
-      "id": "@1",
-      "name": "Convert to JPEG",
-      "command": "sips",
-      "extension": "jpg",
-      "arguments": "-s format jpeg %inputfile% --out %outputdir%/%outputbase%.%outputext%",
-      "startin": "",
-      "documentation": [
-        "sips -s format jpeg inputfile --out outputfile",
-        "Converts the input file to JPEG format using the sips command",
-        "-s format jpeg: Specifies the format to convert to",
-        "--out: Specifies the output file path"
-      ]
-    },
-    {
-      "id": "@2",
-      "name": "Adjust JPEG quality",
-      "command": "sips",
-      "extension": "jpg",
-      "arguments": "--setProperty formatOptions 80 %outputdir%/%outputbase%.%outputext%",
-      "dependson": "@1",
-      "documentation": [
-        "sips --setProperty formatOptions 80 outputfile",
-        "Adjusts the JPEG quality to 80 (out of 100)",
-        "--setProperty formatOptions: Sets the JPEG quality level"
-      ]
-    },
-    {
-      "id": "@3",
-      "name": "Generate thumbnail",
-      "command": "sips",
-      "extension": "jpg",
-      "arguments": "--resampleWidth 200 %outputdir%/%outputbase%.%outputext% --out %outputdir%/%outputbase%_thumbnail.%outputext%",
-      "dependson": "@2",
-      "documentation": [
-        "sips --resampleWidth 200 outputfile --out thumbnailfile",
-        "Generates a thumbnail by resizing the width to 200 pixels",
-        "--resampleWidth: Specifies the width of the thumbnail",
-        "--out: Specifies the output file path for the thumbnail"
-      ]
-    }
-  ]
-}
-
+    "id": "convertimage",
+    "name": "Internal: Convert image",
+    "options": [
+      {
+        "id": "jpegquality",
+        "name": "JPEG Quality",
+        "type": "Slider",
+        "default": 80,
+        "minimum": 0,
+        "maximum": 100,
+        "value": 80,
+        "flag": "--setProperty formatOptions"
+      },
+      {
+        "id": "resizewidth",
+        "name": "Resize width",
+        "type": "Dropdown",
+        "default": "Medium",
+        "options": [
+          {
+            "label": "Small 200px",
+            "value": 200
+          },
+          {
+            "label": "Medium 400px",
+            "value": 400
+          },
+          {
+            "label": "Large 800px",
+            "value": 800
+          }
+        ],
+        "value": "400",
+        "flag": "--resampleWidth"
+      },
+      {
+        "id": "verbose",
+        "name": "Verbose",
+        "type": "Checkbox",
+        "default": "true",
+        "value": "true",
+        "flag": "--verbose"
+      },
+      {
+        "id": "value as double",
+        "name": "Double",
+        "type": "Double",
+        "default": "1.0",
+        "minimum": 0,
+        "maximum": 100,
+        "value": "1.0",
+        "flag": "--double"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "1",
+        "name": "Convert to JPEG",
+        "command": "sips",
+        "extension": "jpg",
+        "output": "%outputdir%/%outputbase%.%outputext%",
+        "arguments": "-s format jpeg %inputfile% --out %outputfile%",
+        "startin": "",
+        "documentation": [
+          "sips -s format jpeg inputfile --out outputfile",
+          "Converts the input file to JPEG format using the sips command",
+          "-s format jpeg: Specifies the format to convert to",
+          "--out: Specifies the output file path"
+        ]
+      },
+      {
+        "id": "2",
+        "name": "Adjust JPEG quality",
+        "command": "sips",
+        "extension": "jpg",
+        "output": "%outputdir%/%outputbase%.%outputext%",
+        "arguments": "%options:jpegquality% %outputfile%",
+        "dependson": "1",
+        "documentation": [
+          "sips --setProperty formatOptions 80 outputfile",
+          "Adjusts the JPEG quality to 80 (out of 100)",
+          "--setProperty formatOptions: Sets the JPEG quality level"
+        ]
+      },
+      {
+        "id": "3",
+        "name": "Generate thumbnail",
+        "command": "sips",
+        "extension": "jpg",
+        "output": "%outputdir%/%outputbase%_thumbnail.%outputext%",
+        "arguments": "%options:resizewidth% %outputdir%/%outputbase%.%outputext% --out %outputfile%",
+        "dependson": "2",
+        "documentation": [
+          "sips --resampleWidth 200 outputfile --out thumbnailfile",
+          "Generates a thumbnail by resizing the width of the pixels",
+          "--resampleWidth: Specifies the width of the thumbnail",
+          "--out: Specifies the output file path for the thumbnail"
+        ]
+      }
+    ]
+  }
 ```
 
 
-**Supported Variables**
+**Supported variables**
 
 Preset files support various variables that can be used to customize arguments during processing. These variables are dynamically replaced based on the context of the input and output files.
 
-**Input Variables:**
+**Input variables:**
 
 ```shell
-%inputdir%         Replaces the variable with the directory path of the input file.
-%inputfile%        Replaces the variable with the full path of the input file.
-%inputext%         Replaces the variable with the file extension of the input file.
-%inputbase%        Replaces the variable with the base name (filename without extension) of the input file.
-````
+%inputdir%         Replaces with the directory path of the input file.
+%inputfile%        Replaces with the full path of the input file.
+%inputext%         Replaces with the file extension of the input file.
+%inputbase%        Replaces with the base name (filename without extension) of the input file.
+```
 
-**Output Variables:**
+**Output variables:**
 
 ```shell
-%outputdir%        Replaces the variable with the directory path of the output file.
-%outputfile%       Replaces the variable with the full path of the output file.
-%outputext%        Replaces the variable with the file extension of the output file.
-%outputbase%       Replaces the variable with the base name of the output file.
-````
+%outputdir%        Replaces with the directory path of the output file.
+%outputfile%       Replaces with the full path of the output file.
+%outputext%        Replaces with the file extension of the output file.
+%outputbase%       Replaces with the base name of the output file.
+```
+
+**Options variables:**
+
+```shell
+%options:name%     Replaces the variable with the options name and its value.
+```
+
+**Task variables**
+
+```shell
+%task:input%       Substitutes the task input, which defaults to the dependent task output, or inputfile if no dependent task exists.
+%task:output%      Substitutes the output of the dependent task.
+```
 
 Each variable is designed to simplify the scripting and automation within preset configurations, ensuring that file paths and details are handled efficiently without manual specification in every command.
 
