@@ -4,7 +4,7 @@
 
 #include "listwidget.h"
 
-#include <QCheckbox>
+#include <QCheckBox>
 #include <QLayout>
 #include <QLabel>
 #include <QLineEdit>
