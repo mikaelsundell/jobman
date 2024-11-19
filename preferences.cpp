@@ -4,7 +4,7 @@
 
 #include "preferences.h"
 
-#include <QCheckbox>
+#include <QCheckBox>
 #include <QFileDialog>
 #include <QMouseEvent>
 #include <QPointer>
