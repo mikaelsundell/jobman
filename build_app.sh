@@ -152,9 +152,9 @@ build_jobman() {
 
     # build
     if [ -n "$provisioning_profile" ] && [ -n "$provisioning_profile_path" ]; then
-        cmake .. -DDEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" -DCMAKE_MODULE_PATH="$script_dir/modules" -DCMAKE_PREFIX_PATH="$prefix" -DPROVISIONING_PROFILE="$provisioning_profile" -G Xcode
+        cmake .. -DCMAKE_MODULE_PATH="$script_dir/modules" -DCMAKE_PREFIX_PATH="$prefix" -DPROVISIONING_PROFILE="$provisioning_profile" -G Xcode
     else
-        cmake .. -DDEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" -DCMAKE_MODULE_PATH="$script_dir/modules" -DCMAKE_PREFIX_PATH="$prefix" -G Xcode
+        cmake .. -DCMAKE_MODULE_PATH="$script_dir/modules" -DCMAKE_PREFIX_PATH="$prefix" -G Xcode
     fi
     cmake --build . --config $xcode_type --parallel &&
 

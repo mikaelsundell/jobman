@@ -559,7 +559,7 @@ MonitorPrivate::statusChanged(Job::Status status)
 void
 MonitorPrivate::selectionChanged()
 {
-    int selectionCount = ui->items->selectedItems().count();
+    qint64 selectionCount = ui->items->selectedItems().count();
     if (selectionCount > 0) {
         if (selectionCount == 1) {
             QTreeWidgetItem* item = ui->items->selectedItems().first();
