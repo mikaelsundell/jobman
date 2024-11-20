@@ -190,6 +190,7 @@ build_jobman() {
             merge_app "$build_app" "$x86_64_app" "dylibs" "$mac_developer_identity"
             merge_app "$build_app" "$x86_64_app" "frameworks" "$mac_developer_identity"
             merge_app "$build_app" "$x86_64_app" "executables" "$mac_developer_identity"
+            xattr -cr "$build_app" # remove extended attributes
             permission_app "$build_app"
             codesign --force --deep --sign "$mac_developer_identity" "$build_app"
             codesign --force --sign "$mac_developer_identity" --entitlements $entitlements "$build_app/Contents/MacOS/${app_name}"
