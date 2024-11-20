@@ -218,6 +218,9 @@
             <iconset resource="jobman.qrc">
              <normaloff>:/icons/resources/Delete.png</normaloff>:/icons/resources/Delete.png</iconset>
            </property>
+           <property name="shortcut">
+            <string>Del</string>
+           </property>
           </widget>
          </item>
          <item>

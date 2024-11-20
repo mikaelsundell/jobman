@@ -697,6 +697,14 @@ MonitorPrivate::priority()
 void
 MonitorPrivate::remove()
 {
+    int selectionCount = ui->items->selectedItems().count();
+    if (selectionCount > 10) {
+        if (!Question::askQuestion(dialog.data(),
+            "More than 10 jobs have been selected for removal. Do you want to proceed?\n"
+        )) {
+            return;
+        }
+    }
     selectedItems([this](QTreeWidgetItem *item, const QSharedPointer<Job> &job) {
         item->setSelected(false);
         queue->remove(job->uuid());

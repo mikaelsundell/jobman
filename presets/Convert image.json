@@ -16,7 +16,7 @@
         "id": "resizewidth",
         "name": "Resize width",
         "type": "Dropdown",
-        "default": "Medium",
+        "default": "400",
         "options": [
           {
             "label": "Small 200px",
