@@ -120,6 +120,27 @@ PresetPrivate::read()
                     option->options.append(qMakePair(label, optValue));
                 }
             }
+            if (option->options.count()) {
+                bool hasdefault, hasvalue = false;
+                for (const QPair<QString, QVariant>& pair : option->options) {
+                    if (pair.second == option->defaultvalue) {
+                        hasdefault = true;
+                    }
+                    if (pair.second == option->value) {
+                        hasvalue = true;
+                    }
+                }
+                if (!hasdefault) {
+                    error = QString("Json for option: \"%1\" does not contain default value in options").arg(option->name);
+                    valid = false;
+                    return valid;
+                }
+                if (!hasvalue) {
+                    error = QString("Json for option: \"%1\" does not contain value in options").arg(option->name);
+                    valid = false;
+                    return valid;
+                }
+            }
             if (!option->name.isEmpty() && !option->type.isEmpty() && !option->defaultvalue.isValid() && !option->value.isValid()) {
                 if (option->name.length() > 0) {
                     error = QString("Json for option: \"%1\" does not contain all required attributes").arg(option->name);

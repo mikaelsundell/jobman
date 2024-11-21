@@ -697,7 +697,7 @@ MonitorPrivate::priority()
 void
 MonitorPrivate::remove()
 {
-    int selectionCount = ui->items->selectedItems().count();
+    qint64 selectionCount = ui->items->selectedItems().count();
     if (selectionCount > 10) {
         if (!Question::askQuestion(dialog.data(),
             "More than 10 jobs have been selected for removal. Do you want to proceed?\n"
@@ -713,12 +713,13 @@ MonitorPrivate::remove()
     toggleButtons();
 }
 
-void MonitorPrivate::showInFinder()
+void
+MonitorPrivate::showInFinder()
 {
     QList<QString> outputs;
     selectedItems([this, &outputs](const QTreeWidgetItem *item, const QSharedPointer<Job> &job) {
-        QString output = job->output();
-        if (QDir(output).exists()) {
+        QString output = job->dir();
+        if (!outputs.contains(output) && QDir(output).exists()) {
             outputs.append(output);
         }
         return false;

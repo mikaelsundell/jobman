@@ -41,16 +41,6 @@
         "default": "true",
         "value": "true",
         "flag": "--verbose"
-      },
-      {
-        "id": "value as double",
-        "name": "Double",
-        "type": "Double",
-        "default": "1.0",
-        "minimum": 0,
-        "maximum": 100,
-        "value": "1.0",
-        "flag": "--double"
       }
     ],
     "tasks": [

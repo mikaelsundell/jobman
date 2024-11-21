@@ -252,8 +252,8 @@ QTreeView QHeaderView:section
 /* QTextBrowser widgets */
 QTextBrowser
 {
-    color: hsl(0, 0%, 80%);
     font-weight: normal;
+    background: hsl(220, 30%, 6%);
     selection-background-color: hsl(220, 30%, 12%);
 }
 
