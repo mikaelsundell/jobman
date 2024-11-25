@@ -1,3 +1,8 @@
+#!/bin/bash
+##  Copyright 2022-present Contributors to the jobman project.
+##  SPDX-License-Identifier: BSD-3-Clause
+##  https://github.com/mikaelsundell/jobman
+
 mkdir AppIcon.iconset
 sips -z 16 16     AppIcon@2x.png --out AppIcon.iconset/icon_16x16.png
 sips -z 32 32     AppIcon@2x.png --out AppIcon.iconset/icon_16x16@2x.png
