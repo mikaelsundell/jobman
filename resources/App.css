@@ -74,6 +74,7 @@ QLineEdit
 QListView
 {
     font-weight: normal;
+    background-color: hsl(220, 30%, 6%);
     selection-background-color: hsl(220, 30%, 8%);
 }
 

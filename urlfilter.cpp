@@ -55,6 +55,7 @@ Urlfilter::eventFilter(QObject* obj, QEvent* event)
                 dirpath.chop(1);
             }
             if (!dirpath.isEmpty()) {
+                bool found = false;
                 if (QListWidget* listWidget = qobject_cast<QListWidget*>(obj)) {
                     bool exists = false;
                     for (int i = 0; i < listWidget->count(); ++i) {
@@ -65,21 +66,24 @@ Urlfilter::eventFilter(QObject* obj, QEvent* event)
                     }
                     if (!exists) {
                         listWidget->addItem(dirpath);
-                        dropEvent->acceptProposedAction();
-                        return true;
+                        found = true;
                     }
                 }
                 else if (QLabel* label = qobject_cast<QLabel*>(obj)) {
-                    label->setText(dirpath);
-                    dropEvent->acceptProposedAction();
-                    return true;
+                    QFontMetrics metrics(label->font());
+                    label->setText(metrics.elidedText(dirpath, Qt::ElideRight, label->maximumSize().width()));
+                    found = true;
                 }
                 else if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(obj)) {
                     lineEdit->setText(dirpath);
+                    found = true;
+                }
+                if (found) {
                     dropEvent->acceptProposedAction();
+                    urlChanged(url);
                     return true;
                 }
-                urlChanged(url);
+                
             }
         }
         return false;
