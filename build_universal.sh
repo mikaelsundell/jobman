@@ -122,16 +122,8 @@ echo "---------------------------------"
 
 # signing
 if [ "$sign_code" == "ON" ]; then
-    default_developerid_identity=${DEVELOPERID_IDENTITY:-}
     default_mac_developer_identity=${MAC_DEVELOPER_IDENTITY:-}
     default_mac_installer_identity=${MAC_INSTALLER_IDENTITY:-}
-
-    read -p "enter Developer ID certificate identity [$default_developerid_identity]: " input_developerid_identity
-    developerid_identity=${input_developerid_identity:-$default_developerid_identity}
-
-    if [[ ! "$developerid_identity" == *"Developer ID"* ]]; then
-        echo "Developer ID certificate identity must contain 'Developer ID', required for github distribution."
-    fi
 
     read -p "enter Mac Developer certificate Identity [$default_mac_developer_identity]: " input_mac_developer_identity
     mac_developer_identity=${input_mac_developer_identity:-$default_mac_developer_identity}
