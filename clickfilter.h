@@ -5,12 +5,12 @@
 #pragma once
 #include <QMainWindow>
 
-class Eventfilter : public QObject
+class Clickfilter : public QObject
 {
     Q_OBJECT
     public:
-        Eventfilter(QObject* object = nullptr);
-        virtual ~Eventfilter();
+        Clickfilter(QObject* object = nullptr);
+        virtual ~Clickfilter();
 
     Q_SIGNALS:
         void pressed();

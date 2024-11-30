@@ -3,9 +3,8 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "jobman.h"
-#include "dropfilter.h"
+#include "clickfilter.h"
 #include "error.h"
-#include "eventfilter.h"
 #include "icctransform.h"
 #include "mac.h"
 #include "monitor.h"
@@ -15,6 +14,7 @@
 #include "process.h"
 #include "question.h"
 #include "queue.h"
+#include "urlfilter.h"
 
 #include <QAction>
 #include <QDir>
@@ -53,6 +53,7 @@ class JobmanPrivate : public QObject
         void deactivate();
         void enable(bool enable);
         bool eventFilter(QObject* object, QEvent* event);
+        void verifySettings();
         void loadSettings();
         void saveSettings();
     
@@ -77,7 +78,7 @@ class JobmanPrivate : public QObject
         void selectSaveto();
         void showSaveto();
         void setSaveto(const QString& text);
-        void saveToChanged(const QString& text);
+        void saveToChanged(const QUrl& url);
         void copyOriginalChanged(int state);
         void createFolderChanged(int state);
         void overwriteChanged(int state);
@@ -139,9 +140,9 @@ class JobmanPrivate : public QObject
         QScopedPointer<Monitor> monitor;
         QScopedPointer<Options> options;
         QScopedPointer<Preferences> preferences;
-        QScopedPointer<Dropfilter> dropfilter;
-        QScopedPointer<Eventfilter> presetfilter;
-        QScopedPointer<Eventfilter> filedropfilter;
+        QScopedPointer<Urlfilter> urlfilter;
+        QScopedPointer<Clickfilter> presetfilter;
+        QScopedPointer<Clickfilter> filedropfilter;
         QScopedPointer<Ui_Jobman> ui;
 };
 
@@ -188,21 +189,21 @@ JobmanPrivate::init()
     // event filter
     window->installEventFilter(this);
     // display filter
-    presetfilter.reset(new Eventfilter);
+    presetfilter.reset(new Clickfilter);
     ui->presetBar->installEventFilter(presetfilter.data());
     // color filter
-    filedropfilter.reset(new Eventfilter);
+    filedropfilter.reset(new Clickfilter);
     ui->filedropBar->installEventFilter(filedropfilter.data());
     // drop filter
-    dropfilter.reset(new Dropfilter);
-    ui->saveTo->installEventFilter(dropfilter.data());
+    urlfilter.reset(new Urlfilter);
+    ui->saveTo->installEventFilter(urlfilter.data());
     // progress
     ui->fileprogress->hide();
     // connect
     connect(ui->togglePreset, &QPushButton::pressed, this, &JobmanPrivate::togglePreset);
     connect(ui->toggleFiledrop, &QPushButton::pressed, this, &JobmanPrivate::toggleFiledrop);
-    connect(presetfilter.data(), &Eventfilter::pressed, ui->togglePreset, &QPushButton::click);
-    connect(filedropfilter.data(), &Eventfilter::pressed, ui->toggleFiledrop, &QPushButton::click);
+    connect(presetfilter.data(), &Clickfilter::pressed, ui->togglePreset, &QPushButton::click);
+    connect(filedropfilter.data(), &Clickfilter::pressed, ui->toggleFiledrop, &QPushButton::click);
     connect(ui->addFiles, &QAction::triggered, this, &JobmanPrivate::addFiles);
     connect(ui->open, &QAction::triggered, this, &JobmanPrivate::openPreferences);
     connect(ui->clear, &QAction::triggered, this, &JobmanPrivate::clearPreferences);
@@ -214,11 +215,11 @@ JobmanPrivate::init()
     connect(ui->selectPresetfrom, &QPushButton::clicked, this, &JobmanPrivate::selectPresetfrom);
     connect(ui->selectSaveto, &QPushButton::clicked, this, &JobmanPrivate::selectSaveto);
     connect(ui->showSaveto, &QPushButton::clicked, this, &JobmanPrivate::showSaveto);
-    connect(dropfilter.data(), &Dropfilter::textChanged, this, &JobmanPrivate::saveToChanged);
+    connect(urlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToChanged);
     connect(ui->copyOriginal, &QCheckBox::stateChanged, this, &JobmanPrivate::copyOriginalChanged);
     connect(ui->createFolders, &QCheckBox::stateChanged, this, &JobmanPrivate::createFolderChanged);
     connect(ui->overwrite, &QCheckBox::stateChanged, this, &JobmanPrivate::overwriteChanged);
-    connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::run);
+    connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::run, Qt::QueuedConnection);
     connect(ui->presets, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::presetsChanged);
     connect(ui->threads, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::threadsChanged);
     connect(ui->about, &QAction::triggered, this, &JobmanPrivate::openAbout);
@@ -271,7 +272,10 @@ JobmanPrivate::init()
         }
     #endif
     // presets
-    QTimer::singleShot(0, [this]() { this->loadPresets(); });
+    QTimer::singleShot(0, [this]() {
+        this->loadPresets();
+        this->verifySettings();
+    });
 }
 
 void
@@ -368,6 +372,7 @@ JobmanPrivate::clearPreferences()
         loadSettings();
         loadPresets();
         saveSettings();
+        verifySettings();
     }
 }
 
@@ -549,6 +554,31 @@ JobmanPrivate::eventFilter(QObject* object, QEvent* event)
 }
 
 void
+JobmanPrivate::verifySettings()
+{
+    if (saveto.isEmpty()) {
+        if (Question::askQuestion(window.data(),
+             "No save to folder selected for output files.\n"
+             "Would you like to choose one now?"
+        )) {
+            QString dir = QFileDialog::getExistingDirectory(
+                            window.data(),
+                            tr("No save to folder selected for output files ..."),
+                            QStandardPaths::writableLocation(QStandardPaths::HomeLocation),
+                            QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+            );
+            if (!dir.isEmpty()) {
+                saveto = dir;
+                setSaveto(saveto);
+                ui->filedrop->setEnabled(true);
+                return;
+            }
+        }
+        ui->filedrop->setEnabled(false);
+    }
+}
+    
+void
 JobmanPrivate::loadSettings()
 {
     QDir applicationPath(QApplication::applicationDirPath());
@@ -558,7 +588,7 @@ JobmanPrivate::loadSettings()
     preferencesfrom = settings.value("preferencesfrom", documents).toString();
     presetselected = settings.value("presetselected", "").toString();
     presetfrom = settings.value("presetfrom", presets).toString();
-    saveto = settings.value("saveto", documents).toString();
+    saveto = settings.value("saveto", "").toString();
     copyoriginal = settings.value("copyoriginal", true).toBool();
     createfolders = settings.value("createfolders", true).toBool();
     overwrite = settings.value("overwrite", true).toBool();
@@ -961,14 +991,22 @@ JobmanPrivate::showSaveto()
 void
 JobmanPrivate::setSaveto(const QString& text)
 {
-    QFontMetrics metrics(ui->saveTo->font());
-    ui->saveTo->setText(metrics.elidedText(text, Qt::ElideRight, ui->saveTo->maximumSize().width()));
+    if (!text.isEmpty() > 0) {
+        QFontMetrics metrics(ui->saveTo->font());
+        ui->saveTo->setText(metrics.elidedText(text, Qt::ElideRight, ui->saveTo->maximumSize().width()));
+        ui->showSaveto->setVisible(true);
+    }
+    else {
+        ui->saveTo->setText("No folder selected");
+        ui->showSaveto->setVisible(false);
+    }
 }
 
 void
-JobmanPrivate::saveToChanged(const QString& text)
+JobmanPrivate::saveToChanged(const QUrl& url)
 {
-    saveto = text;
+    saveto = url.toLocalFile();
+    ui->showSaveto->setVisible(true);
 }
 
 void

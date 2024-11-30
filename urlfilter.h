@@ -5,15 +5,15 @@
 #pragma once
 #include <QMainWindow>
 
-class Dropfilter : public QObject
+class Urlfilter : public QObject
 {
     Q_OBJECT
     public:
-        Dropfilter(QObject* object = nullptr);
-        virtual ~Dropfilter();
+        Urlfilter(QObject* object = nullptr);
+        virtual ~Urlfilter();
 
     Q_SIGNALS:
-        void textChanged(const QString& text);
+        void urlChanged(const QUrl& url);
     
     protected:
         bool eventFilter(QObject* obj, QEvent *event) override;

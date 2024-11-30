@@ -3,6 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "preferences.h"
+#include "urlfilter.h"
 
 #include <QCheckBox>
 #include <QFileDialog>
@@ -41,6 +42,7 @@ class PreferencesPrivate : public QObject
         QStringList searchpaths;
         QVariantList environmentvars;
         QPointer<Preferences> dialog;
+        QScopedPointer<Urlfilter> urlfilter;
         QScopedPointer<Ui_Preferences> ui;
 };
 
@@ -58,6 +60,9 @@ PreferencesPrivate::init()
     loadSettings();
     // event filter
     dialog->installEventFilter(this);
+    // url filter
+    urlfilter.reset(new Urlfilter);
+    ui->searchpaths->installEventFilter(urlfilter.data());
     // layout
     for(QString searchpath : searchpaths) {
         ui->searchpaths->addItem(searchpath);

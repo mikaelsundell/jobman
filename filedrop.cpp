@@ -106,7 +106,7 @@ Filedrop::dropEvent(QDropEvent* event)
 {
     Q_UNUSED(event);
     setProperty("dragging", false);
-    filesDropped(p->files);
     p->update();
     event->accept();
+    filesDropped(p->files);
 }

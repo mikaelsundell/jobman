@@ -19,12 +19,12 @@ find_package( Lcms2 REQUIRED )
 
 # sourcesld
 set (app_sources
+    clickfilter.h
+    clickfilter.cpp
     jobman.h
     jobman.cpp
-    dropfilter.h
-    dropfilter.cpp
-    eventfilter.h
-    eventfilter.cpp
+    urlfilter.h
+    urlfilter.cpp
     error.h
     error.cpp
     filedrop.h
@@ -94,7 +94,7 @@ if (APPLE)
     set (MACOSX_BUNDLE_INFO_STRING ${project_name})
     set (MACOSX_BUNDLE_BUNDLE_NAME ${project_name})
     set (MACOSX_BUNDLE_ICON_FILE AppIcon.icns)
-    set (MACOSX_BUNDLE_LONG_VERSION_STRING "1.0.4")
+    set (MACOSX_BUNDLE_LONG_VERSION_STRING "1.0.5")
     set (MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0")
     set (MACOSX_BUNDLE_BUNDLE_VERSION ${MACOSX_BUNDLE_LONG_VERSION_STRING})
     set (MACOSX_BUNDLE_COPYRIGHT "Copyright 2022-present Contributors to the ${project_name} project")

@@ -3,6 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "listwidget.h"
+#include "urlfilter.h"
 
 #include <QCheckBox>
 #include <QLayout>
@@ -28,6 +29,7 @@ class PairItemPrivate : public QObject
         QCheckBox* checkbox;
         QLineEdit* nameedit;
         QLineEdit* valueedit;
+        QScopedPointer<Urlfilter> urlfilter;
         QPointer<PairItem> item;
 };
 
@@ -50,6 +52,9 @@ PairItemPrivate::init()
     layout->addWidget(valueedit);
     layout->setContentsMargins(0, 0, 0, 0);
     item->setLayout(layout);
+    // url filter
+    urlfilter.reset(new Urlfilter);
+    valueedit->installEventFilter(urlfilter.data());
     // connect
     connect(checkbox, &QCheckBox::toggled, this, [this](bool checked) {
         this->enabled(checked);

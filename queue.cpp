@@ -305,11 +305,27 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                 QFile file(fileInfo.filePath());
                 log += QString("\nPre-process:");
                 log += QString("\nCopy original: %1 to %2\n").arg(copyoriginal.filename).arg(originalname);
-                if (!file.copy(originalname)) {
-                    log += QString("\nPre-process output:\n%1\n").arg(file.errorString());
-                    log += QString("\nStatus:\n%1\n").arg("Pre-process failed");
-                    job->setStatus(Job::Failed);
-                    failed = true;
+                if (QFile::exists(originalname)) {
+                    if (job->overwrite()) {
+                        if (!QFile::remove(originalname)) {
+                            log += QString("\nFailed to remove existing file: %1\n").arg(originalname);
+                            log += QString("\nStatus:\n%1\n").arg("Pre-process failed");
+                            job->setStatus(Job::Failed);
+                            failed = true;
+                        }
+                    } else {
+                        log += QString("\nFile exists but overwrite is not set: %1\n").arg(originalname);
+                        job->setStatus(Job::Failed);
+                        failed = true;
+                    }
+                }
+                if (!failed) {
+                    if (!file.copy(originalname)) {
+                        log += QString("\nPre-process output:\n%1\n").arg(file.errorString());
+                        log += QString("\nStatus:\n%1\n").arg("Pre-process failed");
+                        job->setStatus(Job::Failed);
+                        failed = true;
+                    }
                 }
             }
             if (!failed) {
