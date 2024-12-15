@@ -706,8 +706,6 @@ JobmanPrivate::loadPresets()
         }
         activate();
     } else {
-        mac::console("no presets found, will deactivate");
-        
         ui->presets->addItem("No presets found");
         deactivate();
     }
