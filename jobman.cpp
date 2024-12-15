@@ -588,7 +588,29 @@ JobmanPrivate::loadSettings()
     preferencesfrom = settings.value("preferencesfrom", documents).toString();
     presetselected = settings.value("presetselected", "").toString();
     presetfrom = settings.value("presetfrom", presets).toString();
+    {
+        QString bookmark = settings.value("presetfrombookmark").toString();
+        if (!bookmark.isEmpty()) {
+           QString resolvedPath = mac::resolveBookmark(bookmark);
+           if (!resolvedPath.isEmpty()) {
+               presetfrom = resolvedPath;
+               
+               qDebug() << "load presetfrom: " << presetfrom;
+           }
+        }
+    }
     saveto = settings.value("saveto", "").toString();
+    {
+        QString bookmark = settings.value("savetobookmark").toString();
+        if (!bookmark.isEmpty()) {
+           QString resolvedPath = mac::resolveBookmark(bookmark);
+           if (!resolvedPath.isEmpty()) {
+               saveto = resolvedPath;
+               
+               qDebug() << "load saveto: " << saveto;
+           }
+        }
+    }
     copyoriginal = settings.value("copyoriginal", true).toBool();
     createfolders = settings.value("createfolders", true).toBool();
     overwrite = settings.value("overwrite", true).toBool();
@@ -613,18 +635,32 @@ JobmanPrivate::saveSettings()
         }
     }
     settings.setValue("presetfrom", presetfrom);
+    {
+        QString bookmark = mac::saveBookmark(presetfrom);
+        if (!bookmark.isEmpty()) {
+            settings.setValue("presetfrombookmark", bookmark);
+        }
+    }
     settings.setValue("saveto", saveto);
+    {
+        QString bookmark = mac::saveBookmark(saveto);
+        if (!bookmark.isEmpty()) {
+            settings.setValue("savetobookmark", bookmark);
+        }
+    }
     settings.setValue("copyoriginal", copyoriginal);
     settings.setValue("createfolders", createfolders);
     settings.setValue("overwrite", createfolders);
     for (int i = 0; i < ui->presets->count(); ++i) {
-        QVariant data = ui->presets->itemData(i);
-        QSharedPointer<Preset> preset = data.value<QSharedPointer<Preset>>();
-        settings.beginGroup(QString("preset/%1").arg(preset->id()));
-        for(Option* option : preset->options()) {
-            settings.setValue(QString("option/%1").arg(option->id), option->value);
+        if (ui->presets->itemText(i) != "No presets found") {
+            QVariant data = ui->presets->itemData(i);
+            QSharedPointer<Preset> preset = data.value<QSharedPointer<Preset>>();
+            settings.beginGroup(QString("preset/%1").arg(preset->id()));
+            for(Option* option : preset->options()) {
+                settings.setValue(QString("option/%1").arg(option->id), option->value);
+            }
+            settings.endGroup();
         }
-        settings.endGroup();
     }
 }
 
@@ -632,15 +668,9 @@ void
 JobmanPrivate::loadPresets()
 {
     QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
-    
-    mac::console(QString("loadPresets from %1").arg(presetfrom));
-    
     ui->presets->clear();
     QDir presets(presetfrom);
     QFileInfoList presetfiles = presets.entryInfoList(QStringList("*.json"));
-    
-    mac::console(QString("presetfiles size %1").arg(presetfiles.count()));
-    
     QString error;
     if (presetfiles.count() > 0) {
         for(QFileInfo presetfile : presetfiles) {

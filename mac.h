@@ -15,5 +15,7 @@ namespace mac
     void setDarkAppearance();
     IccProfile grabIccProfile(WId wid);
     QString grabIccProfileUrl(WId wid);
+    QString resolveBookmark(const QString& bookmark);
+    QString saveBookmark(const QString& bookmark);
     void console(const QString& log);
 }
