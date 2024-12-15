@@ -632,9 +632,15 @@ void
 JobmanPrivate::loadPresets()
 {
     QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+    
+    mac::console(QString("loadPresets from %1").arg(presetfrom));
+    
     ui->presets->clear();
     QDir presets(presetfrom);
     QFileInfoList presetfiles = presets.entryInfoList(QStringList("*.json"));
+    
+    mac::console(QString("presetfiles size %1").arg(presetfiles.count()));
+    
     QString error;
     if (presetfiles.count() > 0) {
         for(QFileInfo presetfile : presetfiles) {
@@ -670,6 +676,8 @@ JobmanPrivate::loadPresets()
         }
         activate();
     } else {
+        mac::console("no presets found, will deactivate");
+        
         ui->presets->addItem("No presets found");
         deactivate();
     }
