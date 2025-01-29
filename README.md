@@ -19,11 +19,9 @@ Introduction
 
 Jobman is a user-friendly Mac application designed for batch processing files according to predefined job descriptions. It enables the creation of tool chains for drag-and-drop processing, streamlining workflows for efficiency and ease of use. The application boasts a straightforward drag-and-drop interface for file submission, monitoring and job control.
 
-|  Download        | Description |
-| ----------------| ----------- |
-|  [<img src="resources/Download.png" valign="middle" alt="Icon" width="16" height="16"> Jobman v1.0.0](https://github.com/mikaelsundell/jobman/releases/download/release-v1.0.0/Jobman_macOS12_arm64_release.dmg) | [Apple Silicon macOS12+](https://github.com/mikaelsundell/jobman/releases/download/release-v1.0.0/Jobman_macOS12_arm64_release.dmg)
-|  [<img src="resources/Download.png" valign="middle" alt="Icon" width="16" height="16"> Jobman v1.0.0](https://github.com/mikaelsundell/jobman/releases/download/release-v1.0.0/Jobman_macOS12_x86_64_release.dmg) | [Intel x86_64 macOS12+](https://github.com/mikaelsundell/jobman/releases/download/release-v1.0.0/Jobman_macOS12_x86_64_release.dmg)
-
+<a href="https://apps.apple.com/se/app/jobman-batch-processing/id6738392819?l=en-GB&mt=12" target="_blank" style="cursor: pointer;">
+    <img src="resources/AppStore/Badge.png" valign="middle" alt="Icon" width="140">
+</a>
 
 Documentation
 -------------
