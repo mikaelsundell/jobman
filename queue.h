@@ -23,7 +23,8 @@ class Queue : public QObject
         void remove(const QUuid& uuid);
         int threads() const;
         void setThreads(int threads);
-    
+        bool isProcessing();
+
     Q_SIGNALS:
         void jobSubmitted(QSharedPointer<Job> job);
         void jobProcessed(const QUuid& uuid);

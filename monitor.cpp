@@ -826,6 +826,9 @@ MonitorPrivate::cleanup() {
             if (topLevelItem->isSelected()) {
                 ui->job->clear();
             }
+            QVariant data = topLevelItem->data(0, Qt::UserRole);
+            QSharedPointer<Job> itemJob = data.value<QSharedPointer<Job>>();
+            jobs.remove(itemJob->uuid());
             delete ui->items->takeTopLevelItem(i);
         }
     }

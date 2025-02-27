@@ -6,9 +6,9 @@
 #include "clickfilter.h"
 #include "error.h"
 #include "icctransform.h"
-#include "mac.h"
 #include "monitor.h"
 #include "options.h"
+#include "platform.h"
 #include "preferences.h"
 #include "preset.h"
 #include "process.h"
@@ -100,9 +100,9 @@ class JobmanPrivate : public QObject
                 QScopedPointer<Ui_About> about;
                 about.reset(new Ui_About());
                 about->setupUi(this);
-                about->name->setText(MACOSX_BUNDLE_BUNDLE_NAME);
-                about->version->setText(MACOSX_BUNDLE_LONG_VERSION_STRING);
-                about->copyright->setText(MACOSX_BUNDLE_COPYRIGHT);
+                about->name->setText(APP_NAME);
+                about->version->setText(APP_VERSION_STRING);
+                about->copyright->setText(APP_COPYRIGHT);
                 QString url = GITHUBURL;
                 about->github->setText(QString("Github project: <a href='%1'>%1</a>").arg(url));
                 about->github->setTextFormat(Qt::RichText);
@@ -156,14 +156,13 @@ JobmanPrivate::JobmanPrivate()
 void
 JobmanPrivate::init()
 {
-    mac::setDarkAppearance();
-    // bundle
+    platform::setDarkTheme();
     documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     QDir applicationPath(QApplication::applicationDirPath());
-    presets = applicationPath.absolutePath() + "/../Presets";
+    presets = platform::getApplicationPath() + "/Presets";
     // icc profile
     ICCTransform* transform = ICCTransform::instance();
-    QDir resources(QApplication::applicationDirPath() + "/../Resources");
+    QDir resources(platform::getApplicationPath() + "/Resources");
     QString inputProfile = resources.filePath("sRGB2014.icc"); // built-in Qt input profile
     transform->setInputProfile(inputProfile);
     profile();
@@ -216,9 +215,9 @@ JobmanPrivate::init()
     connect(ui->selectSaveto, &QPushButton::clicked, this, &JobmanPrivate::selectSaveto);
     connect(ui->showSaveto, &QPushButton::clicked, this, &JobmanPrivate::showSaveto);
     connect(urlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToChanged);
-    connect(ui->copyOriginal, &QCheckBox::stateChanged, this, &JobmanPrivate::copyOriginalChanged);
-    connect(ui->createFolders, &QCheckBox::stateChanged, this, &JobmanPrivate::createFolderChanged);
-    connect(ui->overwrite, &QCheckBox::stateChanged, this, &JobmanPrivate::overwriteChanged);
+    connect(ui->copyOriginal, &QCheckBox::checkStateChanged, this, &JobmanPrivate::copyOriginalChanged);
+    connect(ui->createFolders, &QCheckBox::checkStateChanged, this, &JobmanPrivate::createFolderChanged);
+    connect(ui->overwrite, &QCheckBox::checkStateChanged, this, &JobmanPrivate::overwriteChanged);
     connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::run, Qt::QueuedConnection);
     connect(ui->presets, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::presetsChanged);
     connect(ui->threads, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::threadsChanged);
@@ -237,21 +236,11 @@ JobmanPrivate::init()
         ui->threads->addItem(QString::number(i), i);
     }
     // cpu
-    QTimer *timer = new QTimer(window.data());
+    // todo: get a better function for windows!
+    QTimer* timer = new QTimer(window.data());
     QObject::connect(timer, &QTimer::timeout, [&]() {
         if (ui->fileprogress->maximum()) {
-            Process process;
-            process.run("ps", QStringList() << "-A" << "-o" << "%cpu");
-            process.wait();
-            QString output = process.standardOutput();
-            QStringList lines = output.split("\n", Qt::SkipEmptyParts);
-            double totalCpu = 0;
-            for (int i = 1; i < lines.size(); ++i) { // Starting at 1 skips the header line
-                totalCpu += lines[i].trimmed().toDouble();
-            }
-            int numberOfCores = QThread::idealThreadCount();
-            double normalizedCpuUsage = totalCpu / numberOfCores;
-            ui->cpu->setText(QString("CPU: %1%").arg(normalizedCpuUsage, 0, 'f', 0));
+            ui->cpu->setText(QString("CPU: %1%").arg(platform::getCpuUsage(), 0, 'f', 0));
         } else {
             ui->cpu->setText(QString(""));
         }
@@ -281,8 +270,7 @@ JobmanPrivate::init()
 void
 JobmanPrivate::stylesheet()
 { 
-    QDir resources(QApplication::applicationDirPath());
-    QFile stylesheet(resources.absolutePath() + "/../Resources/App.css");
+    QFile stylesheet(platform::getApplicationPath() + "/Resources/App.css");
     stylesheet.open(QFile::ReadOnly);
     QString qss = stylesheet.readAll();
     QRegularExpression hslRegex("hsl\\(\\s*(\\d+)\\s*,\\s*(\\d+)%\\s*,\\s*(\\d+)%\\s*\\)");
@@ -317,7 +305,7 @@ JobmanPrivate::stylesheet()
 void
 JobmanPrivate::profile()
 {
-    QString outputProfile = mac::grabIccProfileUrl(window->winId());
+    QString outputProfile = platform::getIccProfileUrl(window->winId());
     // icc profile
     ICCTransform* transform = ICCTransform::instance();
     transform->setOutputProfile(outputProfile);
@@ -364,7 +352,7 @@ JobmanPrivate::clearPreferences()
         "All values including search paths, environent variables and options will be reset to their default settings.\n"
         "Do you want to continue?"
     )) {
-        QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+        QSettings settings(APP_IDENTIFIER, APP_NAME);
         settings.clear();
         // update
         options.reset(new Options(window.data()));
@@ -405,7 +393,7 @@ JobmanPrivate::importPreferences()
                 return;
             }
             QJsonObject jsonobj = jsonDoc.object();
-            QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+            QSettings settings(APP_IDENTIFIER, APP_NAME);
             for (auto it = jsonobj.constBegin(); it != jsonobj.constEnd(); ++it) {
                 const QString &key = it.key();
                 const QJsonValue &value = it.value();
@@ -455,7 +443,7 @@ JobmanPrivate::exportPreferences()
         if (!filename.endsWith(".json", Qt::CaseInsensitive)) {
             filename += ".json";
         }
-        QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+        QSettings settings(APP_IDENTIFIER, APP_NAME);
         QJsonObject jsonobj;
         QStringList internalprefix = {
             "Apple", "com/apple", "Nav", "AK", "PK", "NS", "Country", "MultipleSessionEnabled" // safe to ignore
@@ -537,7 +525,7 @@ JobmanPrivate::eventFilter(QObject* object, QEvent* event)
         stylesheet();
     }
     if (event->type() == QEvent::Close) {
-        if (ui->fileprogress->value()) {
+        if (queue->isProcessing()) {
             if (Question::askQuestion(window.data(), "Jobs are in progress, are you sure you want to quit?")) {
                 saveSettings();
                 return true;
@@ -583,7 +571,7 @@ JobmanPrivate::loadSettings()
 {
     QDir applicationPath(QApplication::applicationDirPath());
     QString documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+    QSettings settings(APP_IDENTIFIER, APP_NAME);
     filesfrom = settings.value("filesfrom", documents).toString();
     preferencesfrom = settings.value("preferencesfrom", documents).toString();
     presetselected = settings.value("presetselected", "").toString();
@@ -591,11 +579,9 @@ JobmanPrivate::loadSettings()
     {
         QString bookmark = settings.value("presetfrombookmark").toString();
         if (!bookmark.isEmpty()) {
-           QString resolvedPath = mac::resolveBookmark(bookmark);
+           QString resolvedPath = platform::resolveBookmark(bookmark);
            if (!resolvedPath.isEmpty()) {
                presetfrom = resolvedPath;
-               
-               qDebug() << "load presetfrom: " << presetfrom;
            }
         }
     }
@@ -603,11 +589,9 @@ JobmanPrivate::loadSettings()
     {
         QString bookmark = settings.value("savetobookmark").toString();
         if (!bookmark.isEmpty()) {
-           QString resolvedPath = mac::resolveBookmark(bookmark);
+           QString resolvedPath = platform::resolveBookmark(bookmark);
            if (!resolvedPath.isEmpty()) {
                saveto = resolvedPath;
-               
-               qDebug() << "load saveto: " << saveto;
            }
         }
     }
@@ -624,7 +608,7 @@ JobmanPrivate::loadSettings()
 void
 JobmanPrivate::saveSettings()
 {
-    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+    QSettings settings(APP_IDENTIFIER, APP_NAME);
     settings.setValue("filesfrom", filesfrom);
     settings.setValue("preferencesfrom", preferencesfrom);
     // presets
@@ -636,14 +620,14 @@ JobmanPrivate::saveSettings()
     }
     settings.setValue("presetfrom", presetfrom);
     {
-        QString bookmark = mac::saveBookmark(presetfrom);
+        QString bookmark = platform::saveBookmark(presetfrom);
         if (!bookmark.isEmpty()) {
             settings.setValue("presetfrombookmark", bookmark);
         }
     }
     settings.setValue("saveto", saveto);
     {
-        QString bookmark = mac::saveBookmark(saveto);
+        QString bookmark = platform::saveBookmark(saveto);
         if (!bookmark.isEmpty()) {
             settings.setValue("savetobookmark", bookmark);
         }
@@ -667,7 +651,7 @@ JobmanPrivate::saveSettings()
 void
 JobmanPrivate::loadPresets()
 {
-    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+    QSettings settings(APP_IDENTIFIER, APP_NAME);
     ui->presets->clear();
     QDir presets(presetfrom);
     QFileInfoList presetfiles = presets.entryInfoList(QStringList("*.json"));
@@ -825,7 +809,7 @@ JobmanPrivate::run(const QList<QString>& files)
                 job->setStartin(startin);
                 job->setStatus(Job::Waiting);
             }
-            QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+            QSettings settings(APP_IDENTIFIER, APP_NAME);
             job->os()->searchpaths = settings.value("searchpaths", documents).toStringList();
             QVariantList environmentvars = settings.value("environmentvars").toList();
             for (const QVariant& environmentvar : environmentvars) {
@@ -1027,7 +1011,7 @@ JobmanPrivate::showSaveto()
 void
 JobmanPrivate::setSaveto(const QString& text)
 {
-    if (!text.isEmpty() > 0) {
+    if (!text.isEmpty()) {
         QFontMetrics metrics(ui->saveTo->font());
         ui->saveTo->setText(metrics.elidedText(text, Qt::ElideRight, ui->saveTo->maximumSize().width()));
         ui->showSaveto->setVisible(true);

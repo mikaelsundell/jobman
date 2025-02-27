@@ -9,7 +9,7 @@ int
 main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
-    Jobman* jobman = new Jobman();
-    jobman->show();
+    Jobman jobman;
+    jobman.show();
     return app.exec();
 }

@@ -4,7 +4,7 @@
 
 #include "queue.h"
 #include "process.h"
-#include "mac.h"
+#include "platform.h"
 
 #include <QObject>
 #include <QPointer>
@@ -24,7 +24,7 @@ class QueuePrivate : public QObject
     public:
         QueuePrivate();
         void init();
-        void update();
+        void updateThreadCount();
         QUuid submit(QSharedPointer<Job> job);
         void start(const QUuid& uuid);
         void stop(const QUuid& uuid);
@@ -37,6 +37,8 @@ class QueuePrivate : public QObject
         void processDependentJobs(const QUuid& dependsonUuid);
         void failDependentJobs(const QUuid& dependsonId);
         void failCompletedJobs(const QUuid& uuid, const QUuid& dependsonId);
+        void killJobs();
+        bool isProcessing();
 
     public Q_SLOTS:
         void statusChanged(const QUuid& uuid, Job::Status status);
@@ -67,15 +69,17 @@ QueuePrivate::QueuePrivate()
 void
 QueuePrivate::init()
 {
+    moveToThread(&thread);
     // treads
     QThreadPool::globalInstance()->setThreadPriority(QThread::LowPriority); // scheduled less often than ui thread
     // connect
     connect(this, &QueuePrivate::notifyStatusChanged, this, &QueuePrivate::statusChanged, Qt::QueuedConnection);
-    update();
+    updateThreadCount();
+    thread.start();
 }
 
 void
-QueuePrivate::update()
+QueuePrivate::updateThreadCount()
 {
     threadPool.setMaxThreadCount(threads);
 }
@@ -341,7 +345,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                     if (environmentvars.count()) {
                         log += QString("\nEnvironment:\n");
                         for (const QPair<QString, QString>& environmentvar : environmentvars) {
-                            log += QString("\%1=%2\n").arg(environmentvar.first).arg(environmentvar.second);
+                            log += QString("%1=%2\n").arg(environmentvar.first).arg(environmentvar.second);
                         }
                     }
                     log += QString("\nProcess id:\n%1\n").arg(pid);
@@ -513,6 +517,52 @@ QueuePrivate::failCompletedJobs(const QUuid& uuid, const QUuid& dependsonId)
 }
 
 void
+QueuePrivate::killJobs()
+{
+    {
+        QMutexLocker locker(&mutex);
+        for (QSharedPointer<Job>& job : allJobs) {
+            if (job->status() == Job::Running) {
+                job->setStatus(Job::Stopped);
+                if (job->pid() > 0) {
+                    Process::kill(job->pid());
+                }
+            }
+        }
+    }
+    {
+        QMutexLocker locker(&mutex);
+        waitingJobs.clear();
+        dependentJobs.clear();
+        allJobs.clear();
+        completedJobs.clear();
+        removedJobs.clear();
+    }
+    threadPool.clear();
+    threadPool.waitForDone();
+    thread.quit();
+    thread.wait();
+}
+
+bool
+QueuePrivate::isProcessing()
+{
+    QMutexLocker locker(&mutex);
+    if (threadPool.activeThreadCount() > 0) {
+        return true;
+    }
+    if (!waitingJobs.isEmpty()) {
+        return true;
+    }
+    for (const QSharedPointer<Job> job : allJobs) {
+        if (job->status() == Job::Running) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void
 QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
 {
     {
@@ -534,17 +584,13 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
 Queue::Queue()
 : p(new QueuePrivate())
 {
-    p->moveToThread(&p->thread);
     p->queue = this;
     p->init();
-    p->thread.start();
 }
 
 Queue::~Queue()
 {
-    p->threadPool.waitForDone();
-    p->thread.quit();
-    p->thread.wait();
+    p->killJobs();
 }
 
 Queue*
@@ -598,6 +644,12 @@ void
 Queue::setThreads(int threads)
 {
     p->threads = threads;
-    p->update();
+    p->updateThreadCount();
     p->processNextJobs();
+}
+
+bool
+Queue::isProcessing()
+{
+    return p->isProcessing();
 }

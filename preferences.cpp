@@ -99,7 +99,7 @@ void
 PreferencesPrivate::loadSettings()
 {
     QString documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+    QSettings settings(APP_IDENTIFIER, APP_NAME);
     searchpathfrom = settings.value("searchpathFrom", documents).toString();
     searchpaths = settings.value("searchpaths").toStringList();
     environmentvars = settings.value("environmentvars").toList();
@@ -108,7 +108,7 @@ PreferencesPrivate::loadSettings()
 void
 PreferencesPrivate::saveSettings()
 {
-    QSettings settings(MACOSX_BUNDLE_GUI_IDENTIFIER, MACOSX_BUNDLE_BUNDLE_NAME);
+    QSettings settings(APP_IDENTIFIER, APP_NAME);
     searchpaths.clear();
     for (int i = 0; i < ui->searchpaths->count(); ++i) {
         QListWidgetItem* item = ui->searchpaths->item(i);
