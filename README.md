@@ -17,7 +17,7 @@ Introduction
 
 <img src="resources/Jobman.png" style="padding-bottom: 20px;" />
 
-Jobman is a user-friendly Mac application designed for batch processing files according to predefined job descriptions. It enables the creation of tool chains for drag-and-drop processing, streamlining workflows for efficiency and ease of use. The application boasts a straightforward drag-and-drop interface for file submission, monitoring and job control.
+Jobman is a user-friendly Mac and Windows application designed for batch processing files according to predefined job descriptions. It enables the creation of tool chains for drag-and-drop processing, streamlining workflows for efficiency and ease of use. The application boasts a straightforward drag-and-drop interface for file submission, monitoring and job control.
 
 <a href="https://apps.apple.com/se/app/jobman-batch-processing/id6738392819?l=en-GB&mt=12" target="_blank" style="cursor: pointer;">
     <img src="resources/AppStore/Badge.png" valign="middle" alt="Icon" width="140">
@@ -56,7 +56,7 @@ Begin by selecting a preset, then drag and drop your files onto the designated f
 
 A preset file articulates a sequence of tasks to be executed during file processing. It allows for the specification of commands, file extensions, arguments, and initial directories. Additionally, it supports the definition of dependencies among tasks using the dependson attribute, enabling complex processing chains.
 
-Here's an example of a preset file format, tailored for converting image files:
+Here's an example of a preset file format, tailored for converting image files on the Mac:
 
 
 ```shell
