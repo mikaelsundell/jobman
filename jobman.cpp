@@ -4,8 +4,8 @@
 
 #include "jobman.h"
 #include "clickfilter.h"
-#include "error.h"
 #include "icctransform.h"
+#include "message.h"
 #include "monitor.h"
 #include "options.h"
 #include "platform.h"
@@ -62,6 +62,8 @@ class JobmanPrivate : public QObject
         void clearPresets();
         void togglePreset();
         void toggleFiledrop();
+        void openPresetsFolder();
+        void openSaveToFolder();
         void openMonitor();
         void openOptions();
         void run(const QList<QString>& files);
@@ -74,11 +76,12 @@ class JobmanPrivate : public QObject
         void exportPreferences();
         void refreshPresets();
         void openPreset();
-        void selectPresetfrom();
+        void selectPresetsfrom();
+        void presetsUrl(const QUrl& url);
         void selectSaveto();
         void showSaveto();
         void setSaveto(const QString& text);
-        void saveToChanged(const QUrl& url);
+        void saveToUrl(const QUrl& url);
         void copyOriginalChanged(int state);
         void createFolderChanged(int state);
         void overwriteChanged(int state);
@@ -125,8 +128,8 @@ class JobmanPrivate : public QObject
         QSize size;
         QString documents;
         QString presets;
-        QString presetselected;
-        QString presetfrom;
+        QString presetsselected;
+        QString presetsfrom;
         QString saveto;
         QString filesfrom;
         QString preferencesfrom;
@@ -140,9 +143,10 @@ class JobmanPrivate : public QObject
         QScopedPointer<Monitor> monitor;
         QScopedPointer<Options> options;
         QScopedPointer<Preferences> preferences;
-        QScopedPointer<Urlfilter> urlfilter;
         QScopedPointer<Clickfilter> presetfilter;
         QScopedPointer<Clickfilter> filedropfilter;
+        QScopedPointer<Urlfilter> preseturlfilter;
+        QScopedPointer<Urlfilter> savetourlfilter;
         QScopedPointer<Ui_Jobman> ui;
 };
 
@@ -193,9 +197,12 @@ JobmanPrivate::init()
     // color filter
     filedropfilter.reset(new Clickfilter);
     ui->filedropBar->installEventFilter(filedropfilter.data());
-    // drop filter
-    urlfilter.reset(new Urlfilter);
-    ui->saveTo->installEventFilter(urlfilter.data());
+    // url filter
+    preseturlfilter.reset(new Urlfilter);
+    ui->presets->installEventFilter(preseturlfilter.data());
+    // url filter
+    savetourlfilter.reset(new Urlfilter);
+    ui->saveTo->installEventFilter(savetourlfilter.data());
     // progress
     ui->fileprogress->hide();
     // connect
@@ -211,10 +218,11 @@ JobmanPrivate::init()
     connect(ui->export_, &QAction::triggered, this, &JobmanPrivate::exportPreferences);
     connect(ui->refreshPresets, &QPushButton::clicked, this, &JobmanPrivate::refreshPresets);
     connect(ui->openPreset, &QPushButton::clicked, this, &JobmanPrivate::openPreset);
-    connect(ui->selectPresetfrom, &QPushButton::clicked, this, &JobmanPrivate::selectPresetfrom);
+    connect(ui->selectPresetsfrom, &QPushButton::clicked, this, &JobmanPrivate::selectPresetsfrom);
+    connect(preseturlfilter.data(), &Urlfilter::urlRequested, this, &JobmanPrivate::presetsUrl);
     connect(ui->selectSaveto, &QPushButton::clicked, this, &JobmanPrivate::selectSaveto);
     connect(ui->showSaveto, &QPushButton::clicked, this, &JobmanPrivate::showSaveto);
-    connect(urlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToChanged);
+    connect(savetourlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToUrl);
     connect(ui->copyOriginal, &QCheckBox::checkStateChanged, this, &JobmanPrivate::copyOriginalChanged);
     connect(ui->createFolders, &QCheckBox::checkStateChanged, this, &JobmanPrivate::createFolderChanged);
     connect(ui->overwrite, &QCheckBox::checkStateChanged, this, &JobmanPrivate::overwriteChanged);
@@ -222,6 +230,8 @@ JobmanPrivate::init()
     connect(ui->presets, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::presetsChanged);
     connect(ui->threads, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::threadsChanged);
     connect(ui->about, &QAction::triggered, this, &JobmanPrivate::openAbout);
+    connect(ui->openPresetsFolder, &QAction::triggered, this, &JobmanPrivate::openPresetsFolder);
+    connect(ui->openSaveToFolder, &QAction::triggered, this, &JobmanPrivate::openSaveToFolder);
     connect(ui->monitor, &QAction::triggered, this, &JobmanPrivate::openMonitor);
     connect(ui->openMonitor, &QPushButton::clicked, this, &JobmanPrivate::openMonitor);
     connect(ui->options, &QAction::triggered, this, &JobmanPrivate::openOptions);
@@ -386,9 +396,9 @@ JobmanPrivate::importPreferences()
             file.close();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData);
             if (!jsonDoc.isObject()) {
-                Error::showError(window.data(),
+                Message::showMessage(window.data(),
                     "Invalid preferences file",
-                    "The selected file is not a valid JSON preferences file."
+                    "The selected file is not a valid json preferences file."
                 );
                 return;
             }
@@ -422,7 +432,7 @@ JobmanPrivate::importPreferences()
             preferencesfrom = fileInfo.absolutePath();
             saveSettings();
         } else {
-            Error::showError(window.data(),
+            Message::showMessage(window.data(),
                 "Could not open file for reading",
                 QString("Error message: %1").arg(file.errorString())
             );
@@ -499,7 +509,7 @@ JobmanPrivate::exportPreferences()
             preferencesfrom = fileInfo.absolutePath();
         }
         else {
-            Error::showError(window.data(),
+            Message::showMessage(window.data(),
                 "Could open file for writing",
                 QString("Error message: %1").arg(file.errorString())
             );
@@ -574,14 +584,14 @@ JobmanPrivate::loadSettings()
     QSettings settings(APP_IDENTIFIER, APP_NAME);
     filesfrom = settings.value("filesfrom", documents).toString();
     preferencesfrom = settings.value("preferencesfrom", documents).toString();
-    presetselected = settings.value("presetselected", "").toString();
-    presetfrom = settings.value("presetfrom", presets).toString();
+    presetsselected = settings.value("presetsselected", "").toString();
+    presetsfrom = settings.value("presetsfrom", presets).toString();
     {
-        QString bookmark = settings.value("presetfrombookmark").toString();
+        QString bookmark = settings.value("presetsfrombookmark").toString();
         if (!bookmark.isEmpty()) {
            QString resolvedPath = platform::resolveBookmark(bookmark);
            if (!resolvedPath.isEmpty()) {
-               presetfrom = resolvedPath;
+               presetsfrom = resolvedPath;
            }
         }
     }
@@ -615,14 +625,14 @@ JobmanPrivate::saveSettings()
     if (ui->presets->count()) {
         QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
         if (!preset.isNull()) { // skip "No presets found"
-            settings.setValue("presetselected", preset->filename());
+            settings.setValue("presetsselected", preset->filename());
         }
     }
-    settings.setValue("presetfrom", presetfrom);
+    settings.setValue("presetsfrom", presetsfrom);
     {
-        QString bookmark = platform::saveBookmark(presetfrom);
+        QString bookmark = platform::saveBookmark(presetsfrom);
         if (!bookmark.isEmpty()) {
-            settings.setValue("presetfrombookmark", bookmark);
+            settings.setValue("presetsfrombookmark", bookmark);
         }
     }
     settings.setValue("saveto", saveto);
@@ -653,7 +663,7 @@ JobmanPrivate::loadPresets()
 {
     QSettings settings(APP_IDENTIFIER, APP_NAME);
     ui->presets->clear();
-    QDir presets(presetfrom);
+    QDir presets(presetsfrom);
     QFileInfoList presetfiles = presets.entryInfoList(QStringList("*.json"));
     QString error;
     if (presetfiles.count() > 0) {
@@ -670,7 +680,7 @@ JobmanPrivate::loadPresets()
                 }
                 settings.endGroup();
                 ui->presets->addItem(preset->name(), QVariant::fromValue(preset));
-                if (filename == presetselected) {
+                if (filename == presetsselected) {
                     ui->presets->setCurrentIndex(ui->presets->count() - 1);
                 }
             } else {
@@ -686,7 +696,7 @@ JobmanPrivate::loadPresets()
             }
         }
         if (error.length() > 0) {
-            Error::showError(window.data(), "Could not load all presets", error);
+            Message::showMessage(window.data(), "Could not load all presets", error);
         }
         activate();
     } else {
@@ -919,16 +929,16 @@ JobmanPrivate::openPreset()
 }
 
 void
-JobmanPrivate::selectPresetfrom()
+JobmanPrivate::selectPresetsfrom()
 {
     QString dir = QFileDialog::getExistingDirectory(
                     window.data(),
                     tr("Select preset folder ..."),
-                    presetfrom == presets ? documents : presetfrom, // Open will always open from Documents
+                    presetsfrom == presets ? documents : presetsfrom, // open will always open from Documents
                     QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
     );
     if (!dir.isEmpty()) {
-        if (dir != presetfrom) { // skip if the same directory
+        if (dir != presetsfrom) { // skip if the same directory
             QDir selectdir(dir);
             selectdir.setNameFilters(QStringList() << "*.json");
             if (selectdir.entryList(QDir::Files).isEmpty()) {
@@ -956,7 +966,7 @@ JobmanPrivate::selectPresetfrom()
                                     file.close();
                                 }
                                 else {
-                                    Error::showError(window.data(),
+                                    Message::showMessage(window.data(),
                                         "Could open file for writing",
                                         QString("Error message: %1").arg(file.errorString())
                                     );
@@ -964,7 +974,7 @@ JobmanPrivate::selectPresetfrom()
                                 }
                             }
                             else {
-                                Error::showError(window.data(),
+                                Message::showMessage(window.data(),
                                     "Could open file for reading",
                                     QString("Error message: %1").arg(file.errorString())
                                 );
@@ -972,7 +982,7 @@ JobmanPrivate::selectPresetfrom()
                             }
                         }
                         else {
-                            Error::showError(window.data(),
+                            Message::showMessage(window.data(),
                                 "Could not copy presets",
                                 QString("Failed when trying to copy presets to selected directory: %1").arg(dir)
                             );
@@ -981,10 +991,78 @@ JobmanPrivate::selectPresetfrom()
                     }
                 }
             }
-            presetfrom = dir;
+            presetsfrom = dir;
             refreshPresets();
         }
     }
+}
+
+void
+JobmanPrivate::presetsUrl(const QUrl& url)
+{
+    if (presetsfrom == presets) {
+        return; // We can't drag to application presets
+    }
+
+    QString path = url.toLocalFile();
+    QFileInfo fileInfo(path);
+    QDir presetsdir(presetsfrom);
+    QStringList addedfiles;
+    QStringList alreadyexistsfiles;
+
+    if (fileInfo.isDir()) {
+        QDir dir(path);
+        dir.setNameFilters(QStringList() << "*.json");
+        QStringList jsonFiles = dir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+
+        if (jsonFiles.isEmpty()) {
+            return;
+        }
+        for (const QString& fileName : jsonFiles) {
+            QString sourcepath = dir.filePath(fileName);
+            QString targetpath = presetsdir.filePath(fileName);
+            if (QFile::exists(targetpath)) {
+                alreadyexistsfiles.append(fileName);
+                continue;
+            }
+            if (QFile::copy(sourcepath, targetpath)) {
+                addedfiles.append(fileName);
+            } else {
+                alreadyexistsfiles.append(fileName);
+            }
+        }
+        QString message = QString("Preset import from directory:\n%1\n\n").arg(path);
+
+        if (!addedfiles.isEmpty()) {
+            message += "Added:\n" + addedfiles.join("\n") + "\n\n";
+        }
+
+        if (!alreadyexistsfiles.isEmpty()) {
+            message += "Already exists:\n" + alreadyexistsfiles.join("\n");
+        }
+        Message::showMessage(window.data(), "Preset import summary", message);
+    }
+
+    else if (fileInfo.isFile() && fileInfo.suffix().toLower() == "json") {
+        QString targetPath = presetsdir.filePath(fileInfo.fileName());
+        if (QFile::exists(targetPath)) {
+            Message::showMessage(window.data(),
+                                 "File ignored",
+                                 QString("The file '%1' was ignored because it already exists.")
+                                 .arg(fileInfo.fileName()));
+        } else {
+            if (QFile::copy(path, targetPath)) {
+                Message::showMessage(window.data(),
+                                     "File added",
+                                     QString("The file '%1' was added successfully.")
+                                     .arg(fileInfo.fileName()));
+            }
+        }
+    }
+    else {
+        return;
+    }
+    refreshPresets();
 }
 
 void
@@ -1023,7 +1101,7 @@ JobmanPrivate::setSaveto(const QString& text)
 }
 
 void
-JobmanPrivate::saveToChanged(const QUrl& url)
+JobmanPrivate::saveToUrl(const QUrl& url)
 {
     saveto = url.toLocalFile();
     ui->showSaveto->setVisible(true);
@@ -1105,6 +1183,18 @@ void
 JobmanPrivate::openAbout()
 {
     about->exec();
+}
+
+void
+JobmanPrivate::openPresetsFolder()
+{
+    QDesktopServices::openUrl(QUrl::fromLocalFile(presetsfrom));
+}
+
+void
+JobmanPrivate::openSaveToFolder()
+{
+    QDesktopServices::openUrl(QUrl::fromLocalFile(saveto));
 }
 
 void

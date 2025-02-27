@@ -2,34 +2,34 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // https://github.com/mikaelsundell/jobman
 
-#include "error.h"
+#include "message.h"
 
 #include <QPointer>
 
 // generated files
-#include "ui_error.h"
+#include "ui_message.h"
 
-class ErrorPrivate : public QObject
+class MessagePrivate : public QObject
 {
     Q_OBJECT
     public:
-        ErrorPrivate();
+        MessagePrivate();
         void init();
     
     public:
-        QPointer<Error> dialog;
-        QScopedPointer<Ui_Error> ui;
+        QPointer<Message> dialog;
+        QScopedPointer<Ui_Message> ui;
 };
 
-ErrorPrivate::ErrorPrivate()
+MessagePrivate::MessagePrivate()
 {
 }
 
 void
-ErrorPrivate::init()
+MessagePrivate::init()
 {
     // ui
-    ui.reset(new Ui_Error());
+    ui.reset(new Ui_Message());
     ui->setupUi(dialog);
     // connect
     connect(ui->close, &QPushButton::clicked, this, [this]() {
@@ -37,38 +37,38 @@ ErrorPrivate::init()
     });
 }
 
-#include "error.moc"
+#include "message.moc"
 
-Error::Error(QWidget* parent)
+Message::Message(QWidget* parent)
 : QDialog(parent)
-, p(new ErrorPrivate())
+, p(new MessagePrivate())
 {
     p->dialog = this;
     p->init();
 }
 
-Error::~Error()
+Message::~Message()
 {
 }
 
 void
-Error::setTitle(const QString& title)
+Message::setTitle(const QString& title)
 {
     p->ui->title->setText(title);
 }
 
 void
-Error::setError(const QString& error)
+Message::setMessage(const QString& message)
 {
-    p->ui->error->setPlainText(error);
+    p->ui->message->setPlainText(message);
 }
 
 bool
-Error::showError(QWidget* parent, const QString& title, const QString& error)
+Message::showMessage(QWidget* parent, const QString& title, const QString& message)
 {
-    Error dialog(parent);
+    Message dialog(parent);
     dialog.setTitle(title);
-    dialog.setError(error);
+    dialog.setMessage(message);
     const int result = dialog.exec();
     return result == QDialog::Accepted;
 }

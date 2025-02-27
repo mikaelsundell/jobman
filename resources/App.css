@@ -157,9 +157,9 @@ QMenu::right-arrow {
 }
 
 /* QWidgets widgets */
-QWidget#errorBar,
 QWidget#filedropBar,
 QWidget#logBar,
+QWidget#messageBar,
 QWidget#monitorBar,
 QWidget#preferencesBar,
 QWidget#presetBar

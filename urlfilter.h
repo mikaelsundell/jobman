@@ -13,6 +13,7 @@ class Urlfilter : public QObject
         virtual ~Urlfilter();
 
     Q_SIGNALS:
+        void urlRequested(const QUrl& url);
         void urlChanged(const QUrl& url);
     
     protected:

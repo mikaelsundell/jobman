@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Error</class>
- <widget class="QDialog" name="Error">
+ <class>Message</class>
+ <widget class="QDialog" name="Message">
   <property name="windowModality">
-   <enum>Qt::WindowModal</enum>
+   <enum>Qt::WindowModality::WindowModal</enum>
   </property>
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>200</height>
+    <height>400</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -54,7 +54,7 @@
     <number>12</number>
    </property>
    <item>
-    <widget class="QWidget" name="errorBar" native="true">
+    <widget class="QWidget" name="messageBar" native="true">
      <property name="minimumSize">
       <size>
        <width>0</width>
@@ -94,7 +94,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QWidget" name="errorWidget" native="true">
+    <widget class="QWidget" name="messageWidget" native="true">
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <property name="spacing">
        <number>0</number>
@@ -112,7 +112,7 @@
        <number>10</number>
       </property>
       <item>
-       <widget class="QTextBrowser" name="error">
+       <widget class="QTextBrowser" name="message">
         <property name="font">
          <font>
           <pointsize>11</pointsize>
@@ -135,7 +135,7 @@
       <item>
        <spacer name="horizontalSpacer_2">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -169,7 +169,7 @@
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -192,7 +192,7 @@
   <connection>
    <sender>close</sender>
    <signal>clicked()</signal>
-   <receiver>Error</receiver>
+   <receiver>Message</receiver>
    <slot>close()</slot>
    <hints>
     <hint type="sourcelabel">

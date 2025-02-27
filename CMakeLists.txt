@@ -25,8 +25,6 @@ set (app_sources
     jobman.cpp
     urlfilter.h
     urlfilter.cpp
-    error.h
-    error.cpp
     filedrop.h
     filedrop.cpp
     icctransform.h
@@ -39,6 +37,8 @@ set (app_sources
     listwidget.cpp
     platform.h
     main.cpp
+    message.h
+    message.cpp
     monitor.h
     monitor.cpp
     options.h
@@ -55,7 +55,7 @@ set (app_sources
     question.cpp
     about.ui
     jobman.ui
-    error.ui
+    message.ui
     monitor.ui
     question.ui
     preferences.ui
@@ -97,7 +97,7 @@ set (app_name ${project_name})
 set (app_copyright "Copyright 2022-present Contributors to the ${app_name} project")
 set (app_identifier "com.github.mikaelsundell.jobman")
 set (app_long_version "1.2.0")
-set (app_short_version "1.1")
+set (app_short_version "1.2")
 set (app_url "https://github.com/mikaelsundell/jobman")
 
 add_definitions (-DAPP_NAME="${app_name}")

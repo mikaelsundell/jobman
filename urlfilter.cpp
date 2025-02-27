@@ -78,6 +78,7 @@ Urlfilter::eventFilter(QObject* obj, QEvent* event)
                     lineEdit->setText(dirpath);
                     found = true;
                 }
+                urlRequested(url);
                 if (found) {
                     dropEvent->acceptProposedAction();
                     urlChanged(url);

@@ -427,6 +427,11 @@ MonitorPrivate::updateMetrics()
     if (!text.isEmpty()) {
         metricsText.append(QString(" (%1)").arg(text));
     }
+    int total = waitingCount + runningCount + completedCount;
+    int percentage = (total > 0) ? (completedCount * 100) / total : 0;
+    if (percentage > 0 && percentage < 100) {
+         metricsText.append(QString(" - %1%").arg(percentage));
+     }
     ui->metrics->setText(metricsText);
 }
 
@@ -803,6 +808,17 @@ MonitorPrivate::stopped()
 
 void
 MonitorPrivate::cleanup() {
+    std::function<void(QTreeWidgetItem*)> removeChilds = [&](QTreeWidgetItem* item) {
+        for (int i = 0; i < item->childCount(); ++i) {
+            QTreeWidgetItem* child = item->child(i);
+            removeChilds(child);  // Recursively process children
+        }
+        QVariant data = item->data(0, Qt::UserRole);
+        QSharedPointer<Job> itemJob = data.value<QSharedPointer<Job>>();
+        if (itemJob) {
+            jobs.remove(itemJob->uuid());
+        }
+    };
     std::function<bool(QTreeWidgetItem*)> itemsCompleted = [&](QTreeWidgetItem* item) -> bool {
         QVariant data = item->data(0, Qt::UserRole);
         QSharedPointer<Job> itemJob = data.value<QSharedPointer<Job>>();
@@ -820,9 +836,8 @@ MonitorPrivate::cleanup() {
     for (int i = ui->items->topLevelItemCount() - 1; i >= 0; --i) {
         QTreeWidgetItem* topLevelItem = ui->items->topLevelItem(i);
         if (itemsCompleted(topLevelItem)) {
-            while (topLevelItem->childCount() > 0) {
-                delete topLevelItem->takeChild(0);
-            }
+            removeChilds(topLevelItem);
+            
             if (topLevelItem->isSelected()) {
                 ui->job->clear();
             }
@@ -832,6 +847,7 @@ MonitorPrivate::cleanup() {
             delete ui->items->takeTopLevelItem(i);
         }
     }
+    updateMetrics();
     toggleButtons();
 }
 
