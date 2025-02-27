@@ -1,4 +1,4 @@
-build*
+build*/
 resources/AppIcon.iconset
 *.dmg
 .DS_Store
