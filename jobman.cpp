@@ -1038,7 +1038,7 @@ JobmanPrivate::presetsUrl(const QUrl& url)
             message += "Added:\n" + addedfiles.join("\n") + "\n\n";
         }
         if (!alreadyexistsfiles.isEmpty()) {
-            message += "Already exists:\n" + alreadyexistsfiles.join("\n\n");
+            message += "Already exists:\n" + alreadyexistsfiles.join("\n") + "\n\n";
         }
         if (!alreadyexistsfiles.isEmpty()) {
             message += "Invalid preset files:\n" + invalidfiles.join("\n");
