@@ -1001,61 +1001,77 @@ void
 JobmanPrivate::presetsUrl(const QUrl& url)
 {
     if (presetsfrom == presets) {
-        return; // We can't drag to application presets
+        return; // internal presets
     }
-
     QString path = url.toLocalFile();
-    QFileInfo fileInfo(path);
+    QFileInfo fileinfo(path);
     QDir presetsdir(presetsfrom);
     QStringList addedfiles;
     QStringList alreadyexistsfiles;
+    QStringList invalidfiles;
 
-    if (fileInfo.isDir()) {
+    if (fileinfo.isDir()) {
         QDir dir(path);
         dir.setNameFilters(QStringList() << "*.json");
         QStringList jsonFiles = dir.entryList(QDir::Files | QDir::NoDotAndDotDot);
-
         if (jsonFiles.isEmpty()) {
             return;
         }
-        for (const QString& fileName : jsonFiles) {
-            QString sourcepath = dir.filePath(fileName);
-            QString targetpath = presetsdir.filePath(fileName);
-            if (QFile::exists(targetpath)) {
-                alreadyexistsfiles.append(fileName);
+        for (const QString& filename : jsonFiles) {
+            QString path = dir.filePath(filename);
+            QString target = presetsdir.filePath(filename);
+            if (QFile::exists(target)) {
+                alreadyexistsfiles.append(filename);
                 continue;
             }
-            if (QFile::copy(sourcepath, targetpath)) {
-                addedfiles.append(fileName);
-            } else {
-                alreadyexistsfiles.append(fileName);
+            QSharedPointer<Preset> preset(new Preset());
+            if (preset->read(path)) {
+                QFile::copy(path, target);
+                addedfiles.append(filename);
+            }
+            else {
+                invalidfiles.append(filename);
             }
         }
         QString message = QString("Preset import from directory:\n%1\n\n").arg(path);
-
         if (!addedfiles.isEmpty()) {
             message += "Added:\n" + addedfiles.join("\n") + "\n\n";
         }
-
         if (!alreadyexistsfiles.isEmpty()) {
-            message += "Already exists:\n" + alreadyexistsfiles.join("\n");
+            message += "Already exists:\n" + alreadyexistsfiles.join("\n\n");
+        }
+        if (!alreadyexistsfiles.isEmpty()) {
+            message += "Invalid preset files:\n" + invalidfiles.join("\n");
         }
         Message::showMessage(window.data(), "Preset import summary", message);
     }
-
-    else if (fileInfo.isFile() && fileInfo.suffix().toLower() == "json") {
-        QString targetPath = presetsdir.filePath(fileInfo.fileName());
-        if (QFile::exists(targetPath)) {
+    else if (fileinfo.isFile() && fileinfo.suffix().toLower() == "json") {
+        QString filename = fileinfo.fileName();
+        QString path = fileinfo.filePath();
+        QString target = presetsdir.filePath(fileinfo.fileName());
+        if (QFile::exists(target)) {
             Message::showMessage(window.data(),
                                  "File ignored",
                                  QString("The file '%1' was ignored because it already exists.")
-                                 .arg(fileInfo.fileName()));
-        } else {
-            if (QFile::copy(path, targetPath)) {
+                                 .arg(filename));
+        }
+        else {
+            QSharedPointer<Preset> preset(new Preset());
+            if (preset->read(path)) {
+                QFile::copy(path, target);
                 Message::showMessage(window.data(),
                                      "File added",
                                      QString("The file '%1' was added successfully.")
-                                     .arg(fileInfo.fileName()));
+                                     .arg(filename));
+                
+            }
+            else {
+                Message::showMessage(window.data(),
+                                     "Invalid preset file",
+                                     QString("The file '%1' was invalid because it already exists.\n"
+                                             "Error: %2")
+                                     .arg(filename)
+                                     .arg(preset->error()));
             }
         }
     }

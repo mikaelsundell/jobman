@@ -69,6 +69,7 @@ Message::showMessage(QWidget* parent, const QString& title, const QString& messa
     Message dialog(parent);
     dialog.setTitle(title);
     dialog.setMessage(message);
+    dialog.adjustSize();
     const int result = dialog.exec();
     return result == QDialog::Accepted;
 }
