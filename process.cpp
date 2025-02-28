@@ -166,8 +166,7 @@ ProcessPrivate::run(const QString& command, const QStringList& arguments, const 
         QString value = QDir::toNativeSeparators(pair.second);
         bool found = false;
         for (const QPair<QString, QString>& syspair : systemenv) {
-            qDebug() << "check: " << syspair.first;
-            if (QString::compare(syspair.first, key, Qt::CaseInsensitive) == 0) {
+            if (syspair.first.toLower() == key.toLower()) {
                 found = true;
                 QString systemvalue = syspair.second;
                 value.replace("%" + key + "%", systemvalue);
@@ -179,7 +178,7 @@ ProcessPrivate::run(const QString& command, const QStringList& arguments, const 
     for (const QPair<QString, QString>& syspair : systemenv) {
         bool exists = false;
         for (const QPair<QString, QString>& pair : environment) {
-            if (QString::compare(pair.first, syspair.first, Qt::CaseInsensitive) == 0) {
+            if (pair.first.toLower() == syspair.first.toLower()) {
                 exists = true;
                 break;
             }

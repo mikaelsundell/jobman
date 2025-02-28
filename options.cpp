@@ -77,7 +77,7 @@ OptionsPrivate::update() {
         label->setFont(font);
         layout->addWidget(label, row, 0);
 
-        if (option->type == "Checkbox") {
+        if (option->type.toLower() == "checkbox") {
             QCheckBox* checkbox = new QCheckBox(containerwidget);
             checkbox->setChecked(option->value.toBool());
             connect(checkbox, &QCheckBox::toggled, this, [this, option](bool checked) {
@@ -86,18 +86,31 @@ OptionsPrivate::update() {
             optionwidgets[option->id] = checkbox;
             layout->addWidget(checkbox, row, 1);
         }
-        else if (option->type == "Double") {
+        else if (option->type.toLower() == "double") {
             QLineEdit* lineedit = new QLineEdit(option->value.toString(), containerwidget);
             QDoubleValidator* validator = new QDoubleValidator(option->minimum.toDouble(), option->maximum.toDouble(), 3, lineedit);
             validator->setNotation(QDoubleValidator::StandardNotation);
             validator->setLocale(QLocale::C); // use '.' instead of ','
             lineedit->setValidator(validator);
             lineedit->setFont(font);
-            connect(lineedit, &QLineEdit::textEdited, this, [lineedit]() {
+            connect(lineedit, &QLineEdit::textEdited, this, [lineedit, option]() {
                 QString text = lineedit->text();
                 if (text.contains(',')) { // needed, will still allow ','
                     text.replace(',', '.');
                     lineedit->setText(text);
+                }
+                bool valid;
+                double value = text.toDouble(&valid);
+                if (valid) {
+                    double minimum = option->minimum.toDouble();
+                    double maximum = option->maximum.toDouble();
+                    if (value < minimum) {
+                        value = minimum;
+                    }
+                    else if (value > maximum) {
+                        value = maximum;
+                    }
+                    lineedit->setText(QString::number(value));
                 }
             });
             connect(lineedit, &QLineEdit::textChanged, this, [this, option](const QString &text) {
@@ -110,11 +123,11 @@ OptionsPrivate::update() {
             optionwidgets[option->id] = lineedit;
             layout->addWidget(lineedit, row, 1);
         }
-        else if (option->type == "Dropdown") {
+        else if (option->type.toLower() == "dropdown") {
             QComboBox* combobox = new QComboBox(containerwidget);
             int currentindex = -1;
             for (int i = 0; i < option->options.size(); ++i) {
-                const auto &optPair = option->options[i];
+                const auto& optPair = option->options[i];
                 combobox->addItem(optPair.first, optPair.second);
                 if (optPair.second == option->value) {
                     currentindex = i;
@@ -125,11 +138,38 @@ OptionsPrivate::update() {
             }
             connect(combobox, &QComboBox::currentIndexChanged, this, [this, option, combobox](int index) {
                 valueChanged(option->id, combobox->itemData(index));
-            });
+                });
             optionwidgets[option->id] = combobox;
             layout->addWidget(combobox, row, 1);
         }
-        else if (option->type == "File") {
+        else if (option->type.toLower() == "doubleslider") {
+            QHBoxLayout* sliderlayout = new QHBoxLayout();
+            QSlider* slider = new QSlider(Qt::Horizontal, containerwidget);
+
+            double minValue = option->minimum.toDouble();
+            double maxValue = option->maximum.toDouble();
+            int precision = 10;
+
+            slider->setRange(minValue * precision, maxValue * precision);
+            slider->setValue(option->value.toDouble() * precision);
+
+            QLabel* sliderValueLabel = new QLabel(QString::number(slider->value() / (double)precision, 'f', 1), containerwidget);
+            sliderValueLabel->setFont(font);
+            sliderValueLabel->setFixedWidth(40);
+            sliderValueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            connect(slider, &QSlider::valueChanged, this, [this, option, sliderValueLabel, precision](int value) {
+                double doubleValue = value / (double)precision;
+                sliderValueLabel->setText(QString::number(doubleValue, 'f', 1));
+                valueChanged(option->id, doubleValue);
+                });
+
+            optionwidgets[option->id] = slider;
+            sliderlayout->addWidget(slider);
+            sliderlayout->addWidget(sliderValueLabel);
+            layout->addLayout(sliderlayout, row, 1);
+        }
+        else if (option->type.toLower() == "file") {
             QWidget* filewidget = new QWidget(containerwidget);
             QHBoxLayout* filelayout = new QHBoxLayout(filewidget);
             filelayout->setContentsMargins(0, 0, 0, 0);
@@ -157,7 +197,38 @@ OptionsPrivate::update() {
             optionwidgets[option->id] = lineedit;
             layout->addWidget(filewidget, row, 1);
         }
-        else if (option->type == "Slider") {
+        else if (option->type.toLower() == "int") {
+            QLineEdit* lineedit = new QLineEdit(option->value.toString(), containerwidget);
+            QIntValidator* validator = new QIntValidator(option->minimum.toInt(), option->maximum.toInt(), lineedit);
+            lineedit->setValidator(validator);
+            lineedit->setFont(font);
+            connect(lineedit, &QLineEdit::textEdited, this, [lineedit, option]() {
+                QString text = lineedit->text();
+                bool valid;
+                double value = text.toInt(&valid);
+                if (valid) {
+                    double minimum = option->minimum.toInt();
+                    double maximum = option->maximum.toInt();
+                    if (value < minimum) {
+                        value = minimum;
+                    }
+                    else if (value > maximum) {
+                        value = maximum;
+                    }
+                    lineedit->setText(QString::number(value));
+                }
+                });
+            connect(lineedit, &QLineEdit::textChanged, this, [this, option](const QString& text) {
+                bool valid;
+                int value = text.toInt(&valid);
+                if (valid) {
+                    valueChanged(option->id, value);
+                }
+            });
+            optionwidgets[option->id] = lineedit;
+            layout->addWidget(lineedit, row, 1);
+        }
+        else if (option->type.toLower() == "intslider") {
             QHBoxLayout* sliderlayout = new QHBoxLayout();
             QSlider* slider = new QSlider(Qt::Horizontal, containerwidget);
             slider->setRange(option->minimum.toInt(), option->maximum.toInt());
@@ -177,7 +248,7 @@ OptionsPrivate::update() {
             sliderlayout->addWidget(sliderValueLabel);
             layout->addLayout(sliderlayout, row, 1);
         }
-        else if (option->type == "Text") {
+        else if (option->type.toLower() == "text") {
             QLineEdit* lineedit = new QLineEdit(option->value.toString(), containerwidget);
             lineedit->setFont(font);
             connect(lineedit, &QLineEdit::textChanged, this, [this, option](const QString &text) {

@@ -450,7 +450,7 @@ JobmanPrivate::exportPreferences()
         tr("JSON Files (*.json);")
     );
     if (!filename.isEmpty()) {
-        if (!filename.endsWith(".json", Qt::CaseInsensitive)) {
+        if (!filename.toLower().endsWith(".json")) {
             filename += ".json";
         }
         QSettings settings(APP_IDENTIFIER, APP_NAME);
@@ -520,8 +520,6 @@ JobmanPrivate::exportPreferences()
 void
 JobmanPrivate::enable(bool enable)
 {
-    ui->openPreset->setEnabled(enable);
-    ui->refreshPresets->setEnabled(enable);
     ui->filedrop->setEnabled(enable);
     ui->fileprogress->setEnabled(enable);
     ui->options->setEnabled(enable);
@@ -568,11 +566,11 @@ JobmanPrivate::verifySettings()
             if (!dir.isEmpty()) {
                 saveto = dir;
                 setSaveto(saveto);
-                ui->filedrop->setEnabled(true);
+                activate();
                 return;
             }
         }
-        ui->filedrop->setEnabled(false);
+        deactivate();
     }
 }
     
@@ -683,7 +681,8 @@ JobmanPrivate::loadPresets()
                 if (filename == presetsselected) {
                     ui->presets->setCurrentIndex(ui->presets->count() - 1);
                 }
-            } else {
+            }
+            else {
                 if (error.length() > 0) {
                     error += "\n";
                 }
@@ -698,8 +697,15 @@ JobmanPrivate::loadPresets()
         if (error.length() > 0) {
             Message::showMessage(window.data(), "Could not load all presets", error);
         }
-        activate();
-    } else {
+        if (ui->presets->count()) {
+            activate();
+        }
+        else {
+            ui->presets->addItem("No presets found");
+            deactivate();
+        }
+    }
+    else {
         ui->presets->addItem("No presets found");
         deactivate();
     }
@@ -753,11 +759,16 @@ JobmanPrivate::replaceOptions(QList<Option*> options, const QString& input)
         QString pattern = QString("%options:%1%").arg(option->id);
         if (input.contains(pattern)) {
             QString replacement = option->flag;
-            if (replacement.length()) {
-                replacement += " ";
+            if (!option->switchvalue.toBool()) {
+                if (replacement.length()) {
+                    replacement += " ";
+                }
+                replacement += option->value.toString();
+                result.append(QString(input).replace(pattern, replacement).split(" "));
             }
-            replacement += option->value.toString();
-            result.append(QString(input).replace(pattern, replacement).split(" "));
+            else {
+                result.append(replacement);
+            }
         }
     }
     if (!result.count()) {
@@ -908,7 +919,6 @@ JobmanPrivate::jobProcessed(const QUuid& uuid)
         } else {
             ui->fileprogress->setValue(value);
             ui->fileprogress->setToolTip(QString("Completed %1 of %2").arg(ui->fileprogress->value()).arg(ui->fileprogress->maximum()));
-            
         }
     }
 }

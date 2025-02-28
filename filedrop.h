@@ -12,7 +12,8 @@ class Filedrop : public QWidget
     public:
         Filedrop(QWidget* parent = nullptr);
         virtual ~Filedrop();
-    
+        void setEnabled(bool enabled);
+
     Q_SIGNALS:
         void filesDropped(const QList<QString>& files);
     

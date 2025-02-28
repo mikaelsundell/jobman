@@ -22,6 +22,7 @@ struct Option : public QObject {
         QVariant defaultvalue;
         QVariant minimum;
         QVariant maximum;
+        QVariant switchvalue;
         QList<QPair<QString, QVariant>> options;
 };
 

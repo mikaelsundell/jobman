@@ -107,6 +107,7 @@ PresetPrivate::read()
             if (jsonoption.contains("default")) option->defaultvalue = jsonoption["default"].toVariant();
             if (jsonoption.contains("minimum")) option->minimum = jsonoption["minimum"].toVariant();
             if (jsonoption.contains("maximum")) option->maximum = jsonoption["maximum"].toVariant();
+            if (jsonoption.contains("switch")) option->switchvalue = jsonoption["switch"].toVariant();
             if (jsonoption.contains("options") && jsonoption["options"].isArray()) {
                 QJsonArray optionsArray = jsonoption["options"].toArray();
                 for (const QJsonValue &opt : optionsArray) {
@@ -141,7 +142,12 @@ PresetPrivate::read()
                     return valid;
                 }
             }
-            if (!option->name.isEmpty() && !option->type.isEmpty() && !option->defaultvalue.isValid() && !option->value.isValid()) {
+            if (!option->id.isEmpty() &&
+                !option->name.isEmpty() &&
+                !option->flag.isEmpty() &&
+                !option->type.isEmpty() && 
+                !option->defaultvalue.isValid() &&
+                !option->value.isValid()) {
                 if (option->name.length() > 0) {
                     error = QString("Json for option: \"%1\" does not contain all required attributes").arg(option->name);
                 } else {
@@ -149,6 +155,12 @@ PresetPrivate::read()
                 }
                 if (option->id.isEmpty()) {
                     error += QString("\nMissing attribute: %1").arg("id");
+                }
+                if (option->name.isEmpty()) {
+                    error += QString("\nMissing attribute: %1").arg("id");
+                }
+                if (option->flag.isEmpty()) {
+                    error += QString("\nMissing attribute: %1").arg("flag");
                 }
                 if (option->type.isEmpty()) {
                     error += QString("\nMissing attribute: %1").arg("type");
@@ -163,11 +175,28 @@ PresetPrivate::read()
                 return valid;
             }
             else {
-                if (!(option->type == "Checkbox" || option->type == "Double" || option->type == "File" || option->type == "Slider" || option->type == "Dropdown" || option->type == "Text") ) {
-                    error = QString("Json for option: %1 contains an invalid type: %1, valid types are Slider, Dropdown, Text and File").arg(i);
+                if (!(option->type.toLower() == "checkbox" || 
+                      option->type.toLower() == "double" || 
+                      option->type.toLower() == "doubleslider" || 
+                      option->type.toLower() == "dropdown" ||
+                      option->type.toLower() == "file" || 
+                      option->type.toLower() == "int" ||
+                      option->type.toLower() == "intslider" ||
+                      option->type.toLower() == "text")) {
+                    error = QString("Json for option: %1 contains an invalid type: %2, valid types are "
+                                    "Checkbox, Double, DoubleSlider, File, Int, IntSlider, Dropdown and Text").arg(i+1).arg(option->type); // +1 for user readability
                     valid = false;
                     return valid;
                 }
+            }
+            if (option->minimum.isNull()) {
+                option->minimum = 0;
+            }
+            if (option->maximum.isNull()) {
+                option->maximum = 100;
+            }
+            if (option->switchvalue.isNull()) {
+                option->switchvalue = false;
             }
             options.append(option);
         }

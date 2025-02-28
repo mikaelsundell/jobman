@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QDragEnterEvent>
+#include <QGraphicsOpacityEffect>
 #include <QMimeData>
 #include <QPointer>
 #include <QStyle>
@@ -41,6 +42,8 @@ FiledropPrivate::init()
     QPixmap pixmap(":/icons/resources/Arrow.png");
     label->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     label->setFixedSize(64, 64);
+    QGraphicsOpacityEffect* opacityEffect = new QGraphicsOpacityEffect(label);
+    label->setGraphicsEffect(opacityEffect);
     layout->addWidget(label, 0, Qt::AlignHCenter);
 }
 
@@ -64,6 +67,18 @@ Filedrop::Filedrop(QWidget* parent)
 
 Filedrop::~Filedrop()
 {
+}
+
+void
+Filedrop::setEnabled(bool enabled)
+{
+    QWidget::setEnabled(enabled);
+    if (p->label) {
+        QGraphicsOpacityEffect* opacityEffect = qobject_cast<QGraphicsOpacityEffect*>(p->label->graphicsEffect());
+        if (opacityEffect) {
+            opacityEffect->setOpacity(enabled ? 1.0 : 0.2);
+        }
+    }
 }
 
 void
