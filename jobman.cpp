@@ -223,9 +223,9 @@ JobmanPrivate::init()
     connect(ui->selectSaveto, &QPushButton::clicked, this, &JobmanPrivate::selectSaveto);
     connect(ui->showSaveto, &QPushButton::clicked, this, &JobmanPrivate::showSaveto);
     connect(savetourlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToUrl);
-    connect(ui->copyOriginal, &QCheckBox::checkStateChanged, this, &JobmanPrivate::copyOriginalChanged);
-    connect(ui->createFolders, &QCheckBox::checkStateChanged, this, &JobmanPrivate::createFolderChanged);
-    connect(ui->overwrite, &QCheckBox::checkStateChanged, this, &JobmanPrivate::overwriteChanged);
+    connect(ui->copyOriginal, &QCheckBox::stateChanged, this, &JobmanPrivate::copyOriginalChanged);
+    connect(ui->createFolders, &QCheckBox::stateChanged, this, &JobmanPrivate::createFolderChanged);
+    connect(ui->overwrite, &QCheckBox::stateChanged, this, &JobmanPrivate::overwriteChanged);
     connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::run, Qt::QueuedConnection);
     connect(ui->presets, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::presetsChanged);
     connect(ui->threads, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &JobmanPrivate::threadsChanged);

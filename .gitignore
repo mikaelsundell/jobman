@@ -1,4 +1,5 @@
 build*/
+deploy*/
 resources/AppIcon.iconset
 *.dmg
 .DS_Store

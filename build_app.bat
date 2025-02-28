@@ -64,6 +64,8 @@ for /f "tokens=*" %%V in ('cmake --version') do (
     )
 )
 
+goto :deploy_jobman
+
 REM build jobman
 :build_jobman
 
@@ -137,6 +139,32 @@ REM run windeployqt
 if errorlevel 1 goto :error
 
 echo deployment successful
+
+REM create a zip file of the deployment folder
+
+REM extract version from CMakeLists.txt
+set "version_file=%app_dir%CMakeLists.txt"
+set "version="
+
+for /f "usebackq tokens=3 delims=() " %%A in (`findstr /c:"set (app_long_version" "%version_file%"`) do (
+    set "version=%%A"
+    set "version=!version:~1,-1!" 
+)
+
+if "%version%"=="" (
+    echo failed to extract version from CMakeLists.txt
+    goto :error
+)
+set "zipfile=%deploy_dir%\%app_name%_%version%_240228_%build_type%.zip"
+echo creating zip file: %zipfile%
+powershell -command "Compress-Archive -Path '%deploy_dir%\*' -DestinationPath '%zipfile%' -Force"
+
+if errorlevel 1 (
+    echo failed to create ZIP file
+    goto :error
+)
+
+echo zip file created successfully: %zipfile%
 
 goto :end
 
