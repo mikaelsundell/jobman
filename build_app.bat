@@ -64,8 +64,6 @@ for /f "tokens=*" %%V in ('cmake --version') do (
     )
 )
 
-goto :deploy_jobman
-
 REM build jobman
 :build_jobman
 
