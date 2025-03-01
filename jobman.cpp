@@ -909,7 +909,6 @@ JobmanPrivate::openPreset()
 void
 JobmanPrivate::selectPresetsfrom()
 {
-    qDebug() << presetsfrom;
     QString dir = QFileDialog::getExistingDirectory(
                     window.data(),
                     tr("Select preset folder ..."),
