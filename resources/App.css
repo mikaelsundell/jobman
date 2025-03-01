@@ -350,6 +350,41 @@ QToolButton#toggleLog
 }
 
 /* QScrollBar widgets */
+QScrollBar:horizontal {
+    background: hsl(220, 8%, 15%);
+    height: 10px;
+    margin: 0;
+    border: none;
+}
+
+QScrollBar::handle:horizontal {
+    background: hsl(0, 0%, 80%);
+    min-width: 20px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: hsl(0, 0%, 70%);
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    background: none;
+    width: 0;
+}
+
+QScrollBar::left-arrow:horizontal,
+QScrollBar::right-arrow:horizontal {
+    background: none;
+    width: 0;
+    height: 0;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
 QScrollBar:vertical {
     background: hsl(220, 8%, 15%);
     width: 10px;
@@ -383,6 +418,10 @@ QScrollBar::down-arrow:vertical {
 QScrollBar::add-page:vertical,
 QScrollBar::sub-page:vertical {
     background: none;
+}
+
+QAbstractScrollArea::corner { 
+    background: hsl(220, 8%, 15%);
 }
 
 /* QSlider widgets */
@@ -419,6 +458,7 @@ QSlider::handle:horizontal
 
 /* Custom widgets */
 Filedrop {
+    border: 2px solid hsl(220, 30%, 6%);
     background-color: hsl(220, 30%, 6%);
 }
 

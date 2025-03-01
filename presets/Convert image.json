@@ -5,7 +5,7 @@
       {
         "id": "jpegquality",
         "name": "JPEG Quality",
-        "type": "Slider",
+        "type": "IntSlider",
         "default": 80,
         "minimum": 0,
         "maximum": 100,

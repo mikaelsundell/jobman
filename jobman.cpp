@@ -50,10 +50,9 @@ class JobmanPrivate : public QObject
         void stylesheet();
         void profile();
         void activate();
-        void deactivate();
         void enable(bool enable);
         bool eventFilter(QObject* object, QEvent* event);
-        void verifySettings();
+        void verifySaveTo();
         void loadSettings();
         void saveSettings();
     
@@ -203,8 +202,6 @@ JobmanPrivate::init()
     // url filter
     savetourlfilter.reset(new Urlfilter);
     ui->saveTo->installEventFilter(savetourlfilter.data());
-    // progress
-    ui->fileprogress->hide();
     // connect
     connect(ui->togglePreset, &QPushButton::pressed, this, &JobmanPrivate::togglePreset);
     connect(ui->toggleFiledrop, &QPushButton::pressed, this, &JobmanPrivate::toggleFiledrop);
@@ -273,7 +270,8 @@ JobmanPrivate::init()
     // presets
     QTimer::singleShot(0, [this]() {
         this->loadPresets();
-        this->verifySettings();
+        this->verifySaveTo();
+        this->activate();
     });
 }
 
@@ -324,13 +322,12 @@ JobmanPrivate::profile()
 void
 JobmanPrivate::activate()
 {
-    enable(true);
-}
-
-void
-JobmanPrivate::deactivate()
-{
-    enable(false);
+    if (!saveto.isEmpty() && ui->presets->count() > 0) {
+        enable(true);
+    }
+    else {
+        enable(false);
+    }
 }
 
 void
@@ -370,7 +367,8 @@ JobmanPrivate::clearPreferences()
         loadSettings();
         loadPresets();
         saveSettings();
-        verifySettings();
+        verifySaveTo();
+        activate();
     }
 }
 
@@ -550,7 +548,7 @@ JobmanPrivate::eventFilter(QObject* object, QEvent* event)
 }
 
 void
-JobmanPrivate::verifySettings()
+JobmanPrivate::verifySaveTo()
 {
     if (saveto.isEmpty()) {
         if (Question::askQuestion(window.data(),
@@ -566,11 +564,8 @@ JobmanPrivate::verifySettings()
             if (!dir.isEmpty()) {
                 saveto = dir;
                 setSaveto(saveto);
-                activate();
-                return;
             }
         }
-        deactivate();
     }
 }
     
@@ -578,7 +573,6 @@ void
 JobmanPrivate::loadSettings()
 {
     QDir applicationPath(QApplication::applicationDirPath());
-    QString documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     QSettings settings(APP_IDENTIFIER, APP_NAME);
     filesfrom = settings.value("filesfrom", documents).toString();
     preferencesfrom = settings.value("preferencesfrom", documents).toString();
@@ -673,7 +667,7 @@ JobmanPrivate::loadPresets()
                 for (Option* option : preset->options()) {
                     QString optionKey = QString("option/%1").arg(option->id);
                     if (settings.contains(optionKey)) {
-                        option->value = settings.value(optionKey); // Restore value from settings
+                        option->value = settings.value(optionKey);
                     }
                 }
                 settings.endGroup();
@@ -697,17 +691,9 @@ JobmanPrivate::loadPresets()
         if (error.length() > 0) {
             Message::showMessage(window.data(), "Could not load all presets", error);
         }
-        if (ui->presets->count()) {
-            activate();
-        }
-        else {
-            ui->presets->addItem("No presets found");
-            deactivate();
-        }
     }
-    else {
+    if (!ui->presets->count()) {
         ui->presets->addItem("No presets found");
-        deactivate();
     }
 }
 
@@ -889,9 +875,8 @@ JobmanPrivate::run(const QList<QString>& files)
         }
     }
     ui->fileprogress->setMaximum(ui->fileprogress->maximum() + count);
-    if (!ui->fileprogress->isVisible()) {
-        ui->fileprogress->show();
-        ui->idleprogress->hide();
+    if (!ui->progressWidget->currentIndex()) {
+        ui->progressWidget->setCurrentIndex(1);
     }
 }
 
@@ -914,8 +899,7 @@ JobmanPrivate::jobProcessed(const QUuid& uuid)
         if (value == ui->fileprogress->maximum()) {
             ui->fileprogress->setValue(0);
             ui->fileprogress->setMaximum(0);
-            ui->fileprogress->hide();
-            ui->idleprogress->show();
+            ui->progressWidget->setCurrentIndex(0);
         } else {
             ui->fileprogress->setValue(value);
             ui->fileprogress->setToolTip(QString("Completed %1 of %2").arg(ui->fileprogress->value()).arg(ui->fileprogress->maximum()));
@@ -927,6 +911,7 @@ void
 JobmanPrivate::refreshPresets()
 {
     loadPresets();
+    activate();
 }
 
 void
@@ -941,6 +926,7 @@ JobmanPrivate::openPreset()
 void
 JobmanPrivate::selectPresetsfrom()
 {
+    qDebug() << presetsfrom;
     QString dir = QFileDialog::getExistingDirectory(
                     window.data(),
                     tr("Select preset folder ..."),
@@ -1097,12 +1083,13 @@ JobmanPrivate::selectSaveto()
     QString dir = QFileDialog::getExistingDirectory(
                     window.data(),
                     tr("Select save to folder ..."),
-                    saveto,
+                    saveto.size() ? saveto : documents,
                     QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
     );
     if (!dir.isEmpty()) {
         saveto = dir;
         setSaveto(saveto);
+        activate();
     }
 }
 
