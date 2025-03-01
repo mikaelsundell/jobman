@@ -135,7 +135,7 @@ class JobmanPrivate : public QObject
         bool copyoriginal;
         bool createfolders;
         bool overwrite;
-        QMap<QString, QList<QUuid>> processedfiles;
+        QList<QUuid> submitteduuids;
         QPointer<Queue> queue;
         QPointer<Jobman> window;
         QScopedPointer<About> about;
@@ -768,7 +768,6 @@ JobmanPrivate::run(const QList<QString>& files)
 {
     QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
     QString outputDir = saveto;
-    processedfiles.clear();
     int count = 0;
     for(const QString& file : files) {
         QMap<QString, QUuid> jobuuids;
@@ -835,13 +834,10 @@ JobmanPrivate::run(const QList<QString>& files)
             }
             if (task->dependson.isEmpty()) {
                 QUuid uuid = queue->submit(job);
-                count++;
-                if (!processedfiles.contains(file)) {
-                    processedfiles.insert(file, QList<QUuid>());
-                }
-                processedfiles[file].append(uuid);
                 jobuuids[task->id] = uuid;
                 joboutputs[task->id] = job->output();
+                submitteduuids.append(uuid);
+                count++;
             } else {
                 dependentjobs.append(qMakePair(job, task->dependson));
             }
@@ -858,11 +854,8 @@ JobmanPrivate::run(const QList<QString>& files)
                 job->setArguments(argumentlist);
                 job->setDependson(jobuuids[dependentid]);
                 QUuid uuid = queue->submit(job);
-                if (!processedfiles.contains(file)) {
-                    processedfiles.insert(file, QList<QUuid>());
-                }
-                processedfiles[file].append(uuid);
                 jobuuids[job->id()] = uuid;
+                submitteduuids.append(uuid);
                 count++;
             } else {
                 QString status = QString("Status:\n"
@@ -883,18 +876,7 @@ JobmanPrivate::run(const QList<QString>& files)
 void
 JobmanPrivate::jobProcessed(const QUuid& uuid)
 {
-    bool found = false;
-    QStringList files = processedfiles.keys();
-    for (const QString& file : files) {
-        if (processedfiles[file].contains(uuid)) {
-            processedfiles[file].removeAll(uuid);
-            if (processedfiles[file].isEmpty()) {
-                processedfiles.remove(file);
-            }
-            found = true;
-        }
-    }
-    if (found) { // test if dropped
+    if (submitteduuids.contains(uuid)) {
         int value = ui->fileprogress->value() + 1;
         if (value == ui->fileprogress->maximum()) {
             ui->fileprogress->setValue(0);
@@ -904,6 +886,7 @@ JobmanPrivate::jobProcessed(const QUuid& uuid)
             ui->fileprogress->setValue(value);
             ui->fileprogress->setToolTip(QString("Completed %1 of %2").arg(ui->fileprogress->value()).arg(ui->fileprogress->maximum()));
         }
+        submitteduuids.removeAll(uuid);
     }
 }
 

@@ -9,6 +9,7 @@ Table of Contents
 - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Documentation](#documentation)
+    - [Option fields](#option-fields)
   - [Web Resources](#web-resources)
   - [Copyright](#copyright)
   
@@ -59,7 +60,7 @@ A preset file articulates a sequence of tasks to be executed during file process
 Here's an example of a preset file format, tailored for converting image files on the Mac:
 
 
-```shell
+```json
 {
     "id": "convertimage",
     "name": "Internal: Convert image",
@@ -192,6 +193,59 @@ Preset files support various variables that can be used to customize arguments d
 ```shell
 %options:name%     Replaces the variable with the options name and its value.
 ```
+
+Each option is represented with the following fields:
+
+```json
+{
+    "id": "value as double",
+    "name": "Double",
+    "type": "Double",
+    "default": "1.0",
+    "minimum": 0,
+    "maximum": 100,
+    "value": "1.0",
+    "flag": "--double"
+}
+```
+
+### Option fields
+
+`id`
+- Description: A unique identifier for the option.
+- Usage: Used internally to reference the option.
+
+`name`
+- Description: The display name of the option.
+- Usage: This is used for user interfaces or logging where a readable name is required.
+
+`flag`
+- Description: The command-line flag associated with this option.
+- Usage: Used to set the flag of the option.
+
+`type`
+- Description: Specifies the data type of the option. Supported types `Checkbox`, `Double`, `DoubleSlider`, `Dropdown`, `File`, `Int`, `IntSlider` and `Text`.
+- Usage: Used as user interface control to present the option.
+
+`value`
+- Description: The current value assigned to this option.
+- Usage: This field represents the actual selected or set value.
+
+`default`
+- Description: The default value assigned if no user value is provided.
+- Usage: Used to reset to default settings.
+
+`minimum`
+- Description: The minimum allowed value for the option.
+- Usage: Used for validation to prevent values below this threshold.
+
+ `maximum`
+- Description: The maximum allowed value for the option.
+- Usage: Used for validation to prevent values exceeding this threshold.
+
+`switch`
+- Description: A toggle switch for enabling use of the flag only without the value.
+- Usage: Used to provide switch flags.
 
 **Task variables**
 

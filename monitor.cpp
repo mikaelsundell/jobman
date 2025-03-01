@@ -417,14 +417,14 @@ MonitorPrivate::updateMetrics()
         }
     }
     QStringList parts;
-    if (waitingCount > 0) parts << QString("Jobs waiting: %1").arg(waitingCount);
+    if (waitingCount > 0) parts << QString("waiting: %1").arg(waitingCount);
     if (runningCount > 0) parts << QString("running: %1").arg(runningCount);
     if (completedCount > 0) parts << QString("completed: %1").arg(completedCount);
     if (stoppedCount > 0) parts << QString("stopped: %1").arg(stoppedCount);
     if (failedCount > 0) parts << QString("failed: %1").arg(failedCount);
-    QString text = parts.join(", ");
     QString metricsText = QString("Files: %1").arg(ui->items->topLevelItemCount());
-    if (!text.isEmpty()) {
+    if (parts.count()) {
+        QString text = "Jobs: " + parts.join(", ");
         metricsText.append(QString(" (%1)").arg(text));
     }
     int total = waitingCount + runningCount + completedCount;

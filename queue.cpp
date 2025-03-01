@@ -404,10 +404,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
             failCompletedJobs(job->uuid(), job->dependson());
         }
     }
-    if (job->status() != Job::Stopped ||
-        job->status() != Job::Failed) {
-        queue->jobProcessed(job->uuid());
-    }
+    queue->jobProcessed(job->uuid());
 }
 
 QSharedPointer<Job>

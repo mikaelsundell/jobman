@@ -148,28 +148,23 @@ PresetPrivate::read()
                 !option->type.isEmpty() && 
                 !option->defaultvalue.isValid() &&
                 !option->value.isValid()) {
-                if (option->name.length() > 0) {
-                    error = QString("Json for option: \"%1\" does not contain all required attributes").arg(option->name);
-                } else {
-                    error = QString("Json for option: %1 does not contain all required attributes").arg(i);
-                }
                 if (option->id.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("id");
+                    error += QString("\nMissing required attribute: %1").arg("id");
                 }
                 if (option->name.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("id");
+                    error += QString("\nMissing required attribute: %1").arg("id");
                 }
                 if (option->flag.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("flag");
+                    error += QString("\nMissing required attribute: %1").arg("flag");
                 }
                 if (option->type.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("type");
+                    error += QString("\nMissing required attribute: %1").arg("type");
                 }
                 if (option->defaultvalue.isValid()) {
-                    error += QString("\nMissing attribute: %1").arg("default");
+                    error += QString("\nMissing required attribute: %1").arg("default");
                 }
                 if (option->value.isValid()) {
-                    error += QString("\nMissing attribute: %1").arg("value");
+                    error += QString("\nMissing required attribute: %1").arg("value");
                 }
                 valid = false;
                 return valid;
@@ -185,6 +180,13 @@ PresetPrivate::read()
                       option->type.toLower() == "text")) {
                     error = QString("Json for option: %1 contains an invalid type: %2, valid types are "
                                     "Checkbox, Double, DoubleSlider, File, Int, IntSlider, Dropdown and Text").arg(i+1).arg(option->type); // +1 for user readability
+                    valid = false;
+                    return valid;
+                }
+            }
+            for (const Option* optionid : options) {
+                if (optionid->id == option->id) {
+                    error = QString("Json for option: %1 contain a duplicate id: %2").arg(i+1).arg(optionid->id);
                     valid = false;
                     return valid;
                 }
