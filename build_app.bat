@@ -78,7 +78,7 @@ cd "%build_dir%"
 
 REM prefix directory
 if not defined THIRDPARTY_DIR (
-    echo Could not find 3rdparty project in: %THIRDPARTY_DIR%
+    echo Could not find 3rdparty project environment variable THIRDPARTY_DIR
     goto :error
 )
 
@@ -153,7 +153,11 @@ if "%version%"=="" (
     echo failed to extract version from CMakeLists.txt
     goto :error
 )
-set "zipfile=%deploy_dir%\%app_name%_%version%_240228_%build_type%.zip"
+
+for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value ^| find "LocalDateTime"') do set datetime=%%I
+set "current_date=%datetime:~2,6%"
+
+set "zipfile=%deploy_dir%\%app_name%_%version%_%current_date%_%build_type%.zip"
 echo creating zip file: %zipfile%
 powershell -command "Compress-Archive -Path '%deploy_dir%\*' -DestinationPath '%zipfile%' -Force"
 
