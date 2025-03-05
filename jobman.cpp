@@ -322,7 +322,8 @@ JobmanPrivate::profile()
 void
 JobmanPrivate::activate()
 {
-    if (!saveto.isEmpty() && ui->presets->count() > 0) {
+    if (!saveto.isEmpty() &&
+        (ui->presets->count() > 0 && ui->presets->itemText(0) != "No presets found")) {
         enable(true);
     }
     else {
