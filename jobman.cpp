@@ -519,6 +519,7 @@ JobmanPrivate::exportPreferences()
 void
 JobmanPrivate::enable(bool enable)
 {
+    ui->openPreset->setEnabled(enable);
     ui->filedrop->setEnabled(enable);
     ui->fileprogress->setEnabled(enable);
     ui->options->setEnabled(enable);

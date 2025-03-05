@@ -89,7 +89,7 @@ class MonitorPrivate : public QObject
                     QString status = index.data().toString();
                     // icc profile
                     ICCTransform* transform = ICCTransform::instance();
-                    if (status == "Dependency" ||
+                    if (status == "Dependency failed" ||
                         status == "Failed" ||
                         status == "Cancelled") {
                         color = transform->map(QColor::fromHsl(359, 90, 40).rgb());
@@ -233,11 +233,11 @@ MonitorPrivate::init()
                       << "Progress"
     );
     ui->items->setColumnWidth(Name, 160);
-    ui->items->setColumnWidth(Filename, 140);
+    ui->items->setColumnWidth(Filename, 130);
     ui->items->setColumnWidth(Created, 140);
-    ui->items->setColumnWidth(Priority_, 85);
-    ui->items->setColumnWidth(Status, 85);
-    ui->items->setColumnWidth(Progress, 50);
+    ui->items->setColumnWidth(Priority_, 75);
+    ui->items->setColumnWidth(Status, 115);
+    ui->items->setColumnWidth(Progress, 40);
     ui->items->sortByColumn(Created, Qt::AscendingOrder);
     ui->items->header()->setStretchLastSection(true);
     ui->items->setItemDelegateForColumn(3, new PriorityDelegate(ui->items));
@@ -288,8 +288,8 @@ MonitorPrivate::updateJob(const QUuid& uuid)
                 item->setText(Status, "Completed");
             }
             break;
-            case Job::Dependency: {
-                item->setText(Status, "Dependency");
+            case Job::DependencyFailed: {
+                item->setText(Status, "Dependency failed");
             }
             break;
             case Job::Failed: {
@@ -385,7 +385,7 @@ MonitorPrivate::updateMetrics()
 {
     int waitingCount = 0;
     int completedCount = 0;
-    int dependencyCount = 0;
+    int dependencyFailedCount = 0;
     int stoppedCount = 0;
     int runningCount = 0;
     int failedCount = 0;
@@ -403,8 +403,8 @@ MonitorPrivate::updateMetrics()
             case Job::Completed:
                 completedCount++;
                 break;
-            case Job::Dependency:
-                dependencyCount++;
+            case Job::DependencyFailed:
+                dependencyFailedCount++;
                 break;
             case Job::Failed:
                 failedCount++;
@@ -542,8 +542,8 @@ MonitorPrivate::statusChanged(Job::Status status)
                 item->setText(Status, "Completed");
             }
             break;
-            case Job::Dependency: {
-                item->setText(Status, "Dependency");
+            case Job::DependencyFailed: {
+                item->setText(Status, "Dependency failed");
             }
             break;
             case Job::Failed: {
@@ -597,6 +597,7 @@ MonitorPrivate::toggleButtons()
         }
         if (job->status() == Job::Completed ||
             job->status() == Job::Stopped ||
+            job->status() == Job::DependencyFailed ||
             job->status() == Job::Failed) {
             std::function<bool(const QTreeWidgetItem*)> restartItems = [&](const QTreeWidgetItem* parentItem) -> bool {
                 for (int i = 0; i < parentItem->childCount(); ++i) {
@@ -664,10 +665,21 @@ MonitorPrivate::stop()
 void
 MonitorPrivate::restart()
 {
-    selectedItems([this](const QTreeWidgetItem *item, const QSharedPointer<Job> &job) {
-        queue->restart(job->uuid());
+    QList<QTreeWidgetItem*> items;
+    selectedItems([&](const QTreeWidgetItem *item, const QSharedPointer<Job> &job) {
+        QTreeWidgetItem* parent = const_cast<QTreeWidgetItem *>(item);
+        while (parent->parent()) {
+            parent = parent->parent();
+        }
+        items.append(parent);
         return false;
     });
+    for (QTreeWidgetItem* item : items) {
+        QSharedPointer<Job> job = item->data(0, Qt::UserRole).value<QSharedPointer<Job>>();
+        if (job) {
+            queue->restart(job->uuid());
+        }
+    }
     toggleButtons();
 }
 

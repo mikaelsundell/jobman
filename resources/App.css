@@ -274,6 +274,12 @@ QTextBrowser
     selection-background-color: hsl(220, 30%, 12%);
 }
 
+QTextBrowser:!active 
+{
+    color: hsl(0, 0%, 80%);
+    background: hsl(220, 30%, 6%);
+}
+
 /* QTreeView widgets */
 QTreeView
 {

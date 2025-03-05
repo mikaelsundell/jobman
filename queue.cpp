@@ -506,7 +506,7 @@ QueuePrivate::failCompletedJobs(const QUuid& uuid, const QUuid& dependsonId)
         QString log = job->log();
         log += QString("\nDependent error:\n%1").arg("Dependent job failed: %1").arg(uuid.toString());
         job->setLog(log);
-        job->setStatus(Job::Dependency);
+        job->setStatus(Job::DependencyFailed);
         if (!job->dependson().isNull()) {
             failCompletedJobs(dependsonId, job->dependson());
         }

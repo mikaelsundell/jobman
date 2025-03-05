@@ -48,7 +48,7 @@ class Job : public QObject {
             Running,
             Completed,
             Failed,
-            Dependency,
+            DependencyFailed,
             Stopped
         };
         Q_ENUM(Status)
