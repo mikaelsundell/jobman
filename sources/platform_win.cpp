@@ -5,9 +5,7 @@
 #include "platform.h"
 #include <QApplication>
 #include <QScreen>
-#include <debugapi.h>
 #include <windows.h>
-#include <wingdi.h>
 
 namespace platform {
 namespace utils {
