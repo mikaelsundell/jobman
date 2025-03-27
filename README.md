@@ -9,6 +9,7 @@ Table of Contents
 - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Documentation](#documentation)
+    - [Preset fields](#preset-fields)
     - [Option fields](#option-fields)
   - [Web Resources](#web-resources)
   - [Copyright](#copyright)
@@ -64,6 +65,7 @@ Here's an example of a preset file format, tailored for converting image files o
 {
     "id": "convertimage",
     "name": "Internal: Convert image",
+    "type": "file",
     "options": [
       {
         "id": "jpegquality",
@@ -194,20 +196,19 @@ Preset files support various variables that can be used to customize arguments d
 %options:name%     Replaces the variable with the options name and its value.
 ```
 
-Each option is represented with the following fields:
+### Preset fields
 
-```json
-{
-    "id": "value as double",
-    "name": "Double",
-    "type": "Double",
-    "default": "1.0",
-    "minimum": 0,
-    "maximum": 100,
-    "value": "1.0",
-    "flag": "--double"
-}
-```
+`id`
+- Description: A unique identifier for the preset.
+- Usage: Used internally to reference the preset.
+
+`name`
+- Description: The display name of the preset.
+- Usage: This is used for user interfaces or logging where a readable name is required.
+
+`type`
+- Description: The type of the preset. Supported types  `file` and `command`. File presets accepts dropped files and command adds single command jobs without varying input files. Default is `file`.
+- Usage: Determines how the preset behaves in the interface, either allowing file drops or presenting a command-only option.
 
 ### Option fields
 
@@ -219,12 +220,20 @@ Each option is represented with the following fields:
 - Description: The display name of the option.
 - Usage: This is used for user interfaces or logging where a readable name is required.
 
+`description`
+- Description: A short explanation of the option.
+- Usage: Used in tooltips to provide additional context.
+
 `flag`
 - Description: The command-line flag associated with this option.
 - Usage: Used to set the flag of the option.
 
+`flagonly`
+- Description: A toggle flag for enabling use of the "flag only" without the value.
+- Usage: Used to provide "flag only" arguments.
+
 `type`
-- Description: Specifies the data type of the option. Supported types `Checkbox`, `Double`, `DoubleSlider`, `Dropdown`, `File`, `Int`, `IntSlider` and `Text`.
+- Description: Specifies the ui type of the option. Supported types `double`, `doubleslider`, `dropdown`, `file`, `int`, `intSlider` and `text`.
 - Usage: Used as user interface control to present the option.
 
 `value`
@@ -243,9 +252,9 @@ Each option is represented with the following fields:
 - Description: The maximum allowed value for the option.
 - Usage: Used for validation to prevent values exceeding this threshold.
 
-`switch`
-- Description: A toggle switch for enabling use of the flag only without the value.
-- Usage: Used to provide switch flags.
+ `toggle`
+- Description: A toggle switch used to turn the option on or off.
+- Usage: This field conditionally enables or disables the option based on its state.
 
 **Task variables**
 

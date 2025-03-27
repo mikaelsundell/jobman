@@ -25,6 +25,10 @@ QCheckBox::indicator {
     height: 20px;
 }
 
+QCheckBox::indicator:disabled {
+    background-color: hsl(220, 8%, 10%);
+}
+
 QCheckBox::indicator:checked {
     image: url(":/icons/resources/Checkbox.png");
 }
@@ -34,13 +38,19 @@ QComboBox {
     font-size: 11px;
     color: hsl(0, 0%, 80%);
     background-color: hsl(220, 8%, 15%);
-    padding: 4px;
+    height: 24px;
     padding-left: 10px;
     margin-bottom: 2px;
     border-radius: 0px;
     outline: none;
     border: 0px;
     selection-background-color: hsl(220, 30%, 12%);
+}
+
+QComboBox:disabled {
+    color: hsl(0, 0%, 40%);
+    background-color: hsl(220, 8%, 10%);
+    border: 0px;
 }
 
 QComboBox::down-arrow {
@@ -58,32 +68,34 @@ QComboBox::drop-down {
     background: transparent;
 }
 
-QComboBox QAbstractItemView {
-    color: #FFFFFF;
-    background: hsl(220, 8%, 15%);
-    border: none;
-    outline: none;
-    selection-background-color: hsl(220, 30%, 12%);
-    selection-color: hsl(0, 0%, 80%);
+QComboBox::item {
+    height: 10px;
+    border: 8px solid transparent;
 }
 
-QComboBox QAbstractItemView::item {
-    outline: none;
-    border: none;
-    padding: 4px;
+QComboBox::item:selected {
+    background: hsl(220, 30%, 12%);
+    border-radius: 0px;
+}
+
+QComboBox QAbstractItemView {
+    selection-background-color: hsl(220, 30%, 12%);
+    selection-color: hsl(0, 0%, 80%);
 }
 
 QComboBox QAbstractItemView::item:selected {
     background: hsl(220, 30%, 12%);
     color: hsl(0, 0%, 80%);
-    outline: none;
-    border: none;
 }
 
 /* QLabel widgets */
 QLabel {
     font-size: 11px;
     color: hsl(0, 0%, 80%);
+}
+
+QLabel:disabled {
+    color: hsl(0, 0%, 40%);
 }
 
 /* QLineEdit widgets */
@@ -95,7 +107,13 @@ QLineEdit
     padding: 4px;
     padding-left: 10px;
     border-radius: 0px;
-    selection-background-color: hsl(220, 30%, 12%);
+    selection-background-color: hsl(220, 30%, 24%);
+}
+
+QLineEdit:disabled {
+    color: hsl(0, 0%, 40%);
+    background-color: hsl(220, 8%, 5%);
+    border: 0px;
 }
 
 /* QListWidget widgets */
@@ -159,12 +177,12 @@ QMenu::right-arrow {
 }
 
 /* QWidgets widgets */
-QWidget#filedropBar,
+QWidget#presetBar,
 QWidget#logBar,
 QWidget#messageBar,
 QWidget#monitorBar,
 QWidget#preferencesBar,
-QWidget#presetBar
+QWidget#typeBar
 {
     background-color: hsl(220, 30%, 12%);
     border-radius: 5px;
@@ -172,22 +190,17 @@ QWidget#presetBar
     border-bottom-right-radius: 0px;
 }
 
-QWidget#filedropWidget,
+QWidget#presetWidget,
 QWidget#logWidget,
 QWidget#monitorWidget,
 QWidget#optionsWidget,
 QWidget#preferencesWidget,
-QWidget#presetWidget
+QWidget#typeWidget
 {
     background-color: hsl(220, 30%, 8%);
     border-radius: 5px;
     border-top-left-radius: 0px;
     border-top-right-radius: 0px;
-}
-
-QWidget#optionswidget
-{
-    background-color: hsl(220, 30%, 8%);
 }
 
 /* QPushButton widgets */
@@ -343,29 +356,11 @@ QToolButton:pressed
     );
 }
 
-QToolButton#togglePreset
-{
-    padding: 2px;
-    border: 0px;
-    background-color: transparent;
-}
-
-QToolButton#toggleFiledrop
-{
-    padding: 2px;
-    border: 0px;
-    background-color: transparent;
-}
-
-QToolButton#showSaveto
-{
-    padding: 2px;
-    border: 0px;
-    background-color: transparent;
-}
-
-QToolButton#toggleLog
-{
+QToolButton#togglePreset,
+QToolButton#toggleType,
+QToolButton#showSaveto,
+QToolButton#toggleLog,
+QToolButton#tooltip {
     padding: 2px;
     border: 0px;
     background-color: transparent;
@@ -415,13 +410,13 @@ QScrollBar:vertical {
 }
 
 QScrollBar::handle:vertical {
-    background: hsl(0, 0%, 80%);
+    background: hsl(0, 0%, 60%);
     min-height: 20px;
     border-radius: 5px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: hsl(0, 0%, 80%);
+    background: hsl(0, 0%, 60%);
 }
 
 QScrollBar::add-line:vertical,
@@ -452,22 +447,31 @@ QSlider
     margin: 0px;
 }
 
+QSlider:disabled {
+    color: hsl(0, 0%, 40%);
+}
+
 QSlider::groove:horizontal
 {
     height: 5px;
     background-color: hsl(220, 8%, 15%);
-    border: 1px solid black;
-    border-radius: 3px;
-    margin: 2px 0;
+    border: 0px;
+}
+
+QSlider::groove:horizontal:disabled {
+    background-color: hsl(220, 8%, 10%);
 }
 
 QSlider::sub-page:horizontal
 {
     height: 5px;
     background-color: hsl(220, 6%, 30%);
-    border: 1px solid black;
-    border-radius: 4px;
-    margin: 2px 0;
+    border: 0px;
+}
+
+QSlider::sub-page:horizontal:disabled {
+    background-color: hsl(220, 6%, 18%);
+    border: 1px solid #333;
 }
 
 QSlider::handle:horizontal
@@ -475,6 +479,11 @@ QSlider::handle:horizontal
     background: hsl(0, 0%, 59%);
     width: 13px;
     margin: -4px 0;
+    border-radius: 6px;
+}
+
+QSlider::handle:horizontal:disabled {
+    background: hsl(0, 0%, 30%);
     border-radius: 6px;
 }
 

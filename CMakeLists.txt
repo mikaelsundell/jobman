@@ -17,63 +17,18 @@ set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package (Lcms2 REQUIRED)
 
-# sourcesld
-set (app_sources
-    clickfilter.h
-    clickfilter.cpp
-    jobman.h
-    jobman.cpp
-    urlfilter.h
-    urlfilter.cpp
-    filedrop.h
-    filedrop.cpp
-    icctransform.h
-    icctransform.cpp
-    job.h
-    job.cpp
-    jobtree.h
-    jobtree.cpp
-    listwidget.h
-    listwidget.cpp
-    platform.h
-    main.cpp
-    message.h
-    message.cpp
-    monitor.h
-    monitor.cpp
-    options.h
-    options.cpp
-    preferences.h
-    preferences.cpp
-    preset.h
-    preset.cpp
-    process.h
-    process.cpp
-    queue.h
-    queue.cpp
-    question.h
-    question.cpp
-    about.ui
-    jobman.ui
-    message.ui
-    monitor.ui
-    question.ui
-    preferences.ui
-    progressbar.ui
-    options.ui
-    jobman.qrc
+file (GLOB app_sources
+    "sources/*.h"
+    "sources/*.cpp"
+    "sources/*.qrc"
+    "sources/*.ui"
 )
+list (FILTER app_sources EXCLUDE REGEX "_")
 
 # resources
 file(GLOB app_resources
     "resources/*.icc"
     "resources/*.css"
-)
-
-# icons
-file(GLOB app_icons
-    "resources/*.icns" 
-    "resources/*.ico"
     "resources/App*.png"
 )
 
@@ -89,7 +44,6 @@ set (bundle_sources
 
 # source groups
 source_group ("Resource Files" FILES ${app_resources})
-source_group ("Icon Files" FILES ${app_icons})
 source_group ("Preset Files" FILES ${app_presets})
 
 # app program
@@ -107,6 +61,8 @@ add_definitions (-DAPP_VERSION_STRING="${app_long_version}")
 add_definitions (-DGITHUBURL="${app_url}")
 
 if (APPLE)
+    list (APPEND app_sources "sources/platform_mac.mm")
+    list (APPEND app_resources "resources/AppIcon.icns")
     set (MACOSX_BUNDLE_GUI_IDENTIFIER ${app_identifier})
     set (MACOSX_BUNDLE_EXECUTABLE_NAME ${app_name})
     set (MACOSX_BUNDLE_INFO_STRING ${app_name})
@@ -120,8 +76,7 @@ if (APPLE)
     set (CMAKE_XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "-o linker-signed")
     set_source_files_properties (${app_resources} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
     set_source_files_properties (${app_presets} PROPERTIES MACOSX_PACKAGE_LOCATION "Presets")
-    list (APPEND app_sources platform_mac.mm)
-    add_executable (${project_name} MACOSX_BUNDLE ${app_sources} ${app_resources} ${app_icons} ${app_presets})
+    add_executable (${project_name} MACOSX_BUNDLE ${app_sources} ${app_resources} ${app_presets})
     # definitions
     set_target_properties (${project_name} PROPERTIES
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${app_identifier}"
@@ -144,7 +99,8 @@ if (APPLE)
         "-framework CoreFoundation"
         "-framework AppKit")
 elseif (WIN32)
-    list(APPEND app_sources platform_win.cpp)
+    list (APPEND app_sources "sources/platform_win.cpp")
+    list (APPEND app_resources "resources/AppIcon.ico")
     add_executable (${project_name} WIN32 ${app_sources} ${app_resources} ${app_presets})
     add_definitions (-DWIN32 -DWINVER=0x0A00)
     target_include_directories (${project_name} PRIVATE ${LCMS2_INCLUDE_DIR})

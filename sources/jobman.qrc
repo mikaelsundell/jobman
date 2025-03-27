@@ -1,0 +1,31 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>../resources/AppIcon.png</file>
+    <file>../resources/Arrow.png</file>
+    <file>../resources/Checkbox.png</file>
+    <file>../resources/Cleanup.png</file>
+    <file>../resources/Collapse.png</file>
+    <file>../resources/Delete.png</file>
+    <file>../resources/Dropdown.png</file>
+    <file>../resources/Expand.png</file>
+    <file>../resources/File.png</file>
+    <file>../resources/Folder.png</file>
+    <file>../resources/Monitor.png</file>
+    <file>../resources/Open.png</file>
+    <file>../resources/Options.png</file>
+    <file>../resources/Priority.png</file>
+    <file>../resources/Progress.png</file>
+    <file>../resources/Refresh.png</file>
+    <file>../resources/Restart.png</file>
+    <file>../resources/Restore.png</file>
+    <file>../resources/Right.png</file>
+    <file>../resources/Running.png</file>
+    <file>../resources/Start.png</file>
+    <file>../resources/Stop.png</file>
+    <file>../resources/Stopped.png</file>
+    <file>../resources/Tooltip.png</file>
+  </qresource>
+   <qresource prefix="files">
+    <file>../resources/Copyright.txt</file>
+  </qresource>
+</RCC>
