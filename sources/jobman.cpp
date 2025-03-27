@@ -988,8 +988,8 @@ JobmanPrivate::presetsChanged(int index)
                 enabled = false;
             }
         }
-        if (preset->options().size()) {}
         ui->submitFiles->setEnabled(enabled);
+        ui->options->setEnabled(enabled);
         ui->openOptions->setEnabled(enabled);
         ui->options->setEnabled(enabled);
     }
