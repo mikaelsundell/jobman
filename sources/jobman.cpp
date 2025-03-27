@@ -153,7 +153,11 @@ public:
     QScopedPointer<Ui_Jobman> ui;
 };
 
-JobmanPrivate::JobmanPrivate() { qRegisterMetaType<QSharedPointer<Preset>>("QSharedPointer<Preset>"); }
+JobmanPrivate::JobmanPrivate()
+    : offset(0)
+{
+    qRegisterMetaType<QSharedPointer<Preset>>("QSharedPointer<Preset>");
+}
 
 void
 JobmanPrivate::init()
