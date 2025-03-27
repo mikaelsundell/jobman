@@ -53,12 +53,7 @@ void
 OptionsDialogPrivate::update()
 {
     ui->name->setText(preset->name());
-    if (ui->scrollarea->widget()) {
-        delete ui->scrollarea->widget();
-    }
-    widget = new OptionsWidget(widget.data());
-    widget->update(preset);
-    widget->setObjectName("optionswidget");
+    ui->optionsWidget->update(preset);
     ui->scrollarea->setWidget(widget.data());
     ui->scrollarea->setWidgetResizable(true);
 }

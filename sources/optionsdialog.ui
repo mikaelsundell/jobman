@@ -88,7 +88,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QWidget" name="optionsWidget" native="true">
+    <widget class="QWidget" name="presetWidget" native="true">
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <property name="spacing">
        <number>10</number>
@@ -129,7 +129,7 @@
         <property name="widgetResizable">
          <bool>true</bool>
         </property>
-        <widget class="QWidget" name="scrollAreaWidgetContents">
+        <widget class="OptionsWidget" name="optionsWidget">
          <property name="geometry">
           <rect>
            <x>0</x>
@@ -220,6 +220,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>OptionsWidget</class>
+   <extends>QWidget</extends>
+   <header>../../../sources/optionswidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="jobman.qrc"/>
   <include location="jobman.qrc"/>

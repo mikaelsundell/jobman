@@ -11,6 +11,7 @@ Table of Contents
   - [Documentation](#documentation)
     - [Preset fields](#preset-fields)
     - [Option fields](#option-fields)
+  - [Building](#building)
   - [Web Resources](#web-resources)
   - [Copyright](#copyright)
   
@@ -264,6 +265,51 @@ Preset files support various variables that can be used to customize arguments d
 ```
 
 Each variable is designed to simplify the scripting and automation within preset configurations, ensuring that file paths and details are handled efficiently without manual specification in every command.
+
+Building
+--------
+
+**Mac**
+
+Build and Deploy, make sure Thirdparty is set to build configuration Debug/ Release.
+
+```shell
+export THIRDPARTY_DIR=<path>
+./build_app.sh debug --target=12
+```
+
+
+Creating a new Deploy (Appstore):
+```shell
+./build_app.sh release --appstore --target=12
+```
+
+Make sure DYLD_IMAGE_SUFFIX is set properly for debug frameworks on Mac
+
+```shell
+export DYLD_IMAGE_SUFFIX=_debug
+```
+
+**Windows**
+
+Make sure you're using the correct Visual Studio version and architecture.
+Example for Visual Studio 2019, targeting x64:
+
+```shell
+"C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
+```
+
+Build and Deploy, make sure Thirdparty is set to build configuration Debug/ Release.
+
+```shell
+set THIRDPARTY_DIR=<path>
+call build_app.bat Debug --deploy
+```
+
+Creating a new Deploy:
+```shell
+call build_app.bat Release --deploy
+```
 
 Web Resources
 -------------
