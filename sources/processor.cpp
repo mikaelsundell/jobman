@@ -124,7 +124,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
                                      .arg(job->name());
                 job->setLog(status);
                 job->setStatus(Job::Failed);
-                return;
+                return uuids;
             }
         }
     }
@@ -213,7 +213,7 @@ ProcessorPrivate::submit(const QSharedPointer<Preset>& preset, const Paths& path
                                  .arg(job->name());
             job->setLog(status);
             job->setStatus(Job::Failed);
-            return;
+            return uuids;
         }
     }
     return uuids;
