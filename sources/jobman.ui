@@ -1048,6 +1048,7 @@
      <string>Help</string>
     </property>
     <addaction name="about"/>
+    <addaction name="separator"/>
     <addaction name="openGithubReadme"/>
     <addaction name="openGithubIssues"/>
    </widget>
@@ -1057,7 +1058,7 @@
     </property>
     <widget class="QMenu" name="preferences">
      <property name="title">
-      <string>Preferences...</string>
+      <string>Manage preferences</string>
      </property>
      <addaction name="separator"/>
      <addaction name="open"/>
@@ -1080,6 +1081,7 @@
      <string>View</string>
     </property>
     <addaction name="monitor"/>
+    <addaction name="separator"/>
     <addaction name="options"/>
    </widget>
    <addaction name="menuEdit"/>
@@ -1112,17 +1114,9 @@
     <string>F</string>
    </property>
   </action>
-  <action name="options">
-   <property name="text">
-    <string>Options ...</string>
-   </property>
-   <property name="shortcut">
-    <string>O</string>
-   </property>
-  </action>
   <action name="monitor">
    <property name="text">
-    <string>Monitor ...</string>
+    <string>Open monitor ...</string>
    </property>
    <property name="shortcut">
     <string>M</string>
@@ -1164,6 +1158,14 @@
   <action name="openSaveToFolder">
    <property name="text">
     <string>Open save to folder ...</string>
+   </property>
+  </action>
+  <action name="options">
+   <property name="text">
+    <string>Open options ...</string>
+   </property>
+   <property name="shortcut">
+    <string>O</string>
    </property>
   </action>
  </widget>

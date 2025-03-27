@@ -173,6 +173,8 @@ JobmanPrivate::init()
     // ui
     ui.reset(new Ui_Jobman());
     ui->setupUi(window);
+    // preferences
+    ui->open->setMenuRole(QAction::PreferencesRole);
     // about
     about.reset(new About(window.data()));
     // monitor
