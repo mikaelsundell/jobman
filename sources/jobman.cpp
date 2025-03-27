@@ -975,10 +975,12 @@ JobmanPrivate::presetsChanged(int index)
             ui->optionsWidget->update(preset);
             ui->openOptions->setVisible(false);
 
-            offset = 200;
-            window->setFixedSize(window->width(), size.height() + offset);
-            size = window->size();
-            enabled = false;
+            if (!offset) {
+                offset = 200;
+                window->setFixedSize(window->width(), size.height() + offset);
+                size = window->size();
+                enabled = false;
+            }
         }
         if (preset->options().size()) {}
         ui->submitFiles->setEnabled(enabled);

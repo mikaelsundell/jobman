@@ -11,9 +11,6 @@
 #include <QSettings>
 #include <QUuid>
 
-#include <QDebug>
-
-
 class ProcessorPrivate : public QObject {
     Q_OBJECT
 public:
@@ -27,7 +24,7 @@ public:
     QString updateFiles(const QString& input, const QFileInfo& inputinfo, const QFileInfo& outputinfo);
     QString updateTask(const QString& input, const QString& inputinfo, const QString& outputinfo);
     QStringList updateOptions(QList<QSharedPointer<Option>> options, const QString& input);
-    void updateEnvironment(QSharedPointer<Job> job,const Paths& paths);
+    void updateEnvironment(QSharedPointer<Job> job, const Paths& paths);
 
     QPointer<Queue> queue;
     QPointer<Processor> object;
@@ -90,7 +87,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
                 job->setStatus(Job::Waiting);
             }
             updateEnvironment(job, paths);
-            
+
             if (first) {
                 if (paths.copyoriginal) {
                     job->preprocess()->copyoriginal.filename = file;
@@ -159,10 +156,8 @@ ProcessorPrivate::submit(const QSharedPointer<Preset>& preset, const Paths& path
 
         QString outputfile = outputdir + "/" + inputinfo.baseName() + "." + extension;
         QFileInfo outputinfo(outputfile);
-        QString command
-            = updateOptions(preset->options(), updateFiles(task->command, inputinfo, outputinfo)).join(" ");
-        QString output
-            = updateOptions(preset->options(), updateFiles(task->output, inputinfo, outputinfo)).join(" ");
+        QString command = updateOptions(preset->options(), updateFiles(task->command, inputinfo, outputinfo)).join(" ");
+        QString output = updateOptions(preset->options(), updateFiles(task->output, inputinfo, outputinfo)).join(" ");
         QStringList argumentlist = task->arguments.split(" ");
         QStringList replacedlist;
         for (QString& argument : argumentlist) {
@@ -170,8 +165,8 @@ ProcessorPrivate::submit(const QSharedPointer<Preset>& preset, const Paths& path
                 updateOptions(preset->options(),
                               updateTask("output", updateFiles(argument, inputinfo, outputinfo), output)));
         }
-        QString startin
-            = updateOptions(preset->options(), updateFiles(task->startin, inputinfo, outputinfo)).join(" ");
+        QString startin = updateOptions(preset->options(), updateFiles(task->startin, inputinfo, outputinfo)).join(" ");
+
         // job
         QSharedPointer<Job> job(new Job());
         {
