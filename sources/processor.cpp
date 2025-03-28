@@ -254,16 +254,21 @@ ProcessorPrivate::updateOptions(QList<QSharedPointer<Option>> options, const QSt
     for (QSharedPointer<Option> option : options) {
         QString pattern = QString("%options:%1%").arg(option->id);
         if (input.contains(pattern)) {
-            QString replacement = option->flag;
-            if (!option->flagonly) {
-                if (replacement.length()) {
-                    replacement += " ";
+            if (option->enabled) {
+                QString replacement = option->flag;
+                if (!option->flagonly) {
+                    if (replacement.length()) {
+                        replacement += " ";
+                    }
+                    replacement += option->value.toString();
+                    result.append(QString(input).replace(pattern, replacement).split(" "));
                 }
-                replacement += option->value.toString();
-                result.append(QString(input).replace(pattern, replacement).split(" "));
+                else {
+                    result.append(replacement);
+                }
             }
             else {
-                result.append(replacement);
+                result.append(QString(input).replace(pattern, QString()).split(" "));
             }
         }
     }

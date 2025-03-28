@@ -82,7 +82,7 @@ public Q_SLOTS:
     void refreshPresets();
     void openPreset();
     void selectPresetsfrom();
-    void presetsUrl(const QUrl& url);
+    void importPresetsUrl(const QUrl& url);
     void selectSaveto();
     void showSaveto();
     void setSaveto(const QString& text);
@@ -125,7 +125,7 @@ public:
         }
     };
     Paths paths();
-    void process(const QList<QUuid> uuids);
+    bool applicationPath(const QString& path) const;
     QString documents;
     QString presets;
     QString presetsselected;
@@ -164,7 +164,6 @@ JobmanPrivate::init()
 {
     platform::setDarkTheme();
     documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    QDir applicationPath(QApplication::applicationDirPath());
     presets = platform::getApplicationPath() + "/Presets";
     // icc profile
     ICCTransform* transform = ICCTransform::instance();
@@ -223,7 +222,7 @@ JobmanPrivate::init()
     connect(ui->refreshPresets, &QPushButton::clicked, this, &JobmanPrivate::refreshPresets);
     connect(ui->openPreset, &QPushButton::clicked, this, &JobmanPrivate::openPreset);
     connect(ui->selectPresetsfrom, &QPushButton::clicked, this, &JobmanPrivate::selectPresetsfrom);
-    connect(preseturlfilter.data(), &Urlfilter::urlRequested, this, &JobmanPrivate::presetsUrl);
+    connect(preseturlfilter.data(), &Urlfilter::urlRequested, this, &JobmanPrivate::importPresetsUrl);
     connect(ui->selectSaveto, &QPushButton::clicked, this, &JobmanPrivate::selectSaveto);
     connect(ui->showSaveto, &QPushButton::clicked, this, &JobmanPrivate::showSaveto);
     connect(savetourlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToUrl);
@@ -325,6 +324,20 @@ JobmanPrivate::paths()
     paths.searchpaths = documents;
     paths.outputpath = saveto;
     return paths;
+}
+
+bool
+JobmanPrivate::applicationPath(const QString& path) const
+{
+    QDir appdir(platform::getApplicationPath());
+    QDir dir(path);
+    QString canonicalAppDir = appdir.canonicalPath();
+    QString canonicalDir = dir.canonicalPath();
+    if (canonicalAppDir.isEmpty() || canonicalDir.isEmpty()) {
+        return false;
+    }
+    return canonicalDir == canonicalAppDir ||
+           canonicalDir.startsWith(canonicalAppDir + QDir::separator());
 }
 
 void
@@ -560,7 +573,6 @@ JobmanPrivate::verifySaveTo()
 void
 JobmanPrivate::loadSettings()
 {
-    QDir applicationPath(QApplication::applicationDirPath());
     QSettings settings(APP_IDENTIFIER, APP_NAME);
     filesfrom = settings.value("filesfrom", documents).toString();
     preferencesfrom = settings.value("preferencesfrom", documents).toString();
@@ -822,81 +834,90 @@ JobmanPrivate::selectPresetsfrom()
 }
 
 void
-JobmanPrivate::presetsUrl(const QUrl& url)
+JobmanPrivate::importPresetsUrl(const QUrl& url)
 {
     if (presetsfrom == presets) {
         return;  // internal presets
     }
     QString path = url.toLocalFile();
     QFileInfo fileinfo(path);
-    QDir presetsdir(presetsfrom);
-    QStringList addedfiles;
-    QStringList alreadyexistsfiles;
-    QStringList invalidfiles;
-
-    if (fileinfo.isDir()) {
-        QDir dir(path);
-        dir.setNameFilters(QStringList() << "*.json");
-        QStringList jsonFiles = dir.entryList(QDir::Files | QDir::NoDotAndDotDot);
-        if (jsonFiles.isEmpty()) {
-            return;
+   
+    if (!applicationPath(presetsfrom)) {
+        QDir presetsdir(presetsfrom);
+        QStringList addedfiles;
+        QStringList alreadyexistsfiles;
+        QStringList invalidfiles;
+        
+        if (fileinfo.isDir()) {
+            QDir dir(path);
+            dir.setNameFilters(QStringList() << "*.json");
+            QStringList jsonFiles = dir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+            if (jsonFiles.isEmpty()) {
+                return;
+            }
+            for (const QString& filename : jsonFiles) {
+                QString path = dir.filePath(filename);
+                QString target = presetsdir.filePath(filename);
+                if (QFile::exists(target)) {
+                    alreadyexistsfiles.append(filename);
+                    continue;
+                }
+                QSharedPointer<Preset> preset(new Preset());
+                if (preset->read(path)) {
+                    QFile::copy(path, target);
+                    addedfiles.append(filename);
+                }
+                else {
+                    invalidfiles.append(filename);
+                }
+            }
+            QString message = QString("Preset import from directory:\n%1\n\n").arg(path);
+            if (!addedfiles.isEmpty()) {
+                message += "Added:\n" + addedfiles.join("\n") + "\n\n";
+            }
+            if (!alreadyexistsfiles.isEmpty()) {
+                message += "Already exists:\n" + alreadyexistsfiles.join("\n") + "\n\n";
+            }
+            if (!alreadyexistsfiles.isEmpty()) {
+                message += "Invalid preset files:\n" + invalidfiles.join("\n");
+            }
+            Message::showMessage(window.data(), "Preset import summary", message);
         }
-        for (const QString& filename : jsonFiles) {
-            QString path = dir.filePath(filename);
-            QString target = presetsdir.filePath(filename);
+        else if (fileinfo.isFile() && fileinfo.suffix().toLower() == "json") {
+            QString filename = fileinfo.fileName();
+            QString path = fileinfo.filePath();
+            QString target = presetsdir.filePath(fileinfo.fileName());
             if (QFile::exists(target)) {
-                alreadyexistsfiles.append(filename);
-                continue;
-            }
-            QSharedPointer<Preset> preset(new Preset());
-            if (preset->read(path)) {
-                QFile::copy(path, target);
-                addedfiles.append(filename);
+                Message::showMessage(window.data(), "File skipped",
+                                     QString("The file '%1' was skipped because it already exists.").arg(filename));
             }
             else {
-                invalidfiles.append(filename);
-            }
-        }
-        QString message = QString("Preset import from directory:\n%1\n\n").arg(path);
-        if (!addedfiles.isEmpty()) {
-            message += "Added:\n" + addedfiles.join("\n") + "\n\n";
-        }
-        if (!alreadyexistsfiles.isEmpty()) {
-            message += "Already exists:\n" + alreadyexistsfiles.join("\n") + "\n\n";
-        }
-        if (!alreadyexistsfiles.isEmpty()) {
-            message += "Invalid preset files:\n" + invalidfiles.join("\n");
-        }
-        Message::showMessage(window.data(), "Preset import summary", message);
-    }
-    else if (fileinfo.isFile() && fileinfo.suffix().toLower() == "json") {
-        QString filename = fileinfo.fileName();
-        QString path = fileinfo.filePath();
-        QString target = presetsdir.filePath(fileinfo.fileName());
-        if (QFile::exists(target)) {
-            Message::showMessage(window.data(), "File ignored",
-                                 QString("The file '%1' was ignored because it already exists.").arg(filename));
-        }
-        else {
-            QSharedPointer<Preset> preset(new Preset());
-            if (preset->read(path)) {
-                QFile::copy(path, target);
-                Message::showMessage(window.data(), "File added",
-                                     QString("The file '%1' was added successfully.").arg(filename));
-            }
-            else {
-                Message::showMessage(window.data(), "Invalid preset file",
-                                     QString("The file '%1' was invalid because it already exists.\n"
-                                             "Error: %2")
+                QSharedPointer<Preset> preset(new Preset());
+                if (preset->read(path)) {
+                    QFile::copy(path, target);
+                    Message::showMessage(window.data(), "File added",
+                                         QString("The file '%1' was added successfully.").arg(filename));
+                }
+                else {
+                    Message::showMessage(window.data(), "Invalid preset file",
+                                         QString("The file '%1' was invalid because it already exists.\n"
+                                                 "Error: %2")
                                          .arg(filename)
                                          .arg(preset->error()));
+                }
             }
         }
+        else {
+            return;
+        }
+        refreshPresets();
+    } else {
+        Message::showMessage(
+            window.data(),
+            "Invalid preset directory",
+            "The preset directory is invalid because it is inside the application path. Please select a different preset folder."
+        );
     }
-    else {
-        return;
-    }
-    refreshPresets();
 }
 
 void

@@ -369,8 +369,8 @@ QToolButton#tooltip {
 
 /* QScrollBar widgets */
 QScrollBar:horizontal {
-    background: hsl(220, 8%, 15%);
-    height: 10px;
+    background: hsl(220, 8%, 10%);
+    height: 6px;
     margin: 0;
     border: none;
 }
@@ -404,8 +404,8 @@ QScrollBar::sub-page:horizontal {
 }
 
 QScrollBar:vertical {
-    background: hsl(220, 8%, 15%);
-    width: 10px;
+    background: hsl(220, 8%, 10%);
+    width: 6px;
     margin: 0;
     border: none;
 }

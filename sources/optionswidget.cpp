@@ -41,6 +41,16 @@ OptionsWidgetPrivate::init()
 void
 OptionsWidgetPrivate::update()
 {
+    if (widget->layout()) {
+        QLayoutItem* item;
+        while ((item = widget->layout()->takeAt(0)) != nullptr) {
+            if (QWidget* w = item->widget()) {
+                w->deleteLater();
+            }
+            delete item;
+        }
+        delete widget->layout();
+    }
     QGridLayout* layout = new QGridLayout(widget.data());
     int row = 0;
     QMargins margins(0, 0, 0, 0);
@@ -68,11 +78,35 @@ OptionsWidgetPrivate::update()
             tooltip->setToolTip(option->description);
             labellayout->addWidget(tooltip);
         }
-
         labellayout->addStretch();
-
         layout->addWidget(labelwidget, row, 0, Qt::AlignTop);
 
+        if (option->type.toLower() == "checkbox") {
+            QWidget* optionwidget = new QWidget(widget.data());
+            QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
+            optionlayout->setContentsMargins(margins);
+
+            QCheckBox* checkbox = new QCheckBox(optionwidget);
+            checkbox->setChecked(option->value.toBool());
+
+            connect(checkbox, &QCheckBox::toggled, this,
+                    [this, option](bool checked) { valueChanged(option->id, checked); });
+
+            optionlayout->addWidget(checkbox);
+
+            if (!option->toggle.isEmpty()) {
+                QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setChecked(option->enabled);
+                checkbox->setEnabled(option->enabled);
+                connect(togglebox, &QCheckBox::toggled, this, [checkbox, option](bool checked) {
+                    checkbox->setEnabled(checked);
+                    option->enabled = checked;
+                });
+                optionlayout->addWidget(togglebox);
+            }
+
+            layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+        }
         if (option->type.toLower() == "double") {
             QWidget* optionwidget = new QWidget(widget.data());
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
@@ -198,7 +232,6 @@ OptionsWidgetPrivate::update()
 
             sliderlayout->addWidget(slider);
             sliderlayout->addWidget(sliderlabel);
-
             optionlayout->addLayout(sliderlayout);
 
             if (!option->toggle.isEmpty()) {

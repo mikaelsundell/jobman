@@ -20,6 +20,8 @@ getIccProfileUrl(WId wid);
 QString
 getApplicationPath();
 QString
+getExecutablePath();
+QString
 resolveBookmark(const QString& bookmark);
 QString
 saveBookmark(const QString& bookmark);

@@ -107,7 +107,12 @@ namespace platform
 
     QString getApplicationPath()
     {
-        return QApplication::applicationDirPath() + "/..";
+        return getExecutablePath() + "/..";
+    }
+
+    QString getExecutablePath()
+    {
+        return QApplication::applicationDirPath();
     }
 
     QString resolveBookmark(const QString& bookmark)

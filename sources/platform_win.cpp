@@ -79,6 +79,12 @@ getApplicationPath()
 }
 
 QString
+getExecutablePath()
+{
+    return getApplicationPath();
+}
+
+QString
 resolveBookmark(const QString& bookmark)
 {
     return bookmark;  // ignore on win32

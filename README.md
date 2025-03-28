@@ -234,7 +234,7 @@ Preset files support various variables that can be used to customize arguments d
 - Usage: Used to provide "flag only" arguments.
 
 `type`
-- Description: Specifies the ui type of the option. Supported types `double`, `doubleslider`, `dropdown`, `file`, `int`, `intSlider` and `text`.
+- Description: Specifies the ui type of the option. Supported types `checkbox`,`double`, `doubleslider`, `dropdown`, `file`, `int`, `intSlider` and `text`.
 - Usage: Used as user interface control to present the option.
 
 `value`

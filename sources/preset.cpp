@@ -122,7 +122,7 @@ PresetPrivate::read()
             if (jsonoption.contains("toggle") && jsonoption["toggle"].isString())
                 option->toggle = jsonoption["toggle"].toString();
             if (jsonoption.contains("flagonly"))
-                option->flagonly = jsonoption["flagonly"].toBool();
+                option->flagonly = jsonoption["flagonly"].toVariant().toBool();
             if (jsonoption.contains("value"))
                 option->value = jsonoption["value"].toVariant();
             if (jsonoption.contains("default"))
