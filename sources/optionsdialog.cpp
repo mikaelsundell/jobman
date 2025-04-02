@@ -53,8 +53,15 @@ void
 OptionsDialogPrivate::update()
 {
     ui->name->setText(preset->name());
+    QString objectname = ui->optionsWidget->objectName();
+    {
+        delete ui->optionsWidget; // needed on windows
+        ui->optionsWidget = nullptr;
+    }
+    ui->optionsWidget = new OptionsWidget();
+    ui->optionsWidget->setObjectName(objectname);
     ui->optionsWidget->update(preset);
-    ui->scrollarea->setWidget(widget.data());
+    ui->scrollarea->setWidget(ui->optionsWidget);
     ui->scrollarea->setWidgetResizable(true);
 }
 

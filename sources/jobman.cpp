@@ -79,6 +79,7 @@ public Q_SLOTS:
     void savePreferences();
     void importPreferences();
     void exportPreferences();
+    void refreshOptions();
     void refreshPresets();
     void openPreset();
     void selectPresetsfrom();
@@ -219,7 +220,7 @@ JobmanPrivate::init()
     connect(ui->editSavePreferences, &QAction::triggered, this, &JobmanPrivate::savePreferences);
     connect(ui->editImportPreferences, &QAction::triggered, this, &JobmanPrivate::importPreferences);
     connect(ui->editExportPreferences, &QAction::triggered, this, &JobmanPrivate::exportPreferences);
-    connect(ui->editRefreshOptions, &QAction::triggered, this, &JobmanPrivate::refreshPresets);
+    connect(ui->editRefreshOptions, &QAction::triggered, this, &JobmanPrivate::refreshOptions);
     connect(ui->refreshPresets, &QPushButton::clicked, this, &JobmanPrivate::refreshPresets);
     connect(ui->openPreset, &QPushButton::clicked, this, &JobmanPrivate::openPreset);
     connect(ui->selectPresetsfrom, &QPushButton::clicked, this, &JobmanPrivate::selectPresetsfrom);
@@ -758,10 +759,16 @@ JobmanPrivate::jobProcessed(const QUuid& uuid)
 }
 
 void
+JobmanPrivate::refreshOptions()
+{
+    saveSettings();
+    refreshPresets();
+}
+
+void
 JobmanPrivate::refreshPresets()
 {
-    loadPresets();
-    activate();
+    saveSettings();
 }
 
 void
@@ -992,7 +999,6 @@ JobmanPrivate::presetsChanged(int index)
             ui->presettype->setCurrentIndex(0);
             ui->type->setText("Filedrop");
             ui->openOptions->setVisible(true);
-
             window->setFixedSize(window->width(), size.height() - offset);
             offset = 0;
             size = window->size();
@@ -1002,7 +1008,6 @@ JobmanPrivate::presetsChanged(int index)
             ui->type->setText("Command");
             ui->optionsWidget->update(preset);
             ui->openOptions->setVisible(false);
-
             if (!offset) {
                 offset = 200;
                 window->setFixedSize(window->width(), size.height() + offset);
