@@ -5,7 +5,6 @@
 #include "jobtree.h"
 #include "icctransform.h"
 
-#include <QDebug>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPointer>

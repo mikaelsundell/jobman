@@ -19,7 +19,6 @@
 #include "urlfilter.h"
 
 #include <QAction>
-#include <QDebug>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
@@ -521,7 +520,6 @@ JobmanPrivate::exportPreferences()
 void
 JobmanPrivate::enable(bool enable)
 {
-    ui->openPreset->setEnabled(enable);
     ui->filedrop->setEnabled(enable);
     ui->fileprogress->setEnabled(enable);
     ui->options->setEnabled(enable);
@@ -614,7 +612,6 @@ JobmanPrivate::saveSettings()
     QSettings settings(APP_IDENTIFIER, APP_NAME);
     settings.setValue("filesfrom", filesfrom);
     settings.setValue("preferencesfrom", preferencesfrom);
-    // presets
     if (ui->presets->count()) {
         QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
         if (!preset.isNull()) {  // skip "No presets found"
@@ -623,16 +620,20 @@ JobmanPrivate::saveSettings()
     }
     settings.setValue("presetsfrom", presetsfrom);
     {
-        QString bookmark = platform::saveBookmark(presetsfrom);
-        if (!bookmark.isEmpty()) {
-            settings.setValue("presetsfrombookmark", bookmark);
+        if (QDir(presetsfrom).exists()) {  // must exist
+            QString bookmark = platform::saveBookmark(presetsfrom);
+            if (!bookmark.isEmpty()) {
+                settings.setValue("presetsfrombookmark", bookmark);
+            }
         }
     }
     settings.setValue("saveto", saveto);
     {
-        QString bookmark = platform::saveBookmark(saveto);
-        if (!bookmark.isEmpty()) {
-            settings.setValue("savetobookmark", bookmark);
+        if (QDir(saveto).exists()) {  // must exist
+            QString bookmark = platform::saveBookmark(saveto);
+            if (!bookmark.isEmpty()) {
+                settings.setValue("savetobookmark", bookmark);
+            }
         }
     }
     settings.setValue("copyoriginal", copyoriginal);
@@ -697,8 +698,12 @@ JobmanPrivate::loadPresets()
             Message::showMessage(window.data(), "Could not load all presets", error);
         }
     }
-    if (!ui->presets->count()) {
+    if (ui->presets->count()) {
+        ui->openPreset->setEnabled(true);
+    }
+    else {
         ui->presets->addItem("No presets found");
+        ui->openPreset->setEnabled(false);
     }
 }
 
@@ -767,7 +772,8 @@ JobmanPrivate::refreshOptions()
 void
 JobmanPrivate::refreshPresets()
 {
-    saveSettings();
+    loadPresets();
+    activate();
 }
 
 void
@@ -885,7 +891,7 @@ JobmanPrivate::importPresetsUrl(const QUrl& url)
             if (!alreadyexistsfiles.isEmpty()) {
                 message += "Already exists:\n" + alreadyexistsfiles.join("\n") + "\n\n";
             }
-            if (!alreadyexistsfiles.isEmpty()) {
+            if (!invalidfiles.isEmpty()) {
                 message += "Invalid preset files:\n" + invalidfiles.join("\n");
             }
             Message::showMessage(window.data(), "Preset import summary", message);
@@ -962,8 +968,12 @@ JobmanPrivate::setSaveto(const QString& text)
 void
 JobmanPrivate::saveToUrl(const QUrl& url)
 {
-    saveto = url.toLocalFile();
-    ui->showSaveto->setVisible(true);
+    QString localFile = url.toLocalFile();
+    if (QDir(localFile).exists()) {
+        saveto = url.toLocalFile();
+        ui->showSaveto->setVisible(true);
+        activate();
+    }
 }
 
 void
@@ -1004,7 +1014,15 @@ JobmanPrivate::presetsChanged(int index)
         else {
             ui->presettype->setCurrentIndex(1);
             ui->type->setText("Command");
+            QString objectname = ui->optionsWidget->objectName();
+            {
+                delete ui->optionsWidget;  // needed for dynamic layout
+                ui->optionsWidget = nullptr;
+            }
+            ui->optionsWidget = new OptionsWidget();
+            ui->optionsWidget->setObjectName(objectname);
             ui->optionsWidget->update(preset);
+            ui->scrollarea->setWidget(ui->optionsWidget);
             ui->openOptions->setVisible(false);
             if (!offset) {
                 offset = 200;

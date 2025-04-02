@@ -6,7 +6,6 @@
 #include "urlfilter.h"
 
 #include <QCheckBox>
-#include <QDebug>
 #include <QFileDialog>
 #include <QMouseEvent>
 #include <QPointer>

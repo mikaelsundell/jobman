@@ -7,7 +7,6 @@
 #include "process.h"
 
 #include <QCoreApplication>
-#include <QDebug>
 #include <QObject>
 #include <QPointer>
 #include <QThreadPool>

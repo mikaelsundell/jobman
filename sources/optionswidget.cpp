@@ -1,4 +1,4 @@
-﻿// Copyright 2022-present Contributors to the jobman project.
+// Copyright 2022-present Contributors to the jobman project.
 // SPDX-License-Identifier: BSD-3-Clause
 // https://github.com/mikaelsundell/jobman
 
@@ -56,6 +56,9 @@ OptionsWidgetPrivate::update()
         label->setFont(font);
         labellayout->addWidget(label);
 
+        int editprecision = 6;
+        int labelprecision = 3;
+
         if (!option->description.isEmpty()) {
             QToolButton* tooltip = new QToolButton(labelwidget);
             tooltip->setObjectName("tooltip");
@@ -65,7 +68,17 @@ OptionsWidgetPrivate::update()
                          QIcon::State::Off);
             tooltip->setIcon(icon);
             tooltip->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
-            tooltip->setToolTip(option->description);
+
+            QVariant defaultvalue = option->defaultvalue;
+            QString tooltiptext = option->description;
+            if (defaultvalue.isValid() && !defaultvalue.isNull()) {
+                QString formatted = (defaultvalue.typeId() == QMetaType::Double)
+                                        ? QString::number(defaultvalue.toDouble(), 'f', 3)
+                                        : defaultvalue.toString();
+
+                tooltiptext += QString(" (default: %1)").arg(formatted);
+            }
+            tooltip->setToolTip(tooltiptext);
             labellayout->addWidget(tooltip);
         }
         labellayout->addStretch();
@@ -78,6 +91,7 @@ OptionsWidgetPrivate::update()
 
             QCheckBox* checkbox = new QCheckBox(optionwidget);
             checkbox->setChecked(option->value.toBool());
+            checkbox->setFont(font);
 
             connect(checkbox, &QCheckBox::toggled, this,
                     [this, option](bool checked) { valueChanged(option->id, checked); });
@@ -86,6 +100,7 @@ OptionsWidgetPrivate::update()
 
             if (!option->toggle.isEmpty()) {
                 QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
                 togglebox->setChecked(option->enabled);
                 checkbox->setEnabled(option->enabled);
                 connect(togglebox, &QCheckBox::toggled, this, [checkbox, option](bool checked) {
@@ -102,13 +117,17 @@ OptionsWidgetPrivate::update()
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
             optionlayout->setContentsMargins(margins);
 
-            QLineEdit* lineedit = new QLineEdit(option->value.toString(), optionwidget);
+            QString valuestring = QString::number(option->value.toDouble(), 'f', editprecision);
+            valuestring.remove(QRegularExpression("0+$"));  // trailing zeros
+            QLineEdit* lineedit = new QLineEdit(valuestring, optionwidget);
+
             QDoubleValidator* validator = new QDoubleValidator(option->minimum.toDouble(), option->maximum.toDouble(),
-                                                               6, lineedit);
+                                                               editprecision, lineedit);
             validator->setNotation(QDoubleValidator::StandardNotation);
             validator->setLocale(QLocale::C);  // use '.' instead of ','
             lineedit->setValidator(validator);
             lineedit->setFont(font);
+            lineedit->setCursorPosition(0);
 
             connect(lineedit, &QLineEdit::textEdited, this, [this, lineedit, option]() {
                 QString text = lineedit->text();
@@ -124,11 +143,12 @@ OptionsWidgetPrivate::update()
                         double maximum = option->maximum.toDouble();
                         if (value < minimum) {
                             value = minimum;
+                            lineedit->setText(QString::number(value));
                         }
                         else if (value > maximum) {
                             value = maximum;
+                            lineedit->setText(QString::number(value));
                         }
-                        lineedit->setText(QString::number(value));
                         valueChanged(option->id, value);
                     }
                 }
@@ -146,6 +166,7 @@ OptionsWidgetPrivate::update()
 
             if (!option->toggle.isEmpty()) {
                 QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
                 togglebox->setChecked(option->enabled);
                 lineedit->setEnabled(option->enabled);
                 connect(togglebox, &QCheckBox::toggled, this, [lineedit, option](bool checked) {
@@ -163,6 +184,7 @@ OptionsWidgetPrivate::update()
             optionlayout->setContentsMargins(margins);
 
             QComboBox* combobox = new QComboBox(optionwidget);
+            combobox->setFont(font);
             int currentindex = -1;
 
             for (int i = 0; i < option->options.size(); ++i) {
@@ -183,6 +205,7 @@ OptionsWidgetPrivate::update()
 
             if (!option->toggle.isEmpty()) {
                 QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
                 togglebox->setChecked(option->enabled);
                 combobox->setEnabled(option->enabled);
                 connect(togglebox, &QCheckBox::toggled, this, [combobox, option](bool checked) {
@@ -201,24 +224,27 @@ OptionsWidgetPrivate::update()
             QHBoxLayout* sliderlayout = new QHBoxLayout();
             QSlider* slider = new QSlider(Qt::Horizontal, widget.data());
 
-            double minValue = option->minimum.toDouble();
-            double maxValue = option->maximum.toDouble();
-            int precision = 10;
+            double minvalue = option->minimum.toDouble();
+            double maxvalue = option->maximum.toDouble();
+            double value = option->value.toDouble();
 
-            slider->setRange(minValue * precision, maxValue * precision);
-            slider->setValue(option->value.toDouble() * precision);
+            int steps = 1000;
+            int sliderpos = static_cast<int>(((value - minvalue) / (maxvalue - minvalue)) * steps);
 
-            QLabel* sliderlabel = new QLabel(QString::number(slider->value() / (double)precision, 'f', 1),
-                                             widget.data());
+            slider->setRange(0, steps);
+            slider->setValue(sliderpos);
+
+            QLabel* sliderlabel = new QLabel(QString::number(value, 'f', labelprecision), widget.data());
             sliderlabel->setFont(font);
-            sliderlabel->setFixedWidth(40);
+            sliderlabel->setFixedWidth(60);
             sliderlabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
-            connect(slider, &QSlider::valueChanged, this, [this, option, sliderlabel, precision](int value) {
-                double doublevalue = value / (double)precision;
-                sliderlabel->setText(QString::number(doublevalue, 'f', 1));
-                valueChanged(option->id, doublevalue);
-            });
+            connect(slider, &QSlider::valueChanged, this,
+                    [this, option, sliderlabel, minvalue, maxvalue, steps, labelprecision](int pos) {
+                        double mappedValue = minvalue + ((maxvalue - minvalue) * pos / steps);
+                        sliderlabel->setText(QString::number(mappedValue, 'f', labelprecision));
+                        valueChanged(option->id, mappedValue);
+                    });
 
             sliderlayout->addWidget(slider);
             sliderlayout->addWidget(sliderlabel);
@@ -226,6 +252,7 @@ OptionsWidgetPrivate::update()
 
             if (!option->toggle.isEmpty()) {
                 QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
                 togglebox->setChecked(option->enabled);
                 slider->setEnabled(option->enabled);
                 sliderlabel->setEnabled(option->enabled);
@@ -269,6 +296,7 @@ OptionsWidgetPrivate::update()
 
             if (!option->toggle.isEmpty()) {
                 QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
                 togglebox->setChecked(option->enabled);
                 lineedit->setEnabled(option->enabled);
                 button->setEnabled(option->enabled);
@@ -315,6 +343,7 @@ OptionsWidgetPrivate::update()
 
             if (!option->toggle.isEmpty()) {
                 QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
                 togglebox->setChecked(option->enabled);
                 lineedit->setEnabled(option->enabled);
                 connect(togglebox, &QCheckBox::toggled, this, [lineedit, option](bool checked) {
@@ -352,6 +381,7 @@ OptionsWidgetPrivate::update()
 
             if (!option->toggle.isEmpty()) {
                 QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
                 togglebox->setChecked(option->enabled);
                 slider->setEnabled(option->enabled);
                 sliderlabel->setEnabled(option->enabled);
@@ -363,6 +393,29 @@ OptionsWidgetPrivate::update()
                 optionlayout->addWidget(togglebox);
             }
 
+            layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+        }
+        else if (option->type.toLower() == "label") {
+            QWidget* optionwidget = new QWidget(widget.data());
+            QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
+            optionlayout->setContentsMargins(margins);
+
+            QLabel* label = new QLabel(option->value.toString(), widget.data());
+            label->setFont(font);
+
+            optionlayout->addWidget(label);
+
+            if (!option->toggle.isEmpty()) {
+                QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
+                togglebox->setChecked(option->enabled);
+                label->setEnabled(option->enabled);
+                connect(togglebox, &QCheckBox::toggled, this, [label, option](bool checked) {
+                    label->setEnabled(checked);
+                    option->enabled = checked;
+                });
+                optionlayout->addWidget(togglebox);
+            }
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
         }
         else if (option->type.toLower() == "text") {
@@ -379,6 +432,7 @@ OptionsWidgetPrivate::update()
 
             if (!option->toggle.isEmpty()) {
                 QCheckBox* togglebox = new QCheckBox(option->toggle, optionwidget);
+                togglebox->setFont(font);
                 togglebox->setChecked(option->enabled);
                 lineedit->setEnabled(option->enabled);
                 connect(togglebox, &QCheckBox::toggled, this, [lineedit, option](bool checked) {

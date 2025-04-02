@@ -19,8 +19,6 @@
 #include <QTimer>
 #include <QTreeWidgetItem>
 
-#include <QDebug>
-
 // generated files
 #include "ui_monitor.h"
 #include "ui_progressbar.h"

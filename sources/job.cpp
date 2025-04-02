@@ -9,8 +9,6 @@
 #include <QObject>
 #include <QPointer>
 
-#include <QDebug>
-
 OS::OS(QObject* parent)
     : QObject(parent)
 {}

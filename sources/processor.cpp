@@ -251,6 +251,7 @@ QStringList
 ProcessorPrivate::updateOptions(QList<QSharedPointer<Option>> options, const QString& input)
 {
     QStringList result;
+    bool found = false;
     for (QSharedPointer<Option> option : options) {
         QString pattern = QString("%options:%1%").arg(option->id);
         if (input.contains(pattern)) {
@@ -267,12 +268,11 @@ ProcessorPrivate::updateOptions(QList<QSharedPointer<Option>> options, const QSt
                     result.append(replacement);
                 }
             }
-            else {
-                result.append(QString(input).replace(pattern, QString()).split(" "));
-            }
+            found = true;
+            break;
         }
     }
-    if (!result.count()) {
+    if (!result.count() && !found) {
         result.append(input);
     }
     return result;

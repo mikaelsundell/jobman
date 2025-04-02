@@ -4,7 +4,6 @@
 
 #include "clickfilter.h"
 
-#include <QDebug>
 #include <QMouseEvent>
 
 Clickfilter::Clickfilter(QObject* parent)

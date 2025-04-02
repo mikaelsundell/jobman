@@ -18,7 +18,6 @@
 #    include <windows.h>
 #endif
 
-#include <QDebug>
 #include <QDir>
 #include <QProcess>
 #include <QThread>

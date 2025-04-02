@@ -10,8 +10,6 @@
 #include <QJsonObject>
 #include <QPointer>
 
-#include <QDebug>
-
 Option::Option() {}
 
 Option::~Option() {}
@@ -142,7 +140,7 @@ PresetPrivate::read()
                         optValue = optObj["value"].toVariant();
                     }
                     else {
-                        error = QString("Json for option: \"%1\" in list contains no a value").arg(i);
+                        error = QString("Json for option: \"%1\" in list contains no value").arg(i);
                         valid = false;
                         return valid;
                     }
@@ -167,7 +165,7 @@ PresetPrivate::read()
                 option->value = 0;
             }
             if (option->defaultvalue.isNull()) {
-                option->defaultvalue = 0;
+                option->defaultvalue = option->value;
             }
             if (option->id.isEmpty() || option->name.isEmpty() || option->type.isEmpty()) {
                 QList<QString> attributes;
@@ -197,7 +195,8 @@ PresetPrivate::read()
                 if (!(option->type.toLower() == "checkbox" || option->type.toLower() == "double"
                       || option->type.toLower() == "doubleslider" || option->type.toLower() == "dropdown"
                       || option->type.toLower() == "file" || option->type.toLower() == "int"
-                      || option->type.toLower() == "intslider" || option->type.toLower() == "text")) {
+                      || option->type.toLower() == "intslider" || option->type.toLower() == "label")
+                    || option->type.toLower() == "text") {
                     error = QString("Json for option: %1 contains an invalid type: %2, valid types are "
                                     "Checkbox, Double, DoubleSlider, File, Int, IntSlider, Dropdown and Text")
                                 .arg(i + 1)
@@ -207,7 +206,8 @@ PresetPrivate::read()
                 }
                 else {
                     // default and value required for non file and text
-                    if (!(option->type.toLower() == "file" || option->type.toLower() == "text")) {
+                    if (!(option->type.toLower() == "file" || option->type.toLower() == "text"
+                          || option->type.toLower() == "label")) {
                         if (!option->defaultvalue.isValid() || !option->value.isValid()) {
                             QList<QString> attributes;
                             if (!option->defaultvalue.isValid()) {

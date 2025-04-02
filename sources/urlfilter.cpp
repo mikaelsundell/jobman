@@ -4,7 +4,6 @@
 
 #include "urlfilter.h"
 
-#include <QDebug>
 #include <QDragEnterEvent>
 #include <QFileInfo>
 #include <QLabel>
