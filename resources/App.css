@@ -120,7 +120,7 @@ QListView
 
 QListView::item {
     height: 25px;
-    background: hsl(220, 30%, 8%);
+    background-color: hsl(220, 30%, 6%);
 }
 
 QListView::item:alternate {
