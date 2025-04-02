@@ -71,21 +71,11 @@ QComboBox::drop-down {
 QComboBox::item {
     height: 10px;
     border: 8px solid transparent;
+    background-color: hsl(220, 30%, 6%);
 }
 
 QComboBox::item:selected {
     background: hsl(220, 30%, 12%);
-    border-radius: 0px;
-}
-
-QComboBox QAbstractItemView {
-    selection-background-color: hsl(220, 30%, 12%);
-    selection-color: hsl(0, 0%, 80%);
-}
-
-QComboBox QAbstractItemView::item:selected {
-    background: hsl(220, 30%, 12%);
-    color: hsl(0, 0%, 80%);
 }
 
 /* QLabel widgets */

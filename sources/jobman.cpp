@@ -177,7 +177,7 @@ JobmanPrivate::init()
     ui.reset(new Ui_Jobman());
     ui->setupUi(window);
     // preferences
-    ui->open->setMenuRole(QAction::PreferencesRole);
+    ui->editOpenPreferences->setMenuRole(QAction::PreferencesRole);
     // about
     about.reset(new About(window.data()));
     // monitor
@@ -213,12 +213,13 @@ JobmanPrivate::init()
     connect(ui->toggleType, &QPushButton::pressed, this, &JobmanPrivate::toggleType);
     connect(presetfilter.data(), &Clickfilter::pressed, ui->togglePreset, &QPushButton::click);
     connect(filedropfilter.data(), &Clickfilter::pressed, ui->toggleType, &QPushButton::click);
-    connect(ui->submitFiles, &QAction::triggered, this, &JobmanPrivate::submitFiles);
-    connect(ui->open, &QAction::triggered, this, &JobmanPrivate::openPreferences);
-    connect(ui->clear, &QAction::triggered, this, &JobmanPrivate::clearPreferences);
-    connect(ui->save, &QAction::triggered, this, &JobmanPrivate::savePreferences);
-    connect(ui->import_, &QAction::triggered, this, &JobmanPrivate::importPreferences);
-    connect(ui->export_, &QAction::triggered, this, &JobmanPrivate::exportPreferences);
+    connect(ui->editSubmitFiles, &QAction::triggered, this, &JobmanPrivate::submitFiles);
+    connect(ui->editOpenPreferences, &QAction::triggered, this, &JobmanPrivate::openPreferences);
+    connect(ui->editClearPreferences, &QAction::triggered, this, &JobmanPrivate::clearPreferences);
+    connect(ui->editSavePreferences, &QAction::triggered, this, &JobmanPrivate::savePreferences);
+    connect(ui->editImportPreferences, &QAction::triggered, this, &JobmanPrivate::importPreferences);
+    connect(ui->editExportPreferences, &QAction::triggered, this, &JobmanPrivate::exportPreferences);
+    connect(ui->editRefreshOptions, &QAction::triggered, this, &JobmanPrivate::refreshPresets);
     connect(ui->refreshPresets, &QPushButton::clicked, this, &JobmanPrivate::refreshPresets);
     connect(ui->openPreset, &QPushButton::clicked, this, &JobmanPrivate::openPreset);
     connect(ui->selectPresetsfrom, &QPushButton::clicked, this, &JobmanPrivate::selectPresetsfrom);
@@ -235,15 +236,15 @@ JobmanPrivate::init()
     connect(ui->threads, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             &JobmanPrivate::threadsChanged);
     connect(ui->submit, &QPushButton::pressed, this, &JobmanPrivate::processCommand);
-    connect(ui->about, &QAction::triggered, this, &JobmanPrivate::openAbout);
-    connect(ui->openPresetsFolder, &QAction::triggered, this, &JobmanPrivate::openPresetsFolder);
-    connect(ui->openSaveToFolder, &QAction::triggered, this, &JobmanPrivate::openSaveToFolder);
-    connect(ui->monitor, &QAction::triggered, this, &JobmanPrivate::openMonitor);
+    connect(ui->helpAbout, &QAction::triggered, this, &JobmanPrivate::openAbout);
+    connect(ui->editOpenPresetsFolder, &QAction::triggered, this, &JobmanPrivate::openPresetsFolder);
+    connect(ui->editOpenSaveToFolder, &QAction::triggered, this, &JobmanPrivate::openSaveToFolder);
+    connect(ui->viewOpenMonitor, &QAction::triggered, this, &JobmanPrivate::openMonitor);
     connect(ui->openMonitor, &QPushButton::clicked, this, &JobmanPrivate::openMonitor);
-    connect(ui->options, &QAction::triggered, this, &JobmanPrivate::openOptions);
+    connect(ui->editOpenOptions, &QAction::triggered, this, &JobmanPrivate::openOptions);
     connect(ui->openOptions, &QPushButton::clicked, this, &JobmanPrivate::openOptions);
-    connect(ui->openGithubReadme, &QAction::triggered, this, &JobmanPrivate::openGithubReadme);
-    connect(ui->openGithubIssues, &QAction::triggered, this, &JobmanPrivate::openGithubIssues);
+    connect(ui->helpOpenGithubReadme, &QAction::triggered, this, &JobmanPrivate::openGithubReadme);
+    connect(ui->helpOpenGithubIssues, &QAction::triggered, this, &JobmanPrivate::openGithubIssues);
     connect(queue.data(), &Queue::jobProcessed, this, &JobmanPrivate::jobProcessed);
     size = window->size();
     // threads
@@ -1009,10 +1010,9 @@ JobmanPrivate::presetsChanged(int index)
                 enabled = false;
             }
         }
-        ui->submitFiles->setEnabled(enabled);
-        ui->options->setEnabled(enabled);
+        ui->editSubmitFiles->setEnabled(enabled);
+        ui->editOpenOptions->setEnabled(enabled);
         ui->openOptions->setEnabled(enabled);
-        ui->options->setEnabled(enabled);
     }
 }
 

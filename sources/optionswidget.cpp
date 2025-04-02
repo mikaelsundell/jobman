@@ -20,6 +20,7 @@ class OptionsWidgetPrivate : public QObject {
 public:
     OptionsWidgetPrivate();
     void init();
+    void clear();
     void update();
 
 public Q_SLOTS:
@@ -39,18 +40,30 @@ OptionsWidgetPrivate::init()
 }
 
 void
-OptionsWidgetPrivate::update()
+OptionsWidgetPrivate::clear()
 {
-    if (widget->layout()) {
+    if (QLayout* layout = widget->layout()) {
         QLayoutItem* item;
-        while ((item = widget->layout()->takeAt(0)) != nullptr) {
+        while ((item = layout->takeAt(0)) != nullptr) {
             if (QWidget* w = item->widget()) {
                 w->deleteLater();
+            } else if (QLayout* childLayout = item->layout()) {
+                delete childLayout;
             }
             delete item;
         }
-        delete widget->layout();
+        delete layout;
     }
+    const QList<QWidget*> children = widget->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+    for (QWidget* child : children) {
+        child->deleteLater();
+    }
+}
+
+void
+OptionsWidgetPrivate::update()
+{
+    clear();
     QGridLayout* layout = new QGridLayout(widget.data());
     int row = 0;
     QMargins margins(0, 0, 0, 0);
