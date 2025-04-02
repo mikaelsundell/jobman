@@ -338,8 +338,7 @@ JobmanPrivate::applicationPath(const QString& path) const
     if (canonicalAppDir.isEmpty() || canonicalDir.isEmpty()) {
         return false;
     }
-    return canonicalDir == canonicalAppDir ||
-           canonicalDir.startsWith(canonicalAppDir + QDir::separator());
+    return canonicalDir == canonicalAppDir || canonicalDir.startsWith(canonicalAppDir + QDir::separator());
 }
 
 void
@@ -849,13 +848,13 @@ JobmanPrivate::importPresetsUrl(const QUrl& url)
     }
     QString path = url.toLocalFile();
     QFileInfo fileinfo(path);
-   
+
     if (!applicationPath(presetsfrom)) {
         QDir presetsdir(presetsfrom);
         QStringList addedfiles;
         QStringList alreadyexistsfiles;
         QStringList invalidfiles;
-        
+
         if (fileinfo.isDir()) {
             QDir dir(path);
             dir.setNameFilters(QStringList() << "*.json");
@@ -910,8 +909,8 @@ JobmanPrivate::importPresetsUrl(const QUrl& url)
                     Message::showMessage(window.data(), "Invalid preset file",
                                          QString("The file '%1' was invalid because it already exists.\n"
                                                  "Error: %2")
-                                         .arg(filename)
-                                         .arg(preset->error()));
+                                             .arg(filename)
+                                             .arg(preset->error()));
                 }
             }
         }
@@ -919,12 +918,11 @@ JobmanPrivate::importPresetsUrl(const QUrl& url)
             return;
         }
         refreshPresets();
-    } else {
+    }
+    else {
         Message::showMessage(
-            window.data(),
-            "Invalid preset directory",
-            "The preset directory is invalid because it is inside the application path. Please select a different preset folder."
-        );
+            window.data(), "Invalid preset directory",
+            "The preset directory is invalid because it is inside the application path. Please select a different preset folder.");
     }
 }
 
