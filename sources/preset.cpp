@@ -67,9 +67,21 @@ PresetPrivate::read()
     QJsonParseError jsonError;
     QJsonDocument document = QJsonDocument::fromJson(jsonData, &jsonError);
     if (document.isNull()) {
+        int line = 1; // get line and column
+        int column = 1;
+        for (int i = 0; i < jsonError.offset && i < jsonData.size(); ++i) {
+            if (jsonData[i] == '\n') {
+                ++line;
+                column = 1;
+            } else {
+                ++column;
+            }
+        }
         error = QString("Parse error:\n"
-                        "%2 at offset %3")
+                        "%1 at line %2, column %3 (offset %4)")
                     .arg(jsonError.errorString())
+                    .arg(line)
+                    .arg(column)
                     .arg(jsonError.offset);
         valid = false;
         return valid;
@@ -152,21 +164,6 @@ PresetPrivate::read()
                     i++;
                 }
             }
-            if (option->toggle.isEmpty()) {
-                option->enabled = true;
-            }
-            if (option->minimum.isNull()) {
-                option->minimum = 0;
-            }
-            if (option->maximum.isNull()) {
-                option->maximum = 100;
-            }
-            if (option->value.isNull()) {
-                option->value = 0;
-            }
-            if (option->defaultvalue.isNull()) {
-                option->defaultvalue = option->value;
-            }
             if (option->id.isEmpty() || option->name.isEmpty() || option->type.isEmpty()) {
                 QList<QString> attributes;
                 if (option->id.isEmpty()) {
@@ -225,6 +222,18 @@ PresetPrivate::read()
                         }
                     }
                 }
+            }
+            if (option->toggle.isEmpty()) {
+                option->enabled = true;
+            }
+            if (option->minimum.isNull()) {
+                option->minimum = 0;
+            }
+            if (option->maximum.isNull()) {
+                option->maximum = 100;
+            }
+            if (option->defaultvalue.isNull()) {
+                option->defaultvalue = option->value;
             }
             bool hasdefault = true, hasvalue = true;
             for (const QPair<QString, QVariant>& pair : option->options) {

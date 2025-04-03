@@ -62,6 +62,7 @@ public:
 public Q_SLOTS:
     void loadPresets();
     void clearPresets();
+    void defaultsPreset();
     void togglePreset();
     void toggleType();
     void openPresetsFolder();
@@ -236,6 +237,7 @@ JobmanPrivate::init()
     connect(ui->threads, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             &JobmanPrivate::threadsChanged);
     connect(ui->submit, &QPushButton::pressed, this, &JobmanPrivate::processCommand);
+    connect(ui->defaults, &QPushButton::pressed, this, &JobmanPrivate::defaultsPreset);
     connect(ui->helpAbout, &QAction::triggered, this, &JobmanPrivate::openAbout);
     connect(ui->editOpenPresetsFolder, &QAction::triggered, this, &JobmanPrivate::openPresetsFolder);
     connect(ui->editOpenSaveToFolder, &QAction::triggered, this, &JobmanPrivate::openSaveToFolder);
@@ -1041,6 +1043,20 @@ void
 JobmanPrivate::threadsChanged(int index)
 {
     queue->setThreads(ui->threads->itemText(index).toInt());
+}
+
+void
+JobmanPrivate::defaultsPreset()
+{
+    if (Question::askQuestion(window.data(), "All values will be reset to their default settings.\n"
+                                             "Do you want to continue?")) {
+        QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
+        for (QSharedPointer<Option> option : preset->options()) {
+            option->value = option->defaultvalue;
+            option->enabled = false;
+        }
+        presetsChanged(ui->presets->currentIndex());
+    }
 }
 
 void

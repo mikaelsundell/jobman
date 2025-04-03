@@ -205,7 +205,8 @@ QPushButton
         stop: 0 hsl(220, 6%, 20%),
         stop: 1.0 hsl(220, 6%, 24%)
     );
-    height: 20px;        
+    height: 20px;  
+    min-width: 50px;      
     border: 1px solid hsl(220, 3%, 33%);
     border-radius: 0px;        
     padding: 2px;
@@ -216,14 +217,6 @@ QPushButton
 QPushButton:default
 {
     font-weight: bold;
-    padding-left: 8px;
-    padding-right: 8px;
-    background-color: 
-    QLinearGradient( 
-        x1: 0, y1: 0, x2: 0, y2: 1, 
-        stop: 0 hsl(220, 6%, 20%),
-        stop: 1.0 hsl(220, 6%, 24%)
-    );
 }
 
 QPushButton:disabled

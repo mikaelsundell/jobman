@@ -806,7 +806,7 @@
                       </spacer>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="pushButton">
+                      <widget class="QPushButton" name="defaults">
                        <property name="font">
                         <font>
                          <pointsize>11</pointsize>
@@ -825,7 +825,7 @@
                         </font>
                        </property>
                        <property name="text">
-                        <string>Submit job</string>
+                        <string>Submit</string>
                        </property>
                        <property name="default">
                         <bool>true</bool>

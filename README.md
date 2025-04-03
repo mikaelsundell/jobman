@@ -216,47 +216,58 @@ Preset files support various variables that can be used to customize arguments d
 `id`
 - Description: A unique identifier for the option.
 - Usage: Used internally to reference the option.
+- Required: __Yes__
 
 `name`
 - Description: The display name of the option.
 - Usage: This is used for user interfaces or logging where a readable name is required.
-
+- Required: __No__
+- 
 `description`
 - Description: A short explanation of the option.
 - Usage: Used in tooltips to provide additional context.
-
+- Required: __No__
+- 
 `flag`
 - Description: The command-line flag associated with this option.
 - Usage: Used to set the flag of the option.
+- Required: __No__
 
 `flagonly`
 - Description: A toggle flag for enabling use of the "flag only" without the value.
 - Usage: Used to provide "flag only" arguments.
+- Required: __No__
 
 `type`
 - Description: Specifies the ui type of the option. Supported types `checkbox`,`double`, `doubleslider`, `dropdown`, `file`, `int`, `intSlider` and `text`.
 - Usage: Used as user interface control to present the option.
+- Required: __Yes__
 
 `value`
 - Description: The current value assigned to this option.
 - Usage: This field represents the actual selected or set value.
+- Required: __Yes__
 
 `default`
 - Description: The default value assigned if no user value is provided.
 - Usage: Used to reset to default settings.
+- Required: __No__ will be set to `value` if not defined.
 
 `minimum`
 - Description: The minimum allowed value for the option.
 - Usage: Used for validation to prevent values below this threshold.
+- Required: __No__ will be set to 0 if not defined.
 
  `maximum`
 - Description: The maximum allowed value for the option.
 - Usage: Used for validation to prevent values exceeding this threshold.
+- Required: __No__ will be set to 100 if not defined.
 
  `toggle`
 - Description: A toggle switch used to turn the option on or off.
 - Usage: This field conditionally enables or disables the option based on its state.
-
+- Required: __No__
+- 
 **Task variables**
 
 ```shell

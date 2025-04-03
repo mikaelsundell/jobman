@@ -58,6 +58,7 @@ OptionsWidgetPrivate::update()
 
         int editprecision = 6;
         int labelprecision = 3;
+        int rowheight = 30;
 
         if (!option->description.isEmpty()) {
             QToolButton* tooltip = new QToolButton(labelwidget);
@@ -83,7 +84,8 @@ OptionsWidgetPrivate::update()
         }
         labellayout->addStretch();
         layout->addWidget(labelwidget, row, 0, Qt::AlignTop);
-
+        layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
+        
         if (option->type.toLower() == "checkbox") {
             QWidget* optionwidget = new QWidget(widget.data());
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
@@ -111,8 +113,9 @@ OptionsWidgetPrivate::update()
             }
 
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
-        if (option->type.toLower() == "double") {
+        else if (option->type.toLower() == "double") {
             QWidget* optionwidget = new QWidget(widget.data());
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
             optionlayout->setContentsMargins(margins);
@@ -177,6 +180,7 @@ OptionsWidgetPrivate::update()
             }
 
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
         else if (option->type.toLower() == "dropdown") {
             QWidget* optionwidget = new QWidget(widget.data());
@@ -215,6 +219,7 @@ OptionsWidgetPrivate::update()
                 optionlayout->addWidget(togglebox);
             }
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
         else if (option->type.toLower() == "doubleslider") {
             QWidget* optionwidget = new QWidget(widget.data());
@@ -265,6 +270,7 @@ OptionsWidgetPrivate::update()
             }
 
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
         else if (option->type.toLower() == "file") {
             QWidget* optionwidget = new QWidget(widget.data());
@@ -309,6 +315,7 @@ OptionsWidgetPrivate::update()
             }
 
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
         else if (option->type.toLower() == "int") {
             QWidget* optionwidget = new QWidget(widget.data());
@@ -354,6 +361,7 @@ OptionsWidgetPrivate::update()
             }
 
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
         else if (option->type.toLower() == "intslider") {
             QWidget* optionwidget = new QWidget(widget.data());
@@ -394,6 +402,7 @@ OptionsWidgetPrivate::update()
             }
 
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
         else if (option->type.toLower() == "label") {
             QWidget* optionwidget = new QWidget(widget.data());
@@ -417,6 +426,7 @@ OptionsWidgetPrivate::update()
                 optionlayout->addWidget(togglebox);
             }
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
         else if (option->type.toLower() == "text") {
             QWidget* optionwidget = new QWidget(widget.data());
@@ -442,6 +452,7 @@ OptionsWidgetPrivate::update()
                 optionlayout->addWidget(togglebox);
             }
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
+            layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
         row++;
     }
