@@ -133,7 +133,7 @@ PresetPrivate::read()
             if (jsonoption.contains("toggle") && jsonoption["toggle"].isString())
                 option->toggle = jsonoption["toggle"].toString();
             if (jsonoption.contains("flagonly"))
-                option->flagonly = jsonoption["flagonly"].toVariant().toBool();
+                option->flagonly = jsonoption["flagonly"].toVariant();
             if (jsonoption.contains("value"))
                 option->value = jsonoption["value"].toVariant();
             if (jsonoption.contains("default"))
@@ -224,11 +224,11 @@ PresetPrivate::read()
                     }
                 }
             }
-            if (option->toggle.isEmpty()) {
-                option->enabled = true;
+            if (option->flagonly.isNull()) {
+                option->flagonly = false;
             }
             else {
-                option->enabled = false;
+                option->flagonly = true;
             }
             if (option->minimum.isNull()) {
                 option->minimum = 0;
@@ -238,6 +238,12 @@ PresetPrivate::read()
             }
             if (option->defaultvalue.isNull()) {
                 option->defaultvalue = option->value;
+            }
+            if (option->toggle.isEmpty()) {
+                option->enabled = true;
+            }
+            else {
+                option->enabled = false;
             }
             bool hasdefault = true, hasvalue = true;
             for (const QPair<QString, QVariant>& pair : option->options) {

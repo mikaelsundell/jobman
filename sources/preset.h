@@ -23,7 +23,7 @@ public:
     QVariant defaultvalue;
     QVariant minimum;
     QVariant maximum;
-    bool flagonly;
+    QVariant flagonly;
     bool enabled;
     QList<QPair<QString, QVariant>> options;
 };

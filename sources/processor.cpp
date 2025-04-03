@@ -258,7 +258,7 @@ ProcessorPrivate::updateOptions(QList<QSharedPointer<Option>> options, const QSt
         if (input.contains(pattern)) {
             if (option->enabled) {
                 QString replacement = option->flag;
-                if (!option->flagonly) {
+                if (!option->flagonly.toBool()) {
                     if (replacement.length()) {
                         replacement += " ";
                     }
