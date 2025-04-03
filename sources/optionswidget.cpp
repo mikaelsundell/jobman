@@ -3,6 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "optionswidget.h"
+#include "utils.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -55,7 +56,6 @@ OptionsWidgetPrivate::update()
         font.setPointSize(10);
         label->setFont(font);
         labellayout->addWidget(label);
-
         int editprecision = 6;
         int labelprecision = 3;
         int rowheight = 30;
@@ -85,7 +85,7 @@ OptionsWidgetPrivate::update()
         labellayout->addStretch();
         layout->addWidget(labelwidget, row, 0, Qt::AlignTop);
         layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
-        
+
         if (option->type.toLower() == "checkbox") {
             QWidget* optionwidget = new QWidget(widget.data());
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
@@ -120,9 +120,8 @@ OptionsWidgetPrivate::update()
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
             optionlayout->setContentsMargins(margins);
 
-            QString valuestring = QString::number(option->value.toDouble(), 'f', editprecision);
-            valuestring.remove(QRegularExpression("0+$"));  // trailing zeros
-            QLineEdit* lineedit = new QLineEdit(valuestring, optionwidget);
+            QString value = utils::formatDouble(option->value.toDouble());
+            QLineEdit* lineedit = new QLineEdit(value, optionwidget);
 
             QDoubleValidator* validator = new QDoubleValidator(option->minimum.toDouble(), option->maximum.toDouble(),
                                                                editprecision, lineedit);
@@ -159,9 +158,10 @@ OptionsWidgetPrivate::update()
 
             connect(lineedit, &QLineEdit::editingFinished, this, [lineedit]() {
                 QString text = lineedit->text();
-                if (text.endsWith('.')) {
-                    text.chop(1);
-                    lineedit->setText(text);
+                bool valid;
+                double value = text.toDouble(&valid);
+                if (valid) {
+                    lineedit->setText(utils::formatDouble(value));
                 }
             });
 
@@ -202,8 +202,9 @@ OptionsWidgetPrivate::update()
                 combobox->setCurrentIndex(currentindex);
             }
 
-            connect(combobox, &QComboBox::currentIndexChanged, this,
-                    [this, option, combobox](int index) { valueChanged(option->id, combobox->itemData(index)); });
+            connect(combobox, &QComboBox::currentIndexChanged, this, [this, option, combobox](int index) {
+                valueChanged(option->id, combobox->itemData(index));
+            });
 
             optionlayout->addWidget(combobox);
 
@@ -239,7 +240,7 @@ OptionsWidgetPrivate::update()
             slider->setRange(0, steps);
             slider->setValue(sliderpos);
 
-            QLabel* sliderlabel = new QLabel(QString::number(value, 'f', labelprecision), widget.data());
+            QLabel* sliderlabel = new QLabel(utils::formatDouble(value, labelprecision), widget.data());
             sliderlabel->setFont(font);
             sliderlabel->setFixedWidth(60);
             sliderlabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -247,7 +248,7 @@ OptionsWidgetPrivate::update()
             connect(slider, &QSlider::valueChanged, this,
                     [this, option, sliderlabel, minvalue, maxvalue, steps, labelprecision](int pos) {
                         double mappedValue = minvalue + ((maxvalue - minvalue) * pos / steps);
-                        sliderlabel->setText(QString::number(mappedValue, 'f', labelprecision));
+                        sliderlabel->setText(utils::formatDouble(mappedValue, labelprecision));
                         valueChanged(option->id, mappedValue);
                     });
 

@@ -293,7 +293,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
             }
             else if (!dirInfo.isDir()) {
                 log += QString("\nStatus:\n"
-                               "Output exists but is not a directory: %1\n")
+                               "Could not create directory, a file with the same name already exists: %1\n")
                            .arg(dirname);
                 job->setStatus(Job::Failed);
             }

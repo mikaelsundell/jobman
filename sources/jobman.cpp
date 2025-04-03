@@ -466,7 +466,7 @@ void
 JobmanPrivate::exportPreferences()
 {
     QString filename = QFileDialog::getSaveFileName(window.data(), tr("Export preferences file ..."), preferencesfrom,
-                                                    tr("JSON Files (*.json);"));
+                                                    tr("JSON Files (*.json)"));
     if (!filename.isEmpty()) {
         if (!filename.toLower().endsWith(".json")) {
             filename += ".json";
@@ -1053,7 +1053,12 @@ JobmanPrivate::defaultsPreset()
         QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
         for (QSharedPointer<Option> option : preset->options()) {
             option->value = option->defaultvalue;
-            option->enabled = false;
+            if (option->toggle.isEmpty()) {
+                option->enabled = true;
+            }
+            else {
+                option->enabled = false;
+            }
         }
         presetsChanged(ui->presets->currentIndex());
     }

@@ -85,7 +85,12 @@ OptionsDialogPrivate::defaults()
                                              "Do you want to continue?")) {
         for (QSharedPointer<Option> option : preset->options()) {
             option->value = option->defaultvalue;
-            option->enabled = false;
+            if (option->toggle.isEmpty()) {
+                option->enabled = true;
+            }
+            else {
+                option->enabled = false;
+            }
         }
         update();
     }

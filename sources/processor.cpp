@@ -5,6 +5,7 @@
 #include "processor.h"
 #include "job.h"
 #include "queue.h"
+#include "utils.h"
 
 #include <QFileInfo>
 #include <QPointer>
@@ -261,7 +262,12 @@ ProcessorPrivate::updateOptions(QList<QSharedPointer<Option>> options, const QSt
                     if (replacement.length()) {
                         replacement += " ";
                     }
-                    replacement += option->value.toString();
+                    if (option->value.typeId() == QMetaType::Double) {
+                        replacement += utils::formatDouble(option->value.toDouble());
+                    }
+                    else {
+                        replacement += option->value.toString();
+                    }
                     result.append(QString(input).replace(pattern, replacement).split(" "));
                 }
                 else {

@@ -67,13 +67,14 @@ PresetPrivate::read()
     QJsonParseError jsonError;
     QJsonDocument document = QJsonDocument::fromJson(jsonData, &jsonError);
     if (document.isNull()) {
-        int line = 1; // get line and column
+        int line = 1;  // get line and column
         int column = 1;
         for (int i = 0; i < jsonError.offset && i < jsonData.size(); ++i) {
             if (jsonData[i] == '\n') {
                 ++line;
                 column = 1;
-            } else {
+            }
+            else {
                 ++column;
             }
         }
@@ -225,6 +226,9 @@ PresetPrivate::read()
             }
             if (option->toggle.isEmpty()) {
                 option->enabled = true;
+            }
+            else {
+                option->enabled = false;
             }
             if (option->minimum.isNull()) {
                 option->minimum = 0;
