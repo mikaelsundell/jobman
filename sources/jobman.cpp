@@ -744,7 +744,7 @@ JobmanPrivate::processFiles(const QList<QString>& files)
         }
         else if (info.isFile()) {
             QString suffix = info.suffix().toLower();
-            if (filter.contains(suffix)) {
+            if (filter.contains(suffix) || filter.contains("*.*")) {
                 submitfiles.append(info.absoluteFilePath());
             }
             else {
@@ -770,7 +770,7 @@ JobmanPrivate::processFiles(const QList<QString>& files)
                                .arg(submitfiles.size()));
     }
 
-    if (submit) {
+    if (submit && submitfiles.size()) {
         processUuids(processor->submit(submitfiles, preset, paths()));
     }
 }

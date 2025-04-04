@@ -4,12 +4,14 @@
     <file>../resources/Arrow.png</file>
     <file>../resources/Checkbox.png</file>
     <file>../resources/Cleanup.png</file>
+    <file>../resources/Closed.png</file>
     <file>../resources/Collapse.png</file>
     <file>../resources/Delete.png</file>
     <file>../resources/Dropdown.png</file>
     <file>../resources/Expand.png</file>
     <file>../resources/File.png</file>
     <file>../resources/Folder.png</file>
+    <file>../resources/Link.png</file>
     <file>../resources/Monitor.png</file>
     <file>../resources/Open.png</file>
     <file>../resources/Options.png</file>
@@ -25,7 +27,7 @@
     <file>../resources/Stopped.png</file>
     <file>../resources/Tooltip.png</file>
   </qresource>
-   <qresource prefix="files">
+  <qresource prefix="files">
     <file>../resources/Copyright.txt</file>
   </qresource>
 </RCC>

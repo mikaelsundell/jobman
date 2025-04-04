@@ -279,7 +279,7 @@
               </property>
               <property name="icon">
                <iconset resource="jobman.qrc">
-                <normaloff>:/icons/resources/Open.png</normaloff>:/icons/resources/Open.png</iconset>
+                <normaloff>:/icons/resources/Link.png</normaloff>:/icons/resources/Link.png</iconset>
               </property>
               <property name="toolButtonStyle">
                <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>

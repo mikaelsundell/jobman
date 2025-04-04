@@ -141,7 +141,11 @@ ProcessPrivate::run(const QString& command, const QStringList& arguments, const 
     SetHandleInformation(outputRead, HANDLE_FLAG_INHERIT, 0);
     SetHandleInformation(errorRead, HANDLE_FLAG_INHERIT, 0);
 
-    QString commandpath = absolutepath + " " + arguments.join(" ");
+    QStringList quotedarguments;
+    for (const QString& arg : arguments) {
+        quotedarguments.append(QString("\"%1\"").arg(arg));  // quotes needed on windows
+    }
+    QString commandpath = absolutepath + " " + quotedarguments.join(" ");
     std::wstring commandlinew = commandpath.toStdWString();
     LPWSTR commandline = const_cast<LPWSTR>(commandlinew.c_str());
 
