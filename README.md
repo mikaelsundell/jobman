@@ -211,6 +211,10 @@ Preset files support various variables that can be used to customize arguments d
 - Description: The type of the preset. Supported types  `file` and `command`. File presets accepts dropped files and command adds single command jobs without varying input files. Default is `file`.
 - Usage: Determines how the preset behaves in the interface, either allowing file drops or presenting a command-only option.
 
+`filter`
+- Description: Defines the file type filter for the preset. Use standard wildcard patterns like `*.*` for all files, or specific extensions such as `*.jpg;*.png;*.bmp` for common image formats.
+- Usage: Specifies which file types are accepted for drag-and-drop operations or when applying the preset. This helps limit the input to supported formats relevant to the preset’s purpose.
+
 ### Option fields
 
 `id`

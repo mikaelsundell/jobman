@@ -202,9 +202,8 @@ OptionsWidgetPrivate::update()
                 combobox->setCurrentIndex(currentindex);
             }
 
-            connect(combobox, &QComboBox::currentIndexChanged, this, [this, option, combobox](int index) {
-                valueChanged(option->id, combobox->itemData(index));
-            });
+            connect(combobox, &QComboBox::currentIndexChanged, this,
+                    [this, option, combobox](int index) { valueChanged(option->id, combobox->itemData(index)); });
 
             optionlayout->addWidget(combobox);
 

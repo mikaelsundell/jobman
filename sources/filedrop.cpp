@@ -86,7 +86,7 @@ Filedrop::dragEnterEvent(QDragEnterEvent* event)
         QList<QUrl> urls = event->mimeData()->urls();
         for (const QUrl& url : urls) {
             QFileInfo fileinfo(url.toLocalFile());
-            if (fileinfo.isFile()) {
+            if (fileinfo.isFile() || fileinfo.isDir()) {
                 p->files.append(fileinfo.filePath());
                 found = true;
             }

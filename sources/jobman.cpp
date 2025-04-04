@@ -21,6 +21,7 @@
 #include <QAction>
 #include <QDesktopServices>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileDialog>
 #include <QJsonArray>
@@ -365,12 +366,14 @@ JobmanPrivate::activate()
 void
 JobmanPrivate::submitFiles()
 {
-    QStringList filenames = QFileDialog::getOpenFileNames(window.data(), tr("Select files"), filesfrom,
-                                                          tr("All files (*)"));
-    if (!filenames.isEmpty()) {
-        QFileInfo fileInfo(filenames.first());
+    QStringList files = QFileDialog::getOpenFileNames(window.data(), tr("Select files"), filesfrom,
+                                                      tr("All files (*)"));
+    if (!files.isEmpty()) {
+        QFileInfo fileInfo(files.first());
         filesfrom = fileInfo.absolutePath();
-        processFiles(filenames);
+
+        QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
+        processUuids(processor->submit(files, preset, paths()));
     }
 }
 
@@ -723,7 +726,53 @@ void
 JobmanPrivate::processFiles(const QList<QString>& files)
 {
     QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
-    processUuids(processor->submit(files, preset, paths()));
+    QString filter = preset->filter().toLower();
+
+    QList<QString> submitfiles;
+    QStringList rejectedfiles;
+
+    bool hasdir = false;
+    for (const QString& path : files) {
+        QFileInfo info(path);
+        if (info.isDir()) {
+            hasdir = true;
+            QStringList filters = filter.split(';', Qt::SkipEmptyParts);
+            QDirIterator it(path, filters, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                submitfiles.append(it.next());
+            }
+        }
+        else if (info.isFile()) {
+            QString suffix = info.suffix().toLower();
+            if (filter.contains(suffix)) {
+                submitfiles.append(info.absoluteFilePath());
+            }
+            else {
+                rejectedfiles.append(info.fileName());
+            }
+        }
+    }
+
+    if (!rejectedfiles.isEmpty()) {
+        Message::showMessage(
+            window.data(), "Files Skipped",
+            QString(
+                "The following files were skipped because they do not match the preset's filter:\n%1\n\nFilter:\n%2")
+                .arg(rejectedfiles.join("\n"))
+                .arg(filter));
+    }
+
+    bool submit = true;
+    if (submitfiles.size() > 10 && hasdir) {
+        submit = Question::askQuestion(
+            window.data(), QString("You are about to submit %1 files for processing from one or more directories.\n"
+                                   "Do you want to continue?")
+                               .arg(submitfiles.size()));
+    }
+
+    if (submit) {
+        processUuids(processor->submit(submitfiles, preset, paths()));
+    }
 }
 
 void

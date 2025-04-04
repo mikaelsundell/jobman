@@ -30,6 +30,7 @@ public:
     QString filename;
     QString name;
     QString type;
+    QString filter;
     QList<QString> description;
     QList<QSharedPointer<Option>> options;
     QList<QSharedPointer<Task>> tasks;
@@ -112,8 +113,14 @@ PresetPrivate::read()
     if (json.contains("type") && json["type"].isString()) {
         type = json["type"].toString();
     }
+    if (json.contains("filter") && json["filter"].isString()) {
+        filter = json["filter"].toString();
+    }
     if (!type.length()) {
         type = "file";
+    }
+    if (!filter.length()) {
+        filter = "*.*";
     }
     if (json.contains("options") && json["options"].isArray()) {
         QJsonArray optionsArray = json["options"].toArray();
@@ -411,6 +418,12 @@ QString
 Preset::type() const
 {
     return p->type;
+}
+
+QString
+Preset::filter() const
+{
+    return p->filter;
 }
 
 QList<QSharedPointer<Option>>

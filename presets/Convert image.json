@@ -1,6 +1,7 @@
 {
     "id": "convertimage",
     "name": "Internal: Convert image",
+    "filter": "*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.bmp",
     "options": [
       {
         "id": "jpegquality",

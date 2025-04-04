@@ -57,6 +57,7 @@ public:
     QUuid uuid() const;
     QString name() const;
     QString type() const;
+    QString filter() const;
     QList<QSharedPointer<Option>> options() const;
     QList<QSharedPointer<Task>> tasks() const;
 
