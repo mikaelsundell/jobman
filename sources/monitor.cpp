@@ -7,6 +7,7 @@
 #include "question.h"
 #include "queue.h"
 
+#include <QClipboard>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
@@ -54,6 +55,8 @@ public Q_SLOTS:
     void restart();
     void priority();
     void remove();
+    void copyUuid();
+    void copyCommand();
     void showInFinder();
     void running();
     void restore();
@@ -156,6 +159,47 @@ public:
         };
         for (int i = 0; i < ui->items->topLevelItemCount(); ++i) {
             if (iterateItems(ui->items->topLevelItem(i))) {
+                break;
+            }
+        }
+    }
+    
+    template<typename Func> void removeItems(Func func)
+    {
+        std::function<bool(QTreeWidgetItem*)> iterateItems = [&](QTreeWidgetItem* item) -> bool {
+            QVariant data = item->data(0, Qt::UserRole);
+            QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
+            if (func(item, job)) {
+                return true;
+            }
+            for (int i = 0; i < item->childCount(); ++i) {
+                if (item->child(i)->isSelected()) {
+                    if (iterateItems(item->child(i))) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        QList<QTreeWidgetItem*> selectedItems = ui->items->selectedItems();
+        QList<QTreeWidgetItem*> filteredItems;
+        for (QTreeWidgetItem* item : selectedItems) {
+            QTreeWidgetItem* parent = item->parent();
+            bool skip = false;
+            while (parent) {
+                if (selectedItems.contains(parent)) {
+                    skip = true;
+                    break;
+                }
+                parent = parent->parent();
+            }
+            if (!skip) {
+                filteredItems.append(item);
+            }
+        }
+        for (QTreeWidgetItem* item : filteredItems) {
+            if (iterateItems(item)) {
                 break;
             }
         }
@@ -673,12 +717,67 @@ MonitorPrivate::remove()
             return;
         }
     }
-    selectedItems([this](QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
+    removeItems([this](QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
         item->setSelected(false);
         queue->remove(job->uuid());
         return false;
     });
     toggleButtons();
+}
+
+void
+MonitorPrivate::copyUuid()
+{
+    QList<QString> uuids;
+    selectedItems([this, &uuids](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
+        QTreeWidgetItem* parentItem = findItemByUuid(job->uuid());
+
+        std::function<void(QTreeWidgetItem*)> uuidItems = [&](QTreeWidgetItem* item) {
+            QVariant data = item->data(0, Qt::UserRole);
+            QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
+            if (job) {
+                uuids.append(job->uuid().toString());
+            }
+            for (int i = 0; i < item->childCount(); ++i) {
+                uuidItems(item->child(i));
+            }
+        };
+        uuidItems(parentItem);
+        return false;
+    });
+
+    if (!uuids.isEmpty()) {
+        QClipboard* clipboard = QGuiApplication::clipboard();
+        clipboard->setText(uuids.join('\n'));
+    }
+}
+
+void
+MonitorPrivate::copyCommand()
+{
+    QList<QString> commands;
+    selectedItems([this, &commands](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
+        QTreeWidgetItem* parentItem = findItemByUuid(job->uuid());
+
+        std::function<void(QTreeWidgetItem*)> uuidItems = [&](QTreeWidgetItem* item) {
+            QVariant data = item->data(0, Qt::UserRole);
+            QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
+            if (job) {
+                commands.append(QString("%1 %2").arg(job->command()).arg(job->arguments().join(' ')));
+            }
+            for (int i = 0; i < item->childCount(); ++i) {
+                uuidItems(item->child(i));
+            }
+        };
+        uuidItems(parentItem);
+        return false;
+    });
+
+    if (!commands.isEmpty()) {
+        QClipboard* clipboard = QGuiApplication::clipboard();
+        clipboard->setText(commands.join('\n'));
+    }
+
 }
 
 void
@@ -868,6 +967,22 @@ MonitorPrivate::showMenu(const QPoint& pos)
         connect(remove, &QAction::triggered, this, &MonitorPrivate::remove);
         remove->setEnabled(ui->remove->isEnabled());
         contextMenu.addAction(remove);
+
+        contextMenu.addSeparator();
+
+        QAction* copy = new QAction("Copy", this);
+        {
+            QMenu* copyMenu = new QMenu("Copy", ui->items);
+            QAction* uuid = new QAction("Uuid", this);
+            QAction* command = new QAction("Command", this);
+            // connect
+            connect(uuid, &QAction::triggered, this, &MonitorPrivate::copyUuid);
+            connect(command, &QAction::triggered, this, &MonitorPrivate::copyCommand);
+            copyMenu->addAction(uuid);
+            copyMenu->addAction(command);
+            copy->setMenu(copyMenu);
+        }
+        contextMenu.addAction(copy);
 
         contextMenu.addSeparator();
 

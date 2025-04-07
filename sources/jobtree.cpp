@@ -100,9 +100,15 @@ void
 JobTree::keyPressEvent(QKeyEvent* event)
 {
     if (event->key() == Qt::Key_A && (event->modifiers() & Qt::ControlModifier)) {
-        for (int i = 0; i < topLevelItemCount(); ++i) {
-            QTreeWidgetItem* item = topLevelItem(i);
+        std::function<void(QTreeWidgetItem*)> selectItems = [&](QTreeWidgetItem* item) {
             item->setSelected(true);
+            for (int i = 0; i < item->childCount(); ++i) {
+                selectItems(item->child(i));
+            }
+        };
+
+        for (int i = 0; i < topLevelItemCount(); ++i) {
+            selectItems(topLevelItem(i));
         }
     }
     else {

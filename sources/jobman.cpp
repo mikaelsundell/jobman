@@ -643,7 +643,7 @@ JobmanPrivate::saveSettings()
     }
     settings.setValue("copyoriginal", copyoriginal);
     settings.setValue("createfolders", createfolders);
-    settings.setValue("overwrite", createfolders);
+    settings.setValue("overwrite", overwrite);
     for (int i = 0; i < ui->presets->count(); ++i) {
         if (ui->presets->itemText(i) != "No presets found") {
             QVariant data = ui->presets->itemData(i);
