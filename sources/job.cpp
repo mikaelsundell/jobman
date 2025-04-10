@@ -40,6 +40,7 @@ public:
     QString output;
     QString startin;
     QString log;
+    bool exclusive;
     bool overwrite;
     int pid;
     int priority;
@@ -55,6 +56,7 @@ JobPrivate::JobPrivate()
     : pid(0)
     , priority(10)
     , status(Job::Waiting)
+    , exclusive(false)
     , overwrite(false)
     , uuid(QUuid::createUuid())
 {
@@ -148,6 +150,13 @@ Job::output() const
 {
     QMutexLocker locker(&p->mutex);
     return p->output;
+}
+
+bool
+Job::exclusive() const
+{
+    QMutexLocker locker(&p->mutex);
+    return p->exclusive;
 }
 
 bool
@@ -311,6 +320,16 @@ Job::setOverwrite(bool overwrite)
     if (p->overwrite != overwrite) {
         p->overwrite = overwrite;
         overwriteChanged(overwrite);
+    }
+}
+
+void
+Job::setExclusive(bool exclusive)
+{
+    QMutexLocker locker(&p->mutex);
+    if (p->exclusive != exclusive) {
+        p->exclusive = exclusive;
+        exclusiveChanged(exclusive);
     }
 }
 

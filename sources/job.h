@@ -58,6 +58,7 @@ public:
     QString name() const;
     QString log() const;
     QString output() const;
+    bool exclusive() const;
     bool overwrite() const;
     int pid() const;
     int priority() const;
@@ -76,6 +77,7 @@ public:
     void setLog(const QString& log);
     void setName(const QString& name);
     void setOutput(const QString& output);
+    void setExclusive(bool exclusive);
     void setOverwrite(bool overwrite);
     void setPid(int pid);
     void setPriority(int priority);
@@ -92,6 +94,7 @@ Q_SIGNALS:
     void logChanged(const QString& log);
     void nameChanged(const QString& name);
     void outputChanged(const QString& output);
+    void exclusiveChanged(bool exclusive);
     void overwriteChanged(bool overwrite);
     void pidChanged(int pid);
     void priorityChanged(int priority);

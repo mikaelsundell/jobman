@@ -200,10 +200,10 @@ PresetPrivate::read()
                 if (!(option->type.toLower() == "checkbox" || option->type.toLower() == "double"
                       || option->type.toLower() == "doubleslider" || option->type.toLower() == "dropdown"
                       || option->type.toLower() == "file" || option->type.toLower() == "int"
-                      || option->type.toLower() == "intslider" || option->type.toLower() == "label")
-                    || option->type.toLower() == "text") {
+                      || option->type.toLower() == "intslider" || option->type.toLower() == "label"
+                    || option->type.toLower() == "text")) {
                     error = QString("Json for option: %1 contains an invalid type: %2, valid types are "
-                                    "Checkbox, Double, DoubleSlider, File, Int, IntSlider, Dropdown and Text")
+                                    "checkbox, double, doubleSlider, file, int, intslider, dropdown and text")
                                 .arg(i + 1)
                                 .arg(option->type);  // +1 for user readability
                     valid = false;
@@ -233,9 +233,6 @@ PresetPrivate::read()
             }
             if (option->flagonly.isNull()) {
                 option->flagonly = false;
-            }
-            else {
-                option->flagonly = true;
             }
             if (option->minimum.isNull()) {
                 option->minimum = 0;
@@ -312,6 +309,8 @@ PresetPrivate::read()
                     task->documentation.append(docarray[i].toString());
                 }
             }
+            if (jsontask.contains("exclusive"))
+                task->exclusive = jsontask["exclusive"].toVariant();
             if (!task->id.isEmpty() && !task->name.isEmpty() && !task->command.isEmpty() && !task->extension.isEmpty()
                 && !task->arguments.isEmpty()) {
                 if (task->dependson.length() > 0) {
@@ -355,6 +354,9 @@ PresetPrivate::read()
                 }
                 valid = false;
                 return valid;
+            }
+            if (task->exclusive.isNull()) {
+                task->exclusive = false;
             }
         }
     }

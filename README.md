@@ -271,7 +271,59 @@ Preset files support various variables that can be used to customize arguments d
 - Description: A toggle switch used to turn the option on or off.
 - Usage: This field conditionally enables or disables the option based on its state.
 - Required: __No__
-- 
+
+### Task fields
+
+`id`  
+- Description: A unique identifier for the task.  
+- Usage: Used to reference and manage task order or dependencies.  
+- Required: __Yes__
+
+`name`  
+- Description: A descriptive display name of the task.  
+- Usage: Used in the UI or logs to show a human-readable task label.  
+- Required: __No__
+
+`command`  
+- Description: The name or path of the executable to run.  
+- Usage: This is the actual program that will be launched for the task.  
+- Required: __Yes__
+
+`arguments`  
+- Description: Command-line arguments passed to the executable.  
+- Usage: Supports template values like `%task:input%` and `%task:output%`.  
+- Required: __No__
+
+`startin`  
+- Description: The working directory for the task.  
+- Usage: Sets the context path where the command will execute.  
+- Required: __No__
+
+`output`  
+- Description: Output file path or expression for the result of the task.  
+- Usage: Supports variables such as `%outputdir%`, `%outputbase%`, `%outputext%`.  
+- Required: __No__
+
+`extension`  
+- Description: Output file extension (e.g., `usdz`, `fbx`, `gltf`).  
+- Usage: Defines how the output file will be named/formatted.  
+- Required: __No__
+
+`dependson`  
+- Description: ID of the task this one depends on.  
+- Usage: Ensures that the specified task runs before this one.  
+- Required: __No__
+
+`exclusive`  
+- Description: Prevents the task from running in parallel with others that share the same `command`.  
+- Usage: Accepts `"true"` or `"false"`. If `"true"`, this task will only run exclusively.  
+- Required: __No__
+
+`documentation`  
+- Description: A list of short descriptions or help lines for the task.  
+- Usage: Displayed in UIs or documentation views for user guidance.  
+- Required: __No__
+
 **Task variables**
 
 ```shell

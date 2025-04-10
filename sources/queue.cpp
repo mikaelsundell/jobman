@@ -49,6 +49,7 @@ Q_SIGNALS:
     void notifyStatusChanged(const QUuid& uuid, Job::Status status);
 
 public:
+    QString elapsedTime(qint64 milliseconds);
     int threads;
     QMutex mutex;
     QThread thread;
@@ -58,6 +59,7 @@ public:
     QSet<QUuid> completedJobs;
     QMap<QUuid, QList<QSharedPointer<Job>>> dependentJobs;
     QMap<QUuid, QSharedPointer<Job>> removedJobs;
+    QMap<QString, QUuid> exclusiveJobs;
     QPointer<Queue> queue;
 };
 
@@ -188,6 +190,12 @@ QueuePrivate::restart(const QUuid& uuid)
                                   .arg(job->uuid().toString())
                                   .arg(job->command())
                                   .arg(job->arguments().join(' '));
+                QString startin = job->startin();
+                if (!startin.isEmpty()) {
+                    log += QString("Startin:\n"
+                                   "%1\n")
+                               .arg(startin);
+                }
                 job->setLog(log);
                 for (QSharedPointer<Job>& dependentJob : allJobs) {
                     if (dependentJob->dependson() == jobUuid) {
@@ -343,6 +351,8 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                 QString standardoutput;
                 QString standarderror;
                 if (process->exists(command)) {
+                    QElapsedTimer elapsed;
+                    elapsed.start();
                     process->run(command, job->arguments(), job->startin(), job->os()->environmentvars);
                     int pid = process->pid();
                     job->setPid(pid);
@@ -351,6 +361,13 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                         log += QString("\nEnvironment:\n");
                         for (const QPair<QString, QString>& environmentvar : environmentvars) {
                             log += QString("%1=%2\n").arg(environmentvar.first).arg(environmentvar.second);
+                        }
+                    }
+                    QList<QString> searchpaths = job->os()->searchpaths;
+                    if (searchpaths.count()) {
+                        log += QString("\nSearch paths:\n");
+                        for (const QString& searchpath : searchpaths) {
+                            log += QString("%1\n").arg(searchpath);
                         }
                     }
                     log += QString("\nProcess id:\n%1\n").arg(pid);
@@ -369,6 +386,8 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                     }
                     standardoutput = process->standardOutput();
                     standarderror = process->standardError();
+                    qint64 milliseconds = elapsed.elapsed();
+                    log += QString("\nElapsed time:\n%1\n").arg(elapsedTime(milliseconds));
                 }
                 else {
                     standarderror = "Command does not exists, make sure command can be "
@@ -416,6 +435,15 @@ QueuePrivate::findNextJob()
     QSharedPointer<Job> selectedJob = waitingJobs.first();
     for (int i = 1; i < waitingJobs.size(); ++i) {
         QSharedPointer<Job> job = waitingJobs[i];
+        if (job->exclusive()) {
+            if (exclusiveJobs.contains(job->command())) {
+                continue;
+            }
+            else {
+                exclusiveJobs[job->command()] = job->uuid();
+            }
+        }
+        // job is accepted — add to tracking
         if (job->status() == Job::Waiting) {
             if (job->priority() > selectedJob->priority()) {
                 selectedJob = job;
@@ -565,6 +593,14 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
     {
         QMutexLocker locker(&mutex);
         if (!removedJobs.contains(uuid)) {
+            QSharedPointer<Job> job = allJobs[uuid];
+            if (job->exclusive()) {
+                const QString command = job->command();
+                if (exclusiveJobs.contains(command)) {
+                    Q_ASSERT(exclusiveJobs[command] == job->uuid());
+                    exclusiveJobs.remove(command);
+                }
+            }
             if (status == Job::Completed) {
                 completedJobs.insert(uuid);  // Mark the job as completed
                 processDependentJobs(uuid);
@@ -575,6 +611,27 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
         }
     }
     processNextJobs();
+}
+
+QString
+QueuePrivate::elapsedTime(qint64 milliseconds)
+{
+    qint64 seconds = milliseconds / 1000;
+    qint64 hours = seconds / 3600;
+    qint64 minutes = (seconds % 3600) / 60;
+    qint64 secs = seconds % 60;
+
+    QStringList parts;
+    if (hours > 0) {
+        parts << QString::number(hours) + " hour" + (hours > 1 ? "s" : "");
+    }
+    if (minutes > 0) {
+        parts << QString::number(minutes) + " minute" + (minutes > 1 ? "s" : "");
+    }
+    if (secs > 0 || parts.isEmpty()) {
+        parts << QString::number(secs) + " second" + (secs != 1 ? "s" : "");
+    }
+    return parts.join(", ");
 }
 
 #include "queue.moc"

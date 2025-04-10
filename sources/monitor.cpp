@@ -265,6 +265,10 @@ MonitorPrivate::init()
     ui->items->setItemDelegateForColumn(3, new PriorityDelegate(ui->items));
     ui->items->setItemDelegateForColumn(4, new StatusDelegate(ui->items));
     ui->items->setContextMenuPolicy(Qt::CustomContextMenu);
+    QPalette palette = ui->job->palette(); // workaround for unfocused textbrowser
+    QColor textcolor = QColor::fromHslF(0.0, 0.0, 0.8);
+    palette.setColor(QPalette::Inactive, QPalette::HighlightedText, textcolor);
+    ui->job->setPalette(palette);
     // event filter
     dialog->installEventFilter(this);
     // layout

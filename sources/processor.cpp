@@ -83,6 +83,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
                 job->setCommand(command);
                 job->setArguments(replacedlist);
                 job->setOutput(output);
+                job->setExclusive(task->exclusive.toBool());
                 job->setOverwrite(paths.overwrite);
                 job->setStartin(startin);
                 job->setStatus(Job::Waiting);

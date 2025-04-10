@@ -41,6 +41,7 @@ public:
     QString startin;
     QString dependson;
     QStringList documentation;
+    QVariant exclusive;
 };
 
 class PresetPrivate;
