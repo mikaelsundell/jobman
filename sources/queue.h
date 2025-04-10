@@ -15,10 +15,11 @@ class Queue : public QObject {
 public:
     static Queue* instance();
     QUuid submit(QSharedPointer<Job> job);
-    void submit(QList<QSharedPointer<Job>> jobs);
+    void submit(const QList<QSharedPointer<Job>>& jobs);
     void start(const QUuid& uuid);
     void stop(const QUuid& uuid);
     void restart(const QUuid& uuid);
+    void restart(const QList<QUuid>& uuids);
     void remove(const QUuid& uuid);
     int threads() const;
     void setThreads(int threads);

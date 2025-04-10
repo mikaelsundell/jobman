@@ -682,12 +682,14 @@ MonitorPrivate::restart()
         items.append(parent);
         return false;
     });
+    QList<QUuid> uuids;
     for (QTreeWidgetItem* item : items) {
         QSharedPointer<Job> job = item->data(0, Qt::UserRole).value<QSharedPointer<Job>>();
         if (job) {
-            queue->restart(job->uuid());
+            uuids.push_back(job->uuid());
         }
     }
+    queue->restart(uuids);
     toggleButtons();
 }
 
