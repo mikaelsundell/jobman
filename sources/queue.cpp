@@ -50,7 +50,8 @@ Q_SIGNALS:
     void notifyStatusChanged(const QUuid& uuid, Job::Status status);
 
 public:
-    QString elapsedTime(qint64 milliseconds);
+    QString elapsedtime(qint64 milliseconds);
+    QString filesize(const QString& filename);
     int threads;
     QMutex mutex;
     QThread thread;
@@ -96,9 +97,13 @@ QueuePrivate::submit(QSharedPointer<Job> job)
         QMutexLocker locker(&mutex);
         QString log = QString("Uuid:\n"
                               "%1\n\n"
+                              "Filename:\n"
+                              "%2 (%3)\n\n"
                               "Command:\n"
-                              "%2 %3\n")
+                              "%4 %5\n")
                           .arg(job->uuid().toString())
+                          .arg(job->filename())
+                          .arg(filesize(job->filename()))
                           .arg(job->command())
                           .arg(job->arguments().join(' '));
         job->setLog(log);
@@ -396,7 +401,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                     standardoutput = process->standardOutput();
                     standarderror = process->standardError();
                     qint64 milliseconds = elapsed.elapsed();
-                    log += QString("\nElapsed time:\n%1\n").arg(elapsedTime(milliseconds));
+                    log += QString("\nElapsed time:\n%1\n").arg(elapsedtime(milliseconds));
                 }
                 else {
                     standarderror = "Command does not exists, make sure command can be "
@@ -649,7 +654,7 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
 }
 
 QString
-QueuePrivate::elapsedTime(qint64 milliseconds)
+QueuePrivate::elapsedtime(qint64 milliseconds)
 {
     qint64 seconds = milliseconds / 1000;
     qint64 hours = seconds / 3600;
@@ -667,6 +672,27 @@ QueuePrivate::elapsedTime(qint64 milliseconds)
         parts << QString::number(secs) + " second" + (secs != 1 ? "s" : "");
     }
     return parts.join(", ");
+}
+
+QString
+QueuePrivate::filesize(const QString& filename)
+{
+    QFileInfo fileinfo(filename);
+    qint64 size = fileinfo.size();
+    QString stringsize;
+    if (size < 1024) {
+        stringsize = QString("%1 B").arg(size);
+    }
+    else if (size < 1024 * 1024) {
+        stringsize = QString::number(size / 1024.0, 'f', 1) + " KB";
+    }
+    else if (size < 1024LL * 1024 * 1024) {
+        stringsize = QString::number(size / (1024.0 * 1024.0), 'f', 1) + " MB";
+    }
+    else {
+        stringsize = QString::number(size / (1024.0 * 1024.0 * 1024.0), 'f', 1) + " GB";
+    }
+    return stringsize;
 }
 
 #include "queue.moc"

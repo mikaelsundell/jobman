@@ -77,7 +77,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
             QSharedPointer<Job> job(new Job());
             {
                 job->setId(task->id);
-                job->setFilename(inputinfo.fileName());
+                job->setFilename(inputinfo.filePath());
                 job->setDir(outputdir);
                 job->setName(task->name);
                 job->setCommand(command);
@@ -173,7 +173,7 @@ ProcessorPrivate::submit(const QSharedPointer<Preset>& preset, const Paths& path
         QSharedPointer<Job> job(new Job());
         {
             job->setId(task->id);
-            job->setFilename(inputinfo.fileName());
+            job->setFilename(inputinfo.filePath());
             job->setDir(outputdir);
             job->setName(task->name);
             job->setCommand(command);

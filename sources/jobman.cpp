@@ -138,6 +138,7 @@ public:
     bool copyoriginal;
     bool createfolders;
     bool overwrite;
+    int threads;
     QSize size;
     int offset;
     QList<QUuid> submitteduuids;
@@ -251,10 +252,11 @@ JobmanPrivate::init()
     connect(queue.data(), &Queue::jobProcessed, this, &JobmanPrivate::jobProcessed);
     size = window->size();
     // threads
-    int threads = QThread::idealThreadCount();
-    for (int i = 1; i <= threads; ++i) {
+    int threadcount = QThread::idealThreadCount();
+    for (int i = 1; i <= threadcount; ++i) {
         ui->threads->addItem(QString::number(i), i);
     }
+    ui->threads->setCurrentIndex(threads);
     // cpu
     QTimer* timer = new QTimer(window.data());
     QObject::connect(timer, &QTimer::timeout, [&]() {
@@ -604,11 +606,15 @@ JobmanPrivate::loadSettings()
     copyoriginal = settings.value("copyoriginal", true).toBool();
     createfolders = settings.value("createfolders", true).toBool();
     overwrite = settings.value("overwrite", true).toBool();
+    threads = settings.value("threads", 0).toInt();
     // ui
     setSaveto(saveto);
     ui->copyOriginal->setChecked(copyoriginal);
     ui->createFolders->setChecked(createfolders);
     ui->overwrite->setChecked(overwrite);
+    ui->threads->setCurrentIndex(threads);
+
+    qDebug() << "loadSettings: threads: " << threads;
 }
 
 void
@@ -656,6 +662,8 @@ JobmanPrivate::saveSettings()
             settings.endGroup();
         }
     }
+    settings.setValue("threads", ui->threads->currentIndex());
+    qDebug() << "saveSettings: threads: " << ui->threads->currentIndex();
 }
 
 void

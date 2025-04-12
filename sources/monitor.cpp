@@ -297,7 +297,7 @@ MonitorPrivate::updateJob(const QUuid& uuid)
     QSharedPointer<Job> itemjob = data.value<QSharedPointer<Job>>();
     if (itemjob->uuid() == uuid) {
         item->setText(Name, itemjob->name());
-        item->setText(Filename, itemjob->filename());
+        item->setText(Filename, QFileInfo(itemjob->filename()).fileName());
         item->setText(Created, itemjob->created().toString("yyyy-MM-dd HH:mm:ss"));
         item->setText(Priority_, QString::number(itemjob->priority()));
         switch (itemjob->status()) {
@@ -679,7 +679,9 @@ MonitorPrivate::restart()
         while (parent->parent()) {
             parent = parent->parent();
         }
-        items.append(parent);
+        if (!items.contains(parent)) {
+            items.append(parent);
+        }
         return false;
     });
     QList<QUuid> uuids;
