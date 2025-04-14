@@ -27,7 +27,9 @@ public:
     QueuePrivate();
     void init();
     void updateThreadCount();
-    QUuid submit(QSharedPointer<Job> job);
+    QUuid beginBatch(int chunks = 32);
+    void endBatch(const QUuid& uuid);
+    QUuid submit(QSharedPointer<Job> job, const QUuid& batch);
     void start(const QUuid& uuid);
     void stop(const QUuid& uuid);
     void restart(const QUuid& uuid);
@@ -62,6 +64,8 @@ public:
     QMap<QUuid, QList<QSharedPointer<Job>>> dependentJobs;
     QMap<QUuid, QSharedPointer<Job>> removedJobs;
     QMap<QString, QUuid> exclusiveJobs;
+    QMap<QUuid, QList<QSharedPointer<Job>>> batchJobs;
+    QMap<QUuid, int> batchChunks;
     QPointer<Queue> queue;
 };
 
@@ -91,7 +95,29 @@ QueuePrivate::updateThreadCount()
 }
 
 QUuid
-QueuePrivate::submit(QSharedPointer<Job> job)
+QueuePrivate::beginBatch(int chunks)
+{
+    QUuid uuid = QUuid::createUuid();
+    batchJobs[uuid] = QList<QSharedPointer<Job>>();
+    batchChunks[uuid] = chunks;
+    return uuid;
+}
+
+
+void
+QueuePrivate::endBatch(const QUuid& uuid)
+{
+    if (batchJobs.contains(uuid)) {
+        if (!batchJobs[uuid].isEmpty()) {
+            queue->batchSubmitted(batchJobs[uuid]);
+        }
+        batchJobs.remove(uuid);
+        batchChunks.remove(uuid);
+    }
+}
+
+QUuid
+QueuePrivate::submit(QSharedPointer<Job> job, const QUuid& batch)
 {
     {
         QMutexLocker locker(&mutex);
@@ -117,7 +143,17 @@ QueuePrivate::submit(QSharedPointer<Job> job)
     }
     processNextJobs();
     processRemovedJobs();
-    queue->jobSubmitted(job);
+    if (!batch.isNull()) {
+        batchJobs[batch].append(job);
+        int chunkSize = batchChunks[batch];
+        if (batchJobs[batch].size() % chunkSize == 0) {
+            queue->batchSubmitted(batchJobs[batch]);
+            batchJobs[batch].clear();
+        }
+    }
+    else {
+        queue->jobSubmitted(job);
+    }
     return job->uuid();
 }
 
@@ -718,9 +754,21 @@ Queue::instance()
 }
 
 QUuid
-Queue::submit(QSharedPointer<Job> job)
+Queue::beginBatch(int chunks)
 {
-    return p->submit(job);
+    return p->beginBatch(chunks);
+}
+
+void
+Queue::endBatch(const QUuid& uuid)
+{
+    return p->endBatch(uuid);
+}
+
+QUuid
+Queue::submit(QSharedPointer<Job> job, const QUuid& uuid)
+{
+    return p->submit(job, uuid);
 }
 
 void

@@ -43,6 +43,7 @@ QList<QUuid>
 ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Preset>& preset, const Paths& paths)
 {
     QList<QUuid> uuids;
+    QUuid batchuuid = queue->beginBatch();
     for (const QString& file : files) {
         QMap<QString, QUuid> jobuuids;
         QMap<QString, QString> joboutputs;
@@ -97,7 +98,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
                 first = false;
             }
             if (task->dependson.isEmpty()) {
-                QUuid uuid = queue->submit(job);
+                QUuid uuid = queue->submit(job, batchuuid);
                 jobuuids[task->id] = uuid;
                 joboutputs[task->id] = job->output();
                 uuids.append(uuid);
@@ -116,7 +117,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
                 }
                 job->setArguments(argumentlist);
                 job->setDependson(jobuuids[dependentid]);
-                QUuid uuid = queue->submit(job);
+                QUuid uuid = queue->submit(job, batchuuid);
                 jobuuids[job->id()] = uuid;
                 uuids.append(uuid);
             }
@@ -130,6 +131,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
             }
         }
     }
+    queue->endBatch(batchuuid);
     return uuids;
 }
 

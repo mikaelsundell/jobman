@@ -3,7 +3,7 @@
  <class>Monitor</class>
  <widget class="QDialog" name="Monitor">
   <property name="windowModality">
-   <enum>Qt::WindowModality::WindowModal</enum>
+   <enum>Qt::WindowModal</enum>
   </property>
   <property name="enabled">
    <bool>true</bool>
@@ -225,6 +225,12 @@
          </item>
          <item>
           <widget class="QLabel" name="metrics">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="font">
             <font>
              <pointsize>10</pointsize>
@@ -234,19 +240,6 @@
             <string/>
            </property>
           </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Orientation::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
          </item>
          <item>
           <widget class="QToolButton" name="running">
@@ -340,7 +333,7 @@
          <item>
           <widget class="QSplitter" name="splitter">
            <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
+            <enum>Qt::Vertical</enum>
            </property>
            <property name="handleWidth">
             <number>20</number>
@@ -358,7 +351,7 @@
              <bool>true</bool>
             </property>
             <property name="selectionMode">
-             <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
+             <enum>QAbstractItemView::ExtendedSelection</enum>
             </property>
             <property name="uniformRowHeights">
              <bool>true</bool>
@@ -437,7 +430,7 @@
       <item>
        <spacer name="horizontalSpacer_2">
         <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
+         <enum>Qt::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -474,7 +467,7 @@
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
+         <enum>Qt::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>

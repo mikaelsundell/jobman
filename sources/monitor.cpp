@@ -43,6 +43,7 @@ public:
     bool eventFilter(QObject* object, QEvent* event);
 
 public Q_SLOTS:
+    void batchSubmitted(QList<QSharedPointer<Job>> jobs);
     void jobSubmitted(QSharedPointer<Job> job);
     void jobRemoved(const QUuid& uuid);
     void logChanged(const QString& log);
@@ -57,7 +58,9 @@ public Q_SLOTS:
     void remove();
     void copyUuid();
     void copyCommand();
-    void showInFinder();
+    void copyFilename();
+    void copyLog();
+    void showPath();
     void running();
     void restore();
     void stopped();
@@ -228,11 +231,13 @@ public:
             }
         }
     }
+    QSize size;
+    QMetaObject::Connection logchanged;
     QTreeWidgetItem* findTopLevelItem(QTreeWidgetItem* item);
     QTreeWidgetItem* findItemByUuid(const QUuid& uuid);
     QSharedPointer<Job> itemJob(QTreeWidgetItem* item);
-    QSize size;
-    QHash<QUuid, QTreeWidgetItem*> jobs;
+    QSharedPointer<Job> jobitem;
+    QHash<QUuid, QTreeWidgetItem*> jobitems;
     QPointer<Queue> queue;
     QPointer<Monitor> dialog;
     QScopedPointer<Ui_Monitor> ui;
@@ -285,6 +290,7 @@ MonitorPrivate::init()
     connect(ui->close, &QPushButton::pressed, this, &MonitorPrivate::close);
     connect(ui->items, &JobTree::itemSelectionChanged, this, &MonitorPrivate::selectionChanged);
     connect(ui->items, &QTreeWidget::customContextMenuRequested, this, &MonitorPrivate::showMenu);
+    connect(queue.data(), &Queue::batchSubmitted, this, &MonitorPrivate::batchSubmitted);
     connect(queue.data(), &Queue::jobSubmitted, this, &MonitorPrivate::jobSubmitted);
     connect(queue.data(), &Queue::jobRemoved, this, &MonitorPrivate::jobRemoved);
 }
@@ -408,7 +414,7 @@ MonitorPrivate::updateMetrics()
     int stoppedCount = 0;
     int runningCount = 0;
     int failedCount = 0;
-    for (auto it = jobs.constBegin(); it != jobs.constEnd(); ++it) {
+    for (auto it = jobitems.constBegin(); it != jobitems.constEnd(); ++it) {
         QTreeWidgetItem* item = it.value();
         QVariant data = item->data(0, Qt::UserRole);
         QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
@@ -461,6 +467,37 @@ MonitorPrivate::eventFilter(QObject* object, QEvent* event)
 }
 
 void
+MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobsx)
+{
+    ui->items->setUpdatesEnabled(false);
+    for (QSharedPointer<Job> job : jobsx) {
+    
+        QTreeWidgetItem* parent = nullptr;
+        QUuid dependsonUuid = job->dependson();
+        if (!dependsonUuid.isNull()) {
+            parent = findItemByUuid(dependsonUuid);
+        }
+        QTreeWidgetItem* item = new QTreeWidgetItem();
+        item->setData(0, Qt::UserRole, QVariant::fromValue(job));
+        if (parent) {
+            parent->addChild(item);
+        }
+        else {
+            ui->items->addTopLevelItem(item);
+        }
+        // connect
+        connect(job.data(), &Job::priorityChanged, this, &MonitorPrivate::priorityChanged, Qt::QueuedConnection);
+        connect(job.data(), &Job::statusChanged, this, &MonitorPrivate::statusChanged, Qt::QueuedConnection);
+        // update
+        jobitems.insert(job->uuid(), item);
+        updateJob(job->uuid());
+    
+    }
+    ui->items->setUpdatesEnabled(true);
+    updateMetrics();
+}
+
+void
 MonitorPrivate::jobSubmitted(QSharedPointer<Job> job)
 {
     QTreeWidgetItem* parent = nullptr;
@@ -481,7 +518,7 @@ MonitorPrivate::jobSubmitted(QSharedPointer<Job> job)
     connect(job.data(), &Job::priorityChanged, this, &MonitorPrivate::priorityChanged, Qt::QueuedConnection);
     connect(job.data(), &Job::statusChanged, this, &MonitorPrivate::statusChanged, Qt::QueuedConnection);
     // update
-    jobs.insert(job->uuid(), item);
+    jobitems.insert(job->uuid(), item);
     updateMetrics();
     updateJob(job->uuid());
 }
@@ -505,7 +542,7 @@ MonitorPrivate::jobRemoved(const QUuid& uuid)
                     delete ui->items->takeTopLevelItem(index);
                 }
             }
-            jobs.remove(uuid);
+            jobitems.remove(uuid);
             return true;
         }
         return false;
@@ -517,8 +554,8 @@ void
 MonitorPrivate::logChanged(const QString& log)
 {
     QUuid uuid = qobject_cast<Job*>(sender())->uuid();
-    if (jobs.contains(uuid)) {
-        QTreeWidgetItem* item = jobs[uuid];
+    if (jobitems.contains(uuid)) {
+        QTreeWidgetItem* item = jobitems[uuid];
         if (item->isSelected()) {
             ui->job->setText(log);
         }
@@ -529,8 +566,8 @@ void
 MonitorPrivate::priorityChanged(int priority)
 {
     QUuid uuid = qobject_cast<Job*>(sender())->uuid();
-    if (jobs.contains(uuid)) {
-        QTreeWidgetItem* item = jobs[uuid];
+    if (jobitems.contains(uuid)) {
+        QTreeWidgetItem* item = jobitems[uuid];
         item->setText(Priority_, QString::number(priority));
     }
 }
@@ -539,8 +576,8 @@ void
 MonitorPrivate::statusChanged(Job::Status status)
 {
     QUuid uuid = qobject_cast<Job*>(sender())->uuid();
-    if (jobs.contains(uuid)) {
-        QTreeWidgetItem* item = jobs[uuid];
+    if (jobitems.contains(uuid)) {
+        QTreeWidgetItem* item = jobitems[uuid];
         switch (status) {
         case Job::Waiting: {
             item->setText(Status, "Waiting");
@@ -570,13 +607,25 @@ MonitorPrivate::statusChanged(Job::Status status)
 void
 MonitorPrivate::selectionChanged()
 {
+    if (logchanged) {
+        QObject::disconnect(logchanged); // prevent flooding the event loop
+    }
+    jobitem.clear();
     qint64 selectionCount = ui->items->selectedItems().count();
     if (selectionCount > 0) {
         if (selectionCount == 1) {
             QTreeWidgetItem* item = ui->items->selectedItems().first();
             QVariant data = item->data(0, Qt::UserRole);
             QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
+            jobitem = job;
             ui->job->setText(job->log());
+            logchanged = connect(
+                job.data(), &Job::logChanged, this,
+                [this]() {
+                    if (jobitem)
+                        ui->job->setText(jobitem->log());
+                },
+                Qt::QueuedConnection);
         }
         else {
             ui->job->setText("[Multiple selection]");
@@ -585,6 +634,7 @@ MonitorPrivate::selectionChanged()
     else {
         ui->job->setText(QString());
     }
+
     toggleButtons();
 }
 
@@ -736,60 +786,66 @@ MonitorPrivate::remove()
 void
 MonitorPrivate::copyUuid()
 {
-    QList<QString> uuids;
-    selectedItems([this, &uuids](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
-        QTreeWidgetItem* parentItem = findItemByUuid(job->uuid());
-
-        std::function<void(QTreeWidgetItem*)> uuidItems = [&](QTreeWidgetItem* item) {
-            QVariant data = item->data(0, Qt::UserRole);
-            QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
-            if (job) {
-                uuids.append(job->uuid().toString());
-            }
-            for (int i = 0; i < item->childCount(); ++i) {
-                uuidItems(item->child(i));
-            }
-        };
-        uuidItems(parentItem);
+    QList<QString> text;
+    selectedItems([this, &text](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
+        text.append(job->uuid().toString());
         return false;
     });
 
-    if (!uuids.isEmpty()) {
+    if (!text.isEmpty()) {
         QClipboard* clipboard = QGuiApplication::clipboard();
-        clipboard->setText(uuids.join('\n'));
+        clipboard->setText(text.join('\n'));
     }
 }
 
 void
 MonitorPrivate::copyCommand()
 {
-    QList<QString> commands;
-    selectedItems([this, &commands](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
-        QTreeWidgetItem* parentItem = findItemByUuid(job->uuid());
-
-        std::function<void(QTreeWidgetItem*)> uuidItems = [&](QTreeWidgetItem* item) {
-            QVariant data = item->data(0, Qt::UserRole);
-            QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
-            if (job) {
-                commands.append(QString("%1 %2").arg(job->command()).arg(job->arguments().join(' ')));
-            }
-            for (int i = 0; i < item->childCount(); ++i) {
-                uuidItems(item->child(i));
-            }
-        };
-        uuidItems(parentItem);
+    QList<QString> text;
+    selectedItems([this, &text](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
+        text.append(QString("%1 %2").arg(job->command()).arg(job->arguments().join(' ')));
         return false;
     });
 
-    if (!commands.isEmpty()) {
+    if (!text.isEmpty()) {
         QClipboard* clipboard = QGuiApplication::clipboard();
-        clipboard->setText(commands.join('\n'));
+        clipboard->setText(text.join('\n'));
     }
-
 }
 
 void
-MonitorPrivate::showInFinder()
+MonitorPrivate::copyFilename()
+{
+    QList<QString> text;
+    selectedItems([this, &text](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
+        text.append(job->filename());
+        return false;
+    });
+
+    if (!text.isEmpty()) {
+        QClipboard* clipboard = QGuiApplication::clipboard();
+        clipboard->setText(text.join('\n'));
+    }
+}
+
+void
+MonitorPrivate::copyLog()
+{
+    QList<QString> text;
+    selectedItems([this, &text](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
+        text.append(job->log());
+        return false;
+    });
+
+    if (!text.isEmpty()) {
+        QClipboard* clipboard = QGuiApplication::clipboard();
+        clipboard->setText(text.join('\n'));
+    }
+}
+
+
+void
+MonitorPrivate::showPath()
 {
     QList<QString> outputs;
     selectedItems([this, &outputs](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
@@ -888,7 +944,7 @@ MonitorPrivate::cleanup()
         QVariant data = item->data(0, Qt::UserRole);
         QSharedPointer<Job> itemJob = data.value<QSharedPointer<Job>>();
         if (itemJob) {
-            jobs.remove(itemJob->uuid());
+            jobitems.remove(itemJob->uuid());
         }
     };
     std::function<bool(QTreeWidgetItem*)> itemsCompleted = [&](QTreeWidgetItem* item) -> bool {
@@ -915,7 +971,7 @@ MonitorPrivate::cleanup()
             }
             QVariant data = topLevelItem->data(0, Qt::UserRole);
             QSharedPointer<Job> itemJob = data.value<QSharedPointer<Job>>();
-            jobs.remove(itemJob->uuid());
+            jobitems.remove(itemJob->uuid());
             delete ui->items->takeTopLevelItem(i);
         }
     }
@@ -983,20 +1039,32 @@ MonitorPrivate::showMenu(const QPoint& pos)
             QMenu* copyMenu = new QMenu("Copy", ui->items);
             QAction* uuid = new QAction("Uuid", this);
             QAction* command = new QAction("Command", this);
+            QAction* filename = new QAction("Filename", this);
+            QAction* log = new QAction("Log", this);
+
             // connect
             connect(uuid, &QAction::triggered, this, &MonitorPrivate::copyUuid);
             connect(command, &QAction::triggered, this, &MonitorPrivate::copyCommand);
+            connect(filename, &QAction::triggered, this, &MonitorPrivate::copyFilename);
+            connect(log, &QAction::triggered, this, &MonitorPrivate::copyLog);
             copyMenu->addAction(uuid);
             copyMenu->addAction(command);
+            copyMenu->addAction(filename);
+            copyMenu->addSeparator();
+            copyMenu->addAction(log);
             copy->setMenu(copyMenu);
         }
         contextMenu.addAction(copy);
 
         contextMenu.addSeparator();
 
-        QAction* finder = new QAction("Show in finder", this);
-        connect(finder, &QAction::triggered, this, &MonitorPrivate::showInFinder);
-        contextMenu.addAction(finder);
+        #ifdef __APPLE__
+        QAction* show = new QAction("Show in finder", this);
+        #elif _WIN32
+        QAction* show = new QAction("Show in explorer", this);
+        #endif
+        connect(show, &QAction::triggered, this, &MonitorPrivate::showPath);
+        contextMenu.addAction(show);
         contextMenu.exec(ui->items->mapToGlobal(pos));
     }
 }
@@ -1014,7 +1082,7 @@ MonitorPrivate::findTopLevelItem(QTreeWidgetItem* item)
 QTreeWidgetItem*
 MonitorPrivate::findItemByUuid(const QUuid& uuid)
 {
-    return jobs[uuid];
+    return jobitems[uuid];
 }
 
 QSharedPointer<Job>
