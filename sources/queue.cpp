@@ -1,4 +1,4 @@
-// Copyright 2022-present Contributors to the jobman project.
+﻿// Copyright 2022-present Contributors to the jobman project.
 // SPDX-License-Identifier: BSD-3-Clause
 // https://github.com/mikaelsundell/jobman
 
@@ -11,6 +11,7 @@
 #include <QPointer>
 #include <QThreadPool>
 #include <QtConcurrent>
+
 
 #define THREAD_FUNC_SAFE() \
     static QMutex mutex;   \
@@ -503,7 +504,6 @@ QueuePrivate::findNextJob()
     }
     if (index != -1) {
         if (nextjob->exclusive()) {
-            qDebug() << "job is ready to go, adding to exclusiveJobs: " << nextjob->uuid();
             exclusiveJobs[nextjob->command()] = nextjob->uuid();
         }
 
@@ -536,7 +536,7 @@ QueuePrivate::processNextJobs()
     }
     for (QSharedPointer<Job>& job : jobsrun) {
         QFuture<void> future = QtConcurrent::run(&threadPool, [this, job]() { processJob(job); });
-        QFutureWatcher<void>* watcher = new QFutureWatcher<void>();
+        QFutureWatcher<void>* watcher = new QFutureWatcher<void>(this);
         connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher, job]() {
             watcher->deleteLater();
             statusChanged(job->uuid(), job->status());
@@ -660,22 +660,12 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
                 status == Job::DependencyFailed || 
                 status == Job::Stopped) {
                 if (job->exclusive()) {
-
-                    qDebug() << "job is exclusive: " << job->uuid();
-
                     const QString command = job->command();
                     if (exclusiveJobs.contains(command)) {
-
-                        qDebug() << "- its done so let's remove it: " << job->uuid();
-
                         Q_ASSERT(exclusiveJobs[command] == job->uuid());
                         exclusiveJobs.remove(command);
                     }
                 }
-            }
-            else {
-                qDebug() << "- status updated but is not finished: " << status << " - " << job->uuid();
-
             }
             if (status == Job::Completed) {
                 completedJobs.insert(uuid);  // Mark the job as completed
@@ -768,7 +758,13 @@ Queue::endBatch(const QUuid& uuid)
 QUuid
 Queue::submit(QSharedPointer<Job> job, const QUuid& uuid)
 {
-    return p->submit(job, uuid);
+    if (QThread::currentThread() == &p->thread) {
+        return p->submit(job, uuid);
+    }
+    QUuid result;
+    QMetaObject::invokeMethod(
+        p.data(), [&]() { result = p->submit(job, uuid); }, Qt::BlockingQueuedConnection);
+    return result;
 }
 
 void

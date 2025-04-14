@@ -166,7 +166,6 @@ public:
             }
         }
     }
-    
     template<typename Func> void removeItems(Func func)
     {
         std::function<bool(QTreeWidgetItem*)> iterateItems = [&](QTreeWidgetItem* item) -> bool {
@@ -326,27 +325,12 @@ MonitorPrivate::updateJob(const QUuid& uuid)
             item->setText(Status, "Stopped");
         } break;
         }
-        QWidget* widget = ui->items->itemWidget(item, Progress);
-        if (!item->parent()) {
-            if (widget) {
-                QProgressBar* progress = widget->findChild<QProgressBar*>("progress");
-                progress->setValue(50);
-            }
-            else {
-                QWidget* container = new QWidget(ui->items);
-                Ui::ProgressBar progressbar;
-                progressbar.setupUi(container);
-                progressbar.progress->setValue(50);
-                progressbar.spinner->setVisible(false);
-                ui->items->setItemWidget(item, Progress, container);
-            }
-        }
-        updateProgress(item);
+         updateProgress(item);
         if (item->isSelected()) {
             ui->job->setText(itemjob->log());
         }
     }
-    toggleButtons();
+    //toggleButtons();
 }
 
 void
@@ -371,18 +355,19 @@ MonitorPrivate::updateProgress(QTreeWidgetItem* item)
     progressItems(topLevelItem);
     int progress = (totals > 0) ? (items * 100 / totals) : 0;
     QWidget* widget = ui->items->itemWidget(topLevelItem, Progress);
-    QProgressBar* progressbar = widget->findChild<QProgressBar*>("progress");
-    progressbar->setValue(progress);
-    QLabel* status = widget->findChild<QLabel*>("status");
-    status->setText(QString("%1 / %2").arg(items).arg(totals));
-    QLabel* spinner = widget->findChild<QLabel*>("spinner");
-    if (running) {
-        if (!spinner->isVisible()) {
-            spinner->show();
+    if (widget || progress > 0) {
+        if (!widget) { // delay the creation of the progress widget, expensive call
+            QWidget* container = new QWidget(ui->items);
+            Ui::ProgressBar progressbar;
+            progressbar.setupUi(container);
+            progressbar.progress->setValue(0);
+            ui->items->setItemWidget(item, Progress, container);
+            widget = container;
         }
-    }
-    else {
-        spinner->hide();
+        QProgressBar* progressbar = widget->findChild<QProgressBar*>("progress");
+        progressbar->setValue(progress);
+        QLabel* status = widget->findChild<QLabel*>("status");
+        status->setText(QString("%1 / %2").arg(items).arg(totals));
     }
     updateMetrics();
 }
@@ -467,17 +452,18 @@ MonitorPrivate::eventFilter(QObject* object, QEvent* event)
 }
 
 void
-MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobsx)
+MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobs)
 {
-    ui->items->setUpdatesEnabled(false);
-    for (QSharedPointer<Job> job : jobsx) {
+    qDebug() << "jobs: " << jobs.size();
+
+    for (QSharedPointer<Job> job : jobs) {
     
         QTreeWidgetItem* parent = nullptr;
         QUuid dependsonUuid = job->dependson();
         if (!dependsonUuid.isNull()) {
             parent = findItemByUuid(dependsonUuid);
         }
-        QTreeWidgetItem* item = new QTreeWidgetItem();
+        QTreeWidgetItem* item = new QTreeWidgetItem(); 
         item->setData(0, Qt::UserRole, QVariant::fromValue(job));
         if (parent) {
             parent->addChild(item);
@@ -493,8 +479,9 @@ MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobsx)
         updateJob(job->uuid());
     
     }
-    ui->items->setUpdatesEnabled(true);
     updateMetrics();
+
+    qDebug() << "jobs: " << jobs.size() << "done.";
 }
 
 void

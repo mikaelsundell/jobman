@@ -26,6 +26,9 @@ public:
     QList<QUuid> submit(const QList<QString>& files, const QSharedPointer<Preset>& preset, const Paths& paths);
     QList<QUuid> submit(const QSharedPointer<Preset>& preset, const Paths& paths);
 
+Q_SIGNALS:
+    void fileSubmitted(const QString& file);
+
 private:
     QScopedPointer<ProcessorPrivate> p;
 };

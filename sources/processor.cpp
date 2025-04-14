@@ -130,6 +130,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
                 return uuids;
             }
         }
+        object->fileSubmitted(file);
     }
     queue->endBatch(batchuuid);
     return uuids;

@@ -39,6 +39,8 @@
 #include <QTimer>
 #include <QWindow>
 
+#include <QtConcurrent>
+
 // generated files
 #include "ui_about.h"
 #include "ui_jobman.h"
@@ -46,7 +48,7 @@
 class JobmanPrivate : public QObject {
     Q_OBJECT
 public:
-    enum Type { File, Command };
+    enum Type { File = 0, Command = 1, Progress = 2 };
 
 public:
     JobmanPrivate();
@@ -74,6 +76,7 @@ public Q_SLOTS:
     void processCommand();
     void processUuids(const QList<QUuid>& uuids);
     void jobProcessed(const QUuid& uuid);
+    void fileSubmitted(const QString& file);
     void submitFiles();
     void openPreferences();
     void clearPreferences();
@@ -126,8 +129,14 @@ public:
             about->licenses->setText(text);
         }
     };
+    struct FileDrop {
+        QList<QString> submitfiles;
+        QStringList rejectedfiles;
+        bool hasDir = false;
+    };
     Paths paths();
     bool applicationPath(const QString& path) const;
+    QString elidedtext(const QString& text) const;
     QString documents;
     QString presets;
     QString presetsselected;
@@ -139,6 +148,8 @@ public:
     bool createfolders;
     bool overwrite;
     int threads;
+    int submitcount;
+    int submittotal;
     QSize size;
     int offset;
     QList<QUuid> submitteduuids;
@@ -250,6 +261,7 @@ JobmanPrivate::init()
     connect(ui->helpOpenGithubReadme, &QAction::triggered, this, &JobmanPrivate::openGithubReadme);
     connect(ui->helpOpenGithubIssues, &QAction::triggered, this, &JobmanPrivate::openGithubIssues);
     connect(queue.data(), &Queue::jobProcessed, this, &JobmanPrivate::jobProcessed);
+    connect(processor.data(), &Processor::fileSubmitted, this, &JobmanPrivate::fileSubmitted);
     size = window->size();
     // threads
     int threadcount = QThread::idealThreadCount();
@@ -613,8 +625,6 @@ JobmanPrivate::loadSettings()
     ui->createFolders->setChecked(createfolders);
     ui->overwrite->setChecked(overwrite);
     ui->threads->setCurrentIndex(threads);
-
-    qDebug() << "loadSettings: threads: " << threads;
 }
 
 void
@@ -663,7 +673,6 @@ JobmanPrivate::saveSettings()
         }
     }
     settings.setValue("threads", ui->threads->currentIndex());
-    qDebug() << "saveSettings: threads: " << ui->threads->currentIndex();
 }
 
 void
@@ -735,52 +744,95 @@ JobmanPrivate::processFiles(const QList<QString>& files)
 {
     QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
     QString filter = preset->filter().toLower();
+    ui->presettype->setCurrentIndex(static_cast<int>(Type::Progress));
+    ui->filedropProgress->setVisible(false);
+    ui->progressWidget->setVisible(false);
+    auto future = QtConcurrent::run([=]() -> FileDrop { 
+        FileDrop result;
+        QList<QString> allItems;
 
-    QList<QString> submitfiles;
-    QStringList rejectedfiles;
+        for (const QString& path : files) {
+            QFileInfo info(path);
+            if (info.isDir()) {
+                result.hasDir = true;
+                QStringList filters = filter.split(';', Qt::SkipEmptyParts);
+                QDirIterator it(path, filters, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+                while (it.hasNext()) {
+                    it.next();
+                    QFileInfo fileinfo = it.fileInfo();
+                    QTimer::singleShot(0, this, [=]() {
+                        QString filename = fileinfo.fileName();
+                        QString label = "Processing file: ";
+                        int width = ui->filedropLabel->width();
+                        QFontMetrics metrics(ui->filedropLabel->font());
+                        QString text = metrics.elidedText(filename, Qt::ElideMiddle,
+                                                          width - metrics.horizontalAdvance(label));
+                        ui->filedropLabel->setText(QString("%1%2").arg(label).arg(text));
 
-    bool hasdir = false;
-    for (const QString& path : files) {
-        QFileInfo info(path);
-        if (info.isDir()) {
-            hasdir = true;
-            QStringList filters = filter.split(';', Qt::SkipEmptyParts);
-            QDirIterator it(path, filters, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
-            while (it.hasNext()) {
-                submitfiles.append(it.next());
+                    });
+                    allItems.append(fileinfo.filePath());
+                }
+            }
+            else if (info.isFile()) {
+                allItems.append(path);
             }
         }
-        else if (info.isFile()) {
+        int count = 0;
+        for (const QString& path : allItems) {
+            QFileInfo info(path);
             QString suffix = info.suffix().toLower();
             if (filter.contains(suffix) || filter.contains("*.*")) {
-                submitfiles.append(info.absoluteFilePath());
+                result.submitfiles.append(info.absoluteFilePath());
             }
             else {
-                rejectedfiles.append(info.fileName());
+                result.rejectedfiles.append(info.fileName());
             }
+            int progress = static_cast<int>((++count * 100.0) / allItems.size());
+            QTimer::singleShot(0, this, [=]() { ui->filedropProgress->setValue(progress); });
         }
-    }
+        return result;
+    });
+    auto watcher = new QFutureWatcher<FileDrop>(this);
+    connect(watcher, &QFutureWatcher<FileDrop>::finished, this, [=]() {
+        watcher->deleteLater();
+        FileDrop result = future.result();
 
-    if (!rejectedfiles.isEmpty()) {
-        Message::showMessage(
-            window.data(), "Files Skipped",
-            QString(
-                "The following files were skipped because they do not match the preset's filter:\n%1\n\nFilter:\n%2")
-                .arg(rejectedfiles.join("\n"))
-                .arg(filter));
-    }
+        if (!result.rejectedfiles.isEmpty()) {
+            Message::showMessage(
+                window.data(), "Files Skipped",
+                QString(
+                    "The following files were skipped because they do not match the preset's filter:\n%1\n\nFilter:\n%2")
+                    .arg(result.rejectedfiles.join("\n"))
+                    .arg(filter));
+        }
+        bool submit = true;
+        if (result.submitfiles.size() > 10 && result.hasDir) {
+            submit = Question::askQuestion(
+                window.data(), QString("You are about to submit %1 files for processing from one or more directories.\n"
+                                       "Do you want to continue?")
+                                   .arg(result.submitfiles.size()));
+        }
+        if (submit && !result.submitfiles.isEmpty()) {
+            submittotal = result.submitfiles.size();
+            submitcount = 0;
 
-    bool submit = true;
-    if (submitfiles.size() > 10 && hasdir) {
-        submit = Question::askQuestion(
-            window.data(), QString("You are about to submit %1 files for processing from one or more directories.\n"
-                                   "Do you want to continue?")
-                               .arg(submitfiles.size()));
-    }
+            ui->filedropProgress->setVisible(true);
 
-    if (submit && submitfiles.size()) {
-        processUuids(processor->submit(submitfiles, preset, paths()));
-    }
+            auto submitFuture = QtConcurrent::run(
+                [=]() { return processor->submit(result.submitfiles, preset, paths()); });
+
+            auto submitWatcher = new QFutureWatcher<QList<QUuid>>(this);
+            connect(submitWatcher, &QFutureWatcher<QList<QUuid>>::finished, this, [=]() {
+                submitWatcher->deleteLater();
+                QList<QUuid> uuids = submitFuture.result();
+                processUuids(uuids);
+                ui->presettype->setCurrentIndex(static_cast<int>(Type::File));
+                ui->progressWidget->setVisible(true);
+            });
+            submitWatcher->setFuture(submitFuture);
+        }
+    });
+    watcher->setFuture(future);
 }
 
 void
@@ -819,6 +871,21 @@ JobmanPrivate::jobProcessed(const QUuid& uuid)
         }
         submitteduuids.removeAll(uuid);
     }
+}
+
+void
+JobmanPrivate::fileSubmitted(const QString& file)
+{
+    int progress = static_cast<int>((submitcount * 100) / submittotal);
+    QString filename = QFileInfo(file).fileName();
+    QString label = "Submitted file: ";
+    int width = ui->filedropLabel->width();
+    QFontMetrics metrics(ui->filedropLabel->font());
+    QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
+    ui->filedropLabel->setText(
+        QString("%1%2 (%3/%4)").arg(label).arg(QFileInfo(file).fileName()).arg(submitcount).arg(submittotal));
+    ui->filedropProgress->setValue(progress);
+    submitcount++;
 }
 
 void
@@ -1007,7 +1074,7 @@ JobmanPrivate::selectSaveto()
 void
 JobmanPrivate::showSaveto()
 {
-    QDesktopServices::openUrl(QUrl::fromLocalFile(saveto));
+    QDesktopServices::openUrl(QUrl::fromLocalFile(saveto)); 
 }
 
 void

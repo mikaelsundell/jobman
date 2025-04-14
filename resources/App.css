@@ -487,6 +487,7 @@ QSlider::handle:horizontal:disabled {
 }
 
 /* Custom widgets */
+QWidget#progress,
 Filedrop {
     border: 2px solid hsl(220, 30%, 6%);
     background-color: hsl(220, 30%, 6%);

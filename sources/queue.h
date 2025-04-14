@@ -14,7 +14,7 @@ class Queue : public QObject {
     Q_OBJECT
 public:
     static Queue* instance();
-    QUuid beginBatch(int chunks = 128);
+    QUuid beginBatch(int chunks = 256);
     void endBatch(const QUuid& uuid);
     QUuid submit(QSharedPointer<Job> job, const QUuid& uuid = QUuid());
     void start(const QUuid& uuid);
