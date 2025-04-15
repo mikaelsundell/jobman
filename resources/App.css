@@ -293,7 +293,7 @@ QTreeView
 }
 
 QTreeView::item {
-    height: 20px;
+    height: 40px;
     background: hsl(220, 30%, 8%);
 }
 

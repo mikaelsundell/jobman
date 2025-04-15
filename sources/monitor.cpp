@@ -816,7 +816,6 @@ MonitorPrivate::copyLog()
     }
 }
 
-
 void
 MonitorPrivate::showPath()
 {
