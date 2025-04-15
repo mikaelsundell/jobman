@@ -658,10 +658,8 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
         QMutexLocker locker(&mutex);
         if (!removedJobs.contains(uuid)) {
             QSharedPointer<Job> job = allJobs[uuid];
-            if (status == Job::Completed || // only test finished jobs
-                status == Job::Failed ||
-                status == Job::DependencyFailed || 
-                status == Job::Stopped) {
+            if (status == Job::Completed ||  // only test finished jobs
+                status == Job::Failed || status == Job::DependencyFailed || status == Job::Stopped) {
                 if (job->exclusive()) {
                     const QString command = job->command();
                     if (exclusiveJobs.contains(command)) {

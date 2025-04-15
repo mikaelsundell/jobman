@@ -747,7 +747,7 @@ JobmanPrivate::processFiles(const QList<QString>& files)
     ui->presettype->setCurrentIndex(static_cast<int>(Type::Progress));
     ui->filedropProgress->setVisible(false);
     ui->progressWidget->setVisible(false);
-    auto future = QtConcurrent::run([=]() -> FileDrop { 
+    auto future = QtConcurrent::run([=]() -> FileDrop {
         FileDrop result;
         QList<QString> allItems;
 
@@ -768,7 +768,6 @@ JobmanPrivate::processFiles(const QList<QString>& files)
                         QString text = metrics.elidedText(filename, Qt::ElideMiddle,
                                                           width - metrics.horizontalAdvance(label));
                         ui->filedropLabel->setText(QString("%1%2").arg(label).arg(text));
-
                     });
                     allItems.append(fileinfo.filePath());
                 }
@@ -1074,7 +1073,7 @@ JobmanPrivate::selectSaveto()
 void
 JobmanPrivate::showSaveto()
 {
-    QDesktopServices::openUrl(QUrl::fromLocalFile(saveto)); 
+    QDesktopServices::openUrl(QUrl::fromLocalFile(saveto));
 }
 
 void

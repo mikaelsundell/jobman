@@ -269,7 +269,7 @@ MonitorPrivate::init()
     ui->items->setItemDelegateForColumn(3, new PriorityDelegate(ui->items));
     ui->items->setItemDelegateForColumn(4, new StatusDelegate(ui->items));
     ui->items->setContextMenuPolicy(Qt::CustomContextMenu);
-    QPalette palette = ui->job->palette(); // workaround for unfocused textbrowser
+    QPalette palette = ui->job->palette();  // workaround for unfocused textbrowser
     QColor textcolor = QColor::fromHslF(0.0, 0.0, 0.8);
     palette.setColor(QPalette::Inactive, QPalette::HighlightedText, textcolor);
     ui->job->setPalette(palette);
@@ -348,7 +348,7 @@ MonitorPrivate::updateProgress(QTreeWidgetItem* item)
     int progress = (totals > 0) ? (items * 100 / totals) : 0;
     QWidget* widget = ui->items->itemWidget(topLevelItem, Progress);
     if (widget || progress > 0) {
-        if (!widget) { // delay the creation of the progress widget, expensive call
+        if (!widget) {  // delay the creation of the progress widget, expensive call
             QWidget* container = new QWidget(ui->items);
             Ui::ProgressBar progressbar;
             progressbar.setupUi(container);
@@ -452,7 +452,7 @@ MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobs)
         if (!dependsonUuid.isNull()) {
             parent = findItemByUuid(dependsonUuid);
         }
-        QTreeWidgetItem* item = new QTreeWidgetItem(); 
+        QTreeWidgetItem* item = new QTreeWidgetItem();
         item->setData(0, Qt::UserRole, QVariant::fromValue(job));
         updateJob(item);
         if (parent) {
@@ -466,7 +466,6 @@ MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobs)
         connect(job.data(), &Job::statusChanged, this, &MonitorPrivate::statusChanged, Qt::QueuedConnection);
         // update
         jobitems.insert(job->uuid(), item);
-    
     }
     updateMetrics();
 }
@@ -581,7 +580,7 @@ void
 MonitorPrivate::selectionChanged()
 {
     if (logchanged) {
-        QObject::disconnect(logchanged); // prevent flooding the event loop
+        QObject::disconnect(logchanged);  // prevent flooding the event loop
     }
     jobitem.clear();
     qint64 selectionCount = ui->items->selectedItems().count();
@@ -1030,11 +1029,11 @@ MonitorPrivate::showMenu(const QPoint& pos)
 
         contextMenu.addSeparator();
 
-        #ifdef __APPLE__
+#ifdef __APPLE__
         QAction* show = new QAction("Show in finder", this);
-        #elif _WIN32
+#elif _WIN32
         QAction* show = new QAction("Show in explorer", this);
-        #endif
+#endif
         connect(show, &QAction::triggered, this, &MonitorPrivate::showPath);
         contextMenu.addAction(show);
         contextMenu.exec(ui->items->mapToGlobal(pos));
