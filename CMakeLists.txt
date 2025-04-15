@@ -50,7 +50,7 @@ source_group ("Preset Files" FILES ${app_presets})
 set (app_name ${project_name})
 set (app_copyright "Copyright 2022-present Contributors to the ${app_name} project")
 set (app_identifier "com.github.mikaelsundell.jobman")
-set (app_long_version "1.3.12")
+set (app_long_version "1.3.13")
 set (app_short_version "1.3")
 set (app_url "https://github.com/mikaelsundell/jobman")
 
