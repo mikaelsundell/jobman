@@ -148,7 +148,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Start.png</normaloff>:/icons/resources/Start.png</iconset>
+             <normaloff>:/icons/resources/Start.png</normaloff>
+             <disabledoff>:/icons/resources/StartDisabled.png</disabledoff>:/icons/resources/Start.png</iconset>
            </property>
           </widget>
          </item>
@@ -165,7 +166,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Stop.png</normaloff>:/icons/resources/Stop.png</iconset>
+             <normaloff>:/icons/resources/Stop.png</normaloff>
+             <disabledoff>:/icons/resources/StopDisabled.png</disabledoff>:/icons/resources/Stop.png</iconset>
            </property>
           </widget>
          </item>
@@ -200,7 +202,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Priority.png</normaloff>:/icons/resources/Priority.png</iconset>
+             <normaloff>:/icons/resources/Priority.png</normaloff>
+             <disabledoff>:/icons/resources/PriorityDisabled.png</disabledoff>:/icons/resources/Priority.png</iconset>
            </property>
           </widget>
          </item>
@@ -217,7 +220,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Delete.png</normaloff>:/icons/resources/Delete.png</iconset>
+             <normaloff>:/icons/resources/Delete.png</normaloff>
+             <disabledoff>:/icons/resources/DeleteDisabled.png</disabledoff>:/icons/resources/Delete.png</iconset>
            </property>
            <property name="shortcut">
             <string>Del</string>
@@ -255,7 +259,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Running.png</normaloff>:/icons/resources/Running.png</iconset>
+             <normaloff>:/icons/resources/Running.png</normaloff>
+             <disabledoff>:/icons/resources/RunningDisabled.png</disabledoff>:/icons/resources/Running.png</iconset>
            </property>
           </widget>
          </item>
@@ -272,7 +277,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Stopped.png</normaloff>:/icons/resources/Stopped.png</iconset>
+             <normaloff>:/icons/resources/Stopped.png</normaloff>
+             <disabledoff>:/icons/resources/StoppedDisabled.png</disabledoff>:/icons/resources/Stopped.png</iconset>
            </property>
           </widget>
          </item>
@@ -289,7 +295,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Restore.png</normaloff>:/icons/resources/Restore.png</iconset>
+             <normaloff>:/icons/resources/Restore.png</normaloff>
+             <disabledoff>:/icons/resources/RestoreDisabled.png</disabledoff>:/icons/resources/Restore.png</iconset>
            </property>
           </widget>
          </item>
@@ -306,7 +313,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Cleanup.png</normaloff>:/icons/resources/Cleanup.png</iconset>
+             <normaloff>:/icons/resources/Cleanup.png</normaloff>
+             <disabledoff>:/icons/resources/CleanupDisabled.png</disabledoff>:/icons/resources/Cleanup.png</iconset>
            </property>
           </widget>
          </item>

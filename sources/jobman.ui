@@ -26,10 +26,10 @@
    <string>Jobman</string>
   </property>
   <property name="toolButtonStyle">
-   <enum>Qt::ToolButtonIconOnly</enum>
+   <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>
   </property>
   <property name="dockOptions">
-   <set>QMainWindow::AllowTabbedDocks|QMainWindow::AnimatedDocks</set>
+   <set>QMainWindow::DockOption::AllowTabbedDocks|QMainWindow::DockOption::AnimatedDocks</set>
   </property>
   <property name="unifiedTitleAndToolBarOnMac">
    <bool>false</bool>
@@ -40,7 +40,7 @@
      <number>0</number>
     </property>
     <property name="sizeConstraint">
-     <enum>QLayout::SetDefaultConstraint</enum>
+     <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
     </property>
     <item>
      <widget class="QWidget" name="presetBar" native="true">
@@ -253,10 +253,10 @@
             <item>
              <spacer name="horizontalSpacer_4">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeType">
-               <enum>QSizePolicy::Fixed</enum>
+               <enum>QSizePolicy::Policy::Fixed</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -282,14 +282,14 @@
                 <normaloff>:/icons/resources/Link.png</normaloff>:/icons/resources/Link.png</iconset>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonIconOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>
               </property>
              </widget>
             </item>
             <item>
              <spacer name="horizontalSpacer">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -309,7 +309,8 @@
               </property>
               <property name="icon">
                <iconset resource="jobman.qrc">
-                <normaloff>:/icons/resources/Folder.png</normaloff>:/icons/resources/Folder.png</iconset>
+                <normaloff>:/icons/resources/Folder.png</normaloff>
+                <disabledoff>:/icons/resources/FolderDisabled.png</disabledoff>:/icons/resources/Folder.png</iconset>
               </property>
              </widget>
             </item>
@@ -355,10 +356,10 @@
             <item>
              <spacer name="horizontalSpacer_6">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeType">
-               <enum>QSizePolicy::Fixed</enum>
+               <enum>QSizePolicy::Policy::Fixed</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -378,17 +379,18 @@
               </property>
               <property name="icon">
                <iconset resource="jobman.qrc">
-                <normaloff>:/icons/resources/File.png</normaloff>:/icons/resources/File.png</iconset>
+                <normaloff>:/icons/resources/File.png</normaloff>
+                <disabledoff>:/icons/resources/FileDisabled.png</disabledoff>:/icons/resources/File.png</iconset>
               </property>
              </widget>
             </item>
             <item>
              <spacer name="horizontalSpacer_5">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeType">
-               <enum>QSizePolicy::Fixed</enum>
+               <enum>QSizePolicy::Policy::Fixed</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -408,7 +410,8 @@
               </property>
               <property name="icon">
                <iconset resource="jobman.qrc">
-                <normaloff>:/icons/resources/Refresh.png</normaloff>:/icons/resources/Refresh.png</iconset>
+                <normaloff>:/icons/resources/Refresh.png</normaloff>
+                <disabledoff>:/icons/resources/RefreshDisabled.png</disabledoff>:/icons/resources/Refresh.png</iconset>
               </property>
               <property name="iconSize">
                <size>
@@ -421,10 +424,10 @@
             <item>
              <spacer name="horizontalSpacer_3">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeType">
-               <enum>QSizePolicy::Fixed</enum>
+               <enum>QSizePolicy::Policy::Fixed</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -444,7 +447,8 @@
               </property>
               <property name="icon">
                <iconset resource="jobman.qrc">
-                <normaloff>:/icons/resources/Folder.png</normaloff>:/icons/resources/Folder.png</iconset>
+                <normaloff>:/icons/resources/Folder.png</normaloff>
+                <disabledoff>:/icons/resources/FolderDisabled.png</disabledoff>:/icons/resources/Folder.png</iconset>
               </property>
              </widget>
             </item>
@@ -549,10 +553,10 @@
     <item>
      <spacer name="verticalSpacer">
       <property name="orientation">
-       <enum>Qt::Vertical</enum>
+       <enum>Qt::Orientation::Vertical</enum>
       </property>
       <property name="sizeType">
-       <enum>QSizePolicy::Minimum</enum>
+       <enum>QSizePolicy::Policy::Minimum</enum>
       </property>
       <property name="sizeHint" stdset="0">
        <size>
@@ -795,7 +799,7 @@
                      <item>
                       <spacer name="horizontalSpacer_7">
                        <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
+                        <enum>Qt::Orientation::Horizontal</enum>
                        </property>
                        <property name="sizeHint" stdset="0">
                         <size>
@@ -835,7 +839,7 @@
                      <item>
                       <spacer name="horizontalSpacer_8">
                        <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
+                        <enum>Qt::Orientation::Horizontal</enum>
                        </property>
                        <property name="sizeHint" stdset="0">
                         <size>
@@ -864,7 +868,7 @@
                <item>
                 <spacer name="verticalSpacer_3">
                  <property name="orientation">
-                  <enum>Qt::Vertical</enum>
+                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -907,14 +911,14 @@
                   <string/>
                  </property>
                  <property name="alignment">
-                  <set>Qt::AlignCenter</set>
+                  <set>Qt::AlignmentFlag::AlignCenter</set>
                  </property>
                 </widget>
                </item>
                <item>
                 <spacer name="verticalSpacer_4">
                  <property name="orientation">
-                  <enum>Qt::Vertical</enum>
+                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
                  <property name="sizeHint" stdset="0">
                   <size>
@@ -931,10 +935,10 @@
            <item>
             <spacer name="verticalSpacer_2">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeType">
-              <enum>QSizePolicy::Fixed</enum>
+              <enum>QSizePolicy::Policy::Fixed</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1105,7 +1109,7 @@
             <item>
              <spacer name="horizontalSpacer_2">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -1125,7 +1129,8 @@
               </property>
               <property name="icon">
                <iconset resource="jobman.qrc">
-                <normaloff>:/icons/resources/Options.png</normaloff>:/icons/resources/Options.png</iconset>
+                <normaloff>:/icons/resources/Options.png</normaloff>
+                <disabledoff>:/icons/resources/OptionsDisabled.png</disabledoff>:/icons/resources/Options.png</iconset>
               </property>
              </widget>
             </item>
@@ -1159,7 +1164,7 @@
      <x>0</x>
      <y>0</y>
      <width>430</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuHelp">
