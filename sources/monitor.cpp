@@ -36,7 +36,7 @@ public:
 public:
     MonitorPrivate();
     void init();
-    void updateJob(const QUuid& uuid);
+    void updateJob(QTreeWidgetItem* item);
     void updateProgress(QTreeWidgetItem* item);
     void updatePriority(Priority priority);
     void updateMetrics();
@@ -295,42 +295,34 @@ MonitorPrivate::init()
 }
 
 void
-MonitorPrivate::updateJob(const QUuid& uuid)
+MonitorPrivate::updateJob(QTreeWidgetItem* item)
 {
-    QTreeWidgetItem* item = findItemByUuid(uuid);
     QVariant data = item->data(0, Qt::UserRole);
-    QSharedPointer<Job> itemjob = data.value<QSharedPointer<Job>>();
-    if (itemjob->uuid() == uuid) {
-        item->setText(Name, itemjob->name());
-        item->setText(Filename, QFileInfo(itemjob->filename()).fileName());
-        item->setText(Created, itemjob->created().toString("yyyy-MM-dd HH:mm:ss"));
-        item->setText(Priority_, QString::number(itemjob->priority()));
-        switch (itemjob->status()) {
-        case Job::Waiting: {
-            item->setText(Status, "Waiting");
-        } break;
-        case Job::Running: {
-            item->setText(Status, "Running");
-        } break;
-        case Job::Completed: {
-            item->setText(Status, "Completed");
-        } break;
-        case Job::DependencyFailed: {
-            item->setText(Status, "Dependency failed");
-        } break;
-        case Job::Failed: {
-            item->setText(Status, "Failed");
-        } break;
-        case Job::Stopped: {
-            item->setText(Status, "Stopped");
-        } break;
-        }
-         updateProgress(item);
-        if (item->isSelected()) {
-            ui->job->setText(itemjob->log());
-        }
+    QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
+    item->setText(Name, job->name());
+    item->setText(Filename, QFileInfo(job->filename()).fileName());
+    item->setText(Created, job->created().toString("yyyy-MM-dd HH:mm:ss"));
+    item->setText(Priority_, QString::number(job->priority()));
+    switch (job->status()) {
+    case Job::Waiting: {
+        item->setText(Status, "Waiting");
+    } break;
+    case Job::Running: {
+        item->setText(Status, "Running");
+    } break;
+    case Job::Completed: {
+        item->setText(Status, "Completed");
+    } break;
+    case Job::DependencyFailed: {
+        item->setText(Status, "Dependency failed");
+    } break;
+    case Job::Failed: {
+        item->setText(Status, "Failed");
+    } break;
+    case Job::Stopped: {
+        item->setText(Status, "Stopped");
+    } break;
     }
-    //toggleButtons();
 }
 
 void
@@ -454,10 +446,7 @@ MonitorPrivate::eventFilter(QObject* object, QEvent* event)
 void
 MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobs)
 {
-    qDebug() << "jobs: " << jobs.size();
-
     for (QSharedPointer<Job> job : jobs) {
-    
         QTreeWidgetItem* parent = nullptr;
         QUuid dependsonUuid = job->dependson();
         if (!dependsonUuid.isNull()) {
@@ -465,6 +454,7 @@ MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobs)
         }
         QTreeWidgetItem* item = new QTreeWidgetItem(); 
         item->setData(0, Qt::UserRole, QVariant::fromValue(job));
+        updateJob(item);
         if (parent) {
             parent->addChild(item);
         }
@@ -476,12 +466,9 @@ MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobs)
         connect(job.data(), &Job::statusChanged, this, &MonitorPrivate::statusChanged, Qt::QueuedConnection);
         // update
         jobitems.insert(job->uuid(), item);
-        updateJob(job->uuid());
     
     }
     updateMetrics();
-
-    qDebug() << "jobs: " << jobs.size() << "done.";
 }
 
 void
@@ -494,6 +481,7 @@ MonitorPrivate::jobSubmitted(QSharedPointer<Job> job)
     }
     QTreeWidgetItem* item = new QTreeWidgetItem();
     item->setData(0, Qt::UserRole, QVariant::fromValue(job));
+    updateJob(item);
     if (parent) {
         parent->addChild(item);
     }
@@ -501,13 +489,11 @@ MonitorPrivate::jobSubmitted(QSharedPointer<Job> job)
         ui->items->addTopLevelItem(item);
     }
     // connect
-    connect(job.data(), &Job::logChanged, this, &MonitorPrivate::logChanged, Qt::QueuedConnection);
     connect(job.data(), &Job::priorityChanged, this, &MonitorPrivate::priorityChanged, Qt::QueuedConnection);
     connect(job.data(), &Job::statusChanged, this, &MonitorPrivate::statusChanged, Qt::QueuedConnection);
     // update
     jobitems.insert(job->uuid(), item);
     updateMetrics();
-    updateJob(job->uuid());
 }
 
 void

@@ -124,11 +124,14 @@ QueuePrivate::submit(QSharedPointer<Job> job, const QUuid& batch)
         QMutexLocker locker(&mutex);
         QString log = QString("Uuid:\n"
                               "%1\n\n"
+                              "Created:\n"
+                              "%2\n\n"
                               "Filename:\n"
-                              "%2 (%3)\n\n"
+                              "%3 (%4)\n\n"
                               "Command:\n"
-                              "%4 %5\n")
+                              "%5 %6\n")
                           .arg(job->uuid().toString())
+                          .arg(job->created().toString("yyyy-MM-dd HH:mm:ss"))
                           .arg(job->filename())
                           .arg(filesize(job->filename()))
                           .arg(job->command())

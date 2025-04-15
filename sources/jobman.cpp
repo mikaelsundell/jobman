@@ -762,7 +762,7 @@ JobmanPrivate::processFiles(const QList<QString>& files)
                     QFileInfo fileinfo = it.fileInfo();
                     QTimer::singleShot(0, this, [=]() {
                         QString filename = fileinfo.fileName();
-                        QString label = "Processing file: ";
+                        QString label = "Adding file: ";
                         int width = ui->filedropLabel->width();
                         QFontMetrics metrics(ui->filedropLabel->font());
                         QString text = metrics.elidedText(filename, Qt::ElideMiddle,
