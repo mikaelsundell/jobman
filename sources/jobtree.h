@@ -12,6 +12,10 @@ class JobTree : public QTreeWidget {
 public:
     JobTree(QWidget* parent = nullptr);
     virtual ~JobTree();
+    QString filter() const;
+
+public Q_SLOTS:
+    void setFilter(const QString& filter);
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;

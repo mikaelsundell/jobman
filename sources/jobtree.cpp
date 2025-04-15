@@ -15,6 +15,7 @@ class JobTreePrivate : public QObject {
 public:
     JobTreePrivate();
     void init();
+    void loadFilter();
 
 public Q_SLOTS:
     void selectionChanged();
@@ -64,6 +65,7 @@ public:
     };
 
 public:
+    QString filter;
     QPointer<JobTree> widget;
 };
 
@@ -76,6 +78,34 @@ JobTreePrivate::init()
     widget->setItemDelegate(delegate);
     // connect
     connect(widget.data(), &QTreeWidget::itemSelectionChanged, this, &JobTreePrivate::selectionChanged);
+}
+
+void
+JobTreePrivate::loadFilter()
+{
+    std::function<bool(QTreeWidgetItem*)> matchfilter = [&](QTreeWidgetItem* item) -> bool {
+        bool matches = false;
+        for (int col = 0; col < widget->columnCount(); ++col) {
+            if (item->text(col).contains(filter, Qt::CaseInsensitive)) {
+                matches = true;
+                break;
+            }
+        }
+        bool childMatches = false;
+        for (int i = 0; i < item->childCount(); ++i) {
+            QTreeWidgetItem* child = item->child(i);
+            if (matchfilter(child)) {
+                childMatches = true;
+            }
+        }
+
+        bool visible = matches || childMatches;
+        item->setHidden(!visible);
+        return visible;
+    };
+    for (int i = 0; i < widget->topLevelItemCount(); ++i) {
+        matchfilter(widget->topLevelItem(i));
+    }
 }
 
 void
@@ -95,6 +125,19 @@ JobTree::JobTree(QWidget* parent)
 }
 
 JobTree::~JobTree() {}
+
+QString
+JobTree::filter() const
+{
+    return p->filter;
+}
+
+void
+JobTree::setFilter(const QString& filter)
+{
+    p->filter = filter;
+    p->loadFilter();
+}
 
 void
 JobTree::keyPressEvent(QKeyEvent* event)

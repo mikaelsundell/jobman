@@ -773,6 +773,12 @@ JobmanPrivate::processFiles(const QList<QString>& files)
                 }
             }
             else if (info.isFile()) {
+                QString filename = info.fileName();
+                QString label = "Adding file: ";
+                int width = ui->filedropLabel->width();
+                QFontMetrics metrics(ui->filedropLabel->font());
+                QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
+                ui->filedropLabel->setText(QString("%1%2").arg(label).arg(text));
                 allItems.append(path);
             }
         }

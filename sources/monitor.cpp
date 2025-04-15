@@ -66,6 +66,7 @@ public Q_SLOTS:
     void stopped();
     void cleanup();
     void close();
+    void clear();
     void showMenu(const QPoint& pos);
 
 public:
@@ -289,6 +290,8 @@ MonitorPrivate::init()
     connect(ui->close, &QPushButton::pressed, this, &MonitorPrivate::close);
     connect(ui->items, &JobTree::itemSelectionChanged, this, &MonitorPrivate::selectionChanged);
     connect(ui->items, &QTreeWidget::customContextMenuRequested, this, &MonitorPrivate::showMenu);
+    connect(ui->filter, &QLineEdit::textChanged, ui->items, &JobTree::setFilter);
+    connect(ui->clear, &QPushButton::pressed, this, &MonitorPrivate::clear);
     connect(queue.data(), &Queue::batchSubmitted, this, &MonitorPrivate::batchSubmitted);
     connect(queue.data(), &Queue::jobSubmitted, this, &MonitorPrivate::jobSubmitted);
     connect(queue.data(), &Queue::jobRemoved, this, &MonitorPrivate::jobRemoved);
@@ -954,6 +957,12 @@ void
 MonitorPrivate::close()
 {
     dialog->close();
+}
+
+void
+MonitorPrivate::clear()
+{
+    ui->filter->setText("");
 }
 
 void
