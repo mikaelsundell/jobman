@@ -3,7 +3,7 @@
  <class>Monitor</class>
  <widget class="QDialog" name="Monitor">
   <property name="windowModality">
-   <enum>Qt::WindowModal</enum>
+   <enum>Qt::WindowModality::WindowModal</enum>
   </property>
   <property name="enabled">
    <bool>true</bool>
@@ -182,7 +182,8 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Restart.png</normaloff>:/icons/resources/Restart.png</iconset>
+             <normaloff>:/icons/resources/Restart.png</normaloff>
+             <disabledoff>:/icons/resources/RestartDisabled.png</disabledoff>:/icons/resources/Restart.png</iconset>
            </property>
           </widget>
          </item>
@@ -333,7 +334,7 @@
          <item>
           <widget class="QSplitter" name="splitter">
            <property name="orientation">
-            <enum>Qt::Vertical</enum>
+            <enum>Qt::Orientation::Vertical</enum>
            </property>
            <property name="handleWidth">
             <number>20</number>
@@ -351,7 +352,7 @@
              <bool>true</bool>
             </property>
             <property name="selectionMode">
-             <enum>QAbstractItemView::ExtendedSelection</enum>
+             <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
             </property>
             <property name="uniformRowHeights">
              <bool>true</bool>
@@ -430,7 +431,7 @@
       <item>
        <spacer name="horizontalSpacer_2">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -467,7 +468,7 @@
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>

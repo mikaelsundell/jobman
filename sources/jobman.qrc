@@ -18,7 +18,9 @@
     <file>../resources/Priority.png</file>
     <file>../resources/Progress.png</file>
     <file>../resources/Refresh.png</file>
+    <file>../resources/RefreshDisabled.png</file>
     <file>../resources/Restart.png</file>
+    <file>../resources/RestartDisabled.png</file>
     <file>../resources/Restore.png</file>
     <file>../resources/Right.png</file>
     <file>../resources/Running.png</file>
