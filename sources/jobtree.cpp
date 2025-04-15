@@ -149,7 +149,6 @@ JobTree::keyPressEvent(QKeyEvent* event)
                 selectItems(item->child(i));
             }
         };
-
         for (int i = 0; i < topLevelItemCount(); ++i) {
             selectItems(topLevelItem(i));
         }

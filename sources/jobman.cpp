@@ -152,6 +152,8 @@ public:
     int submittotal;
     QSize size;
     int offset;
+    QFuture<FileDrop> filedropfuture;
+    QFuture<QList<QUuid>> submitfuture;
     QList<QUuid> submitteduuids;
     QPointer<Queue> queue;
     QPointer<Jobman> window;
@@ -552,6 +554,20 @@ JobmanPrivate::eventFilter(QObject* object, QEvent* event)
         stylesheet();
     }
     if (event->type() == QEvent::Close) {
+        if (filedropfuture.isRunning() || submitfuture.isRunning()) {
+            if (Question::askQuestion(window.data(), "File drop is still in progress.\n"
+                                                     "Do you want to cancel them and quit?")) {
+                filedropfuture.cancel();
+                filedropfuture.waitForFinished();
+                submitfuture.cancel();
+                submitfuture.waitForFinished();
+                return true;
+            }
+            else {
+                event->ignore();
+                return true;
+            }
+        }
         if (queue->isProcessing()) {
             if (Question::askQuestion(window.data(), "Jobs are in progress, are you sure you want to quit?")) {
                 saveSettings();
@@ -747,10 +763,9 @@ JobmanPrivate::processFiles(const QList<QString>& files)
     ui->presettype->setCurrentIndex(static_cast<int>(Type::Progress));
     ui->filedropProgress->setVisible(false);
     ui->progressWidget->setVisible(false);
-    auto future = QtConcurrent::run([=]() -> FileDrop {
+    filedropfuture = QtConcurrent::run([=]() -> FileDrop {
         FileDrop result;
         QList<QString> allItems;
-
         for (const QString& path : files) {
             QFileInfo info(path);
             if (info.isDir()) {
@@ -762,24 +777,30 @@ JobmanPrivate::processFiles(const QList<QString>& files)
                     QFileInfo fileinfo = it.fileInfo();
                     QTimer::singleShot(0, this, [=]() {
                         QString filename = fileinfo.fileName();
-                        QString label = "Adding file: ";
+                        QString label = "Add file: ";
                         int width = ui->filedropLabel->width();
                         QFontMetrics metrics(ui->filedropLabel->font());
                         QString text = metrics.elidedText(filename, Qt::ElideMiddle,
                                                           width - metrics.horizontalAdvance(label));
                         ui->filedropLabel->setText(QString("%1%2").arg(label).arg(text));
                     });
+                    if (filedropfuture.isCanceled()) {
+                        break;
+                    }
                     allItems.append(fileinfo.filePath());
                 }
             }
             else if (info.isFile()) {
                 QString filename = info.fileName();
-                QString label = "Adding file: ";
+                QString label = "Add file: ";
                 int width = ui->filedropLabel->width();
                 QFontMetrics metrics(ui->filedropLabel->font());
                 QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
                 ui->filedropLabel->setText(QString("%1%2").arg(label).arg(text));
                 allItems.append(path);
+            }
+            if (filedropfuture.isCanceled()) {
+                break;
             }
         }
         int count = 0;
@@ -797,47 +818,50 @@ JobmanPrivate::processFiles(const QList<QString>& files)
         }
         return result;
     });
-    auto watcher = new QFutureWatcher<FileDrop>(this);
-    connect(watcher, &QFutureWatcher<FileDrop>::finished, this, [=]() {
-        watcher->deleteLater();
-        FileDrop result = future.result();
+    QFutureWatcher<FileDrop>* filedropwatcher = new QFutureWatcher<FileDrop>(this);
+    connect(filedropwatcher, &QFutureWatcher<FileDrop>::finished, this, [=]() {
+        filedropwatcher->deleteLater();
+        if (!filedropfuture.isCanceled()) {
+            FileDrop result = filedropfuture.result();
+            if (!result.rejectedfiles.isEmpty()) {
+                Message::showMessage(
+                    window.data(), "Files Skipped",
+                    QString(
+                        "The following files were skipped because they do not match the preset's filter:\n%1\n\nFilter:\n%2")
+                        .arg(result.rejectedfiles.join("\n"))
+                        .arg(filter));
+            }
+            bool submit = true;
+            if (result.submitfiles.size() > 10 && result.hasDir) {
+                submit = Question::askQuestion(
+                    window.data(), QString("You are about to submit %1 files for processing from one or more directories.\n"
+                                           "Do you want to continue?")
+                                       .arg(result.submitfiles.size()));
+            }
+            if (submit && !result.submitfiles.isEmpty()) {
+                submittotal = result.submitfiles.size();
+                submitcount = 0;
 
-        if (!result.rejectedfiles.isEmpty()) {
-            Message::showMessage(
-                window.data(), "Files Skipped",
-                QString(
-                    "The following files were skipped because they do not match the preset's filter:\n%1\n\nFilter:\n%2")
-                    .arg(result.rejectedfiles.join("\n"))
-                    .arg(filter));
-        }
-        bool submit = true;
-        if (result.submitfiles.size() > 10 && result.hasDir) {
-            submit = Question::askQuestion(
-                window.data(), QString("You are about to submit %1 files for processing from one or more directories.\n"
-                                       "Do you want to continue?")
-                                   .arg(result.submitfiles.size()));
-        }
-        if (submit && !result.submitfiles.isEmpty()) {
-            submittotal = result.submitfiles.size();
-            submitcount = 0;
+                ui->filedropProgress->setVisible(true);
 
-            ui->filedropProgress->setVisible(true);
+                submitfuture = QtConcurrent::run(
+                    [=]() { return processor->submit(result.submitfiles, preset, paths()); });
 
-            auto submitFuture = QtConcurrent::run(
-                [=]() { return processor->submit(result.submitfiles, preset, paths()); });
-
-            auto submitWatcher = new QFutureWatcher<QList<QUuid>>(this);
-            connect(submitWatcher, &QFutureWatcher<QList<QUuid>>::finished, this, [=]() {
-                submitWatcher->deleteLater();
-                QList<QUuid> uuids = submitFuture.result();
-                processUuids(uuids);
-                ui->presettype->setCurrentIndex(static_cast<int>(Type::File));
-                ui->progressWidget->setVisible(true);
-            });
-            submitWatcher->setFuture(submitFuture);
+                QFutureWatcher<QList<QUuid>>* submitwatcher = new QFutureWatcher<QList<QUuid>>(this);
+                connect(submitwatcher, &QFutureWatcher<QList<QUuid>>::finished, this, [=]() {
+                    submitwatcher->deleteLater();
+                    if (!submitfuture.isCanceled()) {
+                        QList<QUuid> uuids = submitfuture.result();
+                        processUuids(uuids);
+                        ui->presettype->setCurrentIndex(static_cast<int>(Type::File));
+                        ui->progressWidget->setVisible(true);
+                    }
+                });
+                submitwatcher->setFuture(submitfuture);
+            }
         }
     });
-    watcher->setFuture(future);
+    filedropwatcher->setFuture(filedropfuture);
 }
 
 void
@@ -883,7 +907,7 @@ JobmanPrivate::fileSubmitted(const QString& file)
 {
     int progress = static_cast<int>((submitcount * 100) / submittotal);
     QString filename = QFileInfo(file).fileName();
-    QString label = "Submitted file: ";
+    QString label = "Submit file: ";
     int width = ui->filedropLabel->width();
     QFontMetrics metrics(ui->filedropLabel->font());
     QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
