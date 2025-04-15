@@ -143,14 +143,16 @@ void
 JobTree::keyPressEvent(QKeyEvent* event)
 {
     if (event->key() == Qt::Key_A && (event->modifiers() & Qt::ControlModifier)) {
-        std::function<void(QTreeWidgetItem*)> selectItems = [&](QTreeWidgetItem* item) {
-            item->setSelected(true);
-            for (int i = 0; i < item->childCount(); ++i) {
-                selectItems(item->child(i));
-            }
-        };
-        for (int i = 0; i < topLevelItemCount(); ++i) {
-            selectItems(topLevelItem(i));
+        QTreeWidgetItem* top = topLevelItem(0);
+        QTreeWidgetItem* end = topLevelItem(topLevelItemCount() - 1);
+        if (top && end) {
+            setCurrentItem(top);
+            scrollToItem(end);
+            QItemSelectionModel* sel = selectionModel();
+            QModelIndex topLeft = indexFromItem(top);
+            QModelIndex bottomRight = indexFromItem(end);
+            QItemSelection selection(topLeft, bottomRight);
+            sel->select(selection, QItemSelectionModel::Select | QItemSelectionModel::Rows);
         }
     }
     else {
