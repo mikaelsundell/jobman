@@ -16,6 +16,7 @@
     <file>../resources/Folder.png</file>
     <file>../resources/FolderDisabled.png</file>
     <file>../resources/Link.png</file>
+    <file>../resources/Load.png</file>
     <file>../resources/Monitor.png</file>
     <file>../resources/Open.png</file>
     <file>../resources/Options.png</file>
@@ -32,6 +33,7 @@
     <file>../resources/Right.png</file>
     <file>../resources/Running.png</file>
     <file>../resources/RunningDisabled.png</file>
+    <file>../resources/Save.png</file>
     <file>../resources/Start.png</file>
     <file>../resources/StartDisabled.png</file>
     <file>../resources/Stop.png</file>

@@ -194,6 +194,11 @@ QWidget#typeWidget
     border-top-right-radius: 0px;
 }
 
+QWidget#optionsWidget
+{
+    background-color: hsl(220, 30%, 6%);
+}
+
 /* QPushButton widgets */
 QPushButton
 {

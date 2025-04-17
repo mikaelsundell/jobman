@@ -621,7 +621,8 @@ MonitorPrivate::toggleButtons()
     bool restart = false;
     bool priority = false;
     bool cleanup = false;
-    selectedItems([&start, &stop, &restart, &priority, &cleanup](const QTreeWidgetItem* item,
+    bool remove = false;
+    selectedItems([&start, &stop, &restart, &priority, &remove, &cleanup](const QTreeWidgetItem* item,
                                                                  const QSharedPointer<Job>& job) {
         if (job->status() == Job::Stopped) {
             start = true;
@@ -647,6 +648,7 @@ MonitorPrivate::toggleButtons()
             }
         }
         priority = true;
+        remove = true;
         return false;
     });
     verifyItems([&cleanup](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) -> bool {
@@ -660,17 +662,16 @@ MonitorPrivate::toggleButtons()
     ui->stop->setEnabled(stop);
     ui->restart->setEnabled(restart);
     ui->priority->setEnabled(priority);
+    ui->remove->setEnabled(remove);
     if (ui->items->topLevelItemCount() > 0) {
         ui->running->setEnabled(true);
         ui->stopped->setEnabled(true);
-        ui->restore->setEnabled(true);
-        ui->remove->setEnabled(true);
+        ui->restore->setEnabled(true);  
     }
     else {
         ui->running->setEnabled(false);
         ui->stopped->setEnabled(false);
         ui->restore->setEnabled(false);
-        ui->remove->setEnabled(false);
     }
     ui->cleanup->setEnabled(cleanup);
 }

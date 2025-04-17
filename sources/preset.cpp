@@ -428,6 +428,28 @@ Preset::filter() const
     return p->filter;
 }
 
+bool
+Preset::hasOption(const QString& id) const
+{
+    for (const QSharedPointer<Option>& option : options()) {
+        if (option->id == id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+QSharedPointer<Option>
+Preset::option(const QString& id) const
+{
+    for (const QSharedPointer<Option>& option : options()) {
+        if (option->id == id) {
+            return option;
+        }
+    }
+    return QSharedPointer<Option>();
+}
+
 QList<QSharedPointer<Option>>
 Preset::options() const
 {

@@ -260,8 +260,8 @@
           <widget class="QToolButton" name="clear">
            <property name="maximumSize">
             <size>
-             <width>12</width>
-             <height>12</height>
+             <width>16</width>
+             <height>16</height>
             </size>
            </property>
            <property name="text">

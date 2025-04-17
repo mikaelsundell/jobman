@@ -59,6 +59,8 @@ public:
     QString name() const;
     QString type() const;
     QString filter() const;
+    bool hasOption(const QString& id) const;
+    QSharedPointer<Option> option(const QString& id) const;
     QList<QSharedPointer<Option>> options() const;
     QList<QSharedPointer<Task>> tasks() const;
 
