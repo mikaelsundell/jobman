@@ -9,18 +9,6 @@
 #include <QObject>
 #include <QPointer>
 
-OS::OS(QObject* parent)
-    : QObject(parent)
-{}
-
-Preprocess::Preprocess(QObject* parent)
-    : QObject(parent)
-{}
-
-Postprocess::Postprocess(QObject* parent)
-    : QObject(parent)
-{}
-
 class JobPrivate : public QObject {
     Q_OBJECT
 public:
@@ -45,9 +33,9 @@ public:
     int pid;
     int priority;
     Job::Status status;
-    OS* os;
-    Preprocess* preprocess;
-    Postprocess* postprocess;
+    OS os;
+    Preprocess preprocess;
+    Postprocess postprocess;
     QPointer<Job> job;
     mutable QMutex mutex;
 };
@@ -66,9 +54,6 @@ JobPrivate::JobPrivate()
 void
 JobPrivate::init()
 {
-    os = new OS(job.data());
-    preprocess = new Preprocess(job.data());
-    postprocess = new Postprocess(job.data());
 }
 
 #include "job.moc"
@@ -202,21 +187,21 @@ Job::uuid() const
     return p->uuid;
 }
 
-OS*
+OS&
 Job::os()
 {
     QMutexLocker locker(&p->mutex);
     return p->os;
 }
 
-Preprocess*
+Preprocess&
 Job::preprocess()
 {
     QMutexLocker locker(&p->mutex);
     return p->preprocess;
 }
 
-Postprocess*
+Postprocess&
 Job::postprocess()
 {
     QMutexLocker locker(&p->mutex);

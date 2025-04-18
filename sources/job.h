@@ -11,30 +11,20 @@
 #include <QString>
 #include <QUuid>
 
-struct OS : public QObject {
-public:
-    OS(QObject* parent = nullptr);
-
-public:
+struct OS {
     QStringList searchpaths;
     QList<QPair<QString, QString>> environmentvars;
 };
 
-struct Preprocess : public QObject {
-public:
-    Preprocess(QObject* parent = nullptr);
-
-public:
+struct Preprocess {
     struct Copyoriginal {
         QString filename;
-        bool run() const { return (!filename.isEmpty()); }
+        bool valid() const { return (!filename.isEmpty()); }
     };
     Copyoriginal copyoriginal;
 };
 
 struct Postprocess : public QObject {
-public:
-    Postprocess(QObject* parent = nullptr);
 };
 
 class JobPrivate;
@@ -65,9 +55,9 @@ public:
     QString startin() const;
     Status status() const;
     QUuid uuid() const;
-    OS* os();
-    Preprocess* preprocess();
-    Postprocess* postprocess();
+    OS& os();
+    Preprocess& preprocess();
+    Postprocess& postprocess();
     void setArguments(const QStringList& arguments);
     void setCommand(const QString& command);
     void setDependson(QUuid dependson);

@@ -308,7 +308,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
     else {
         QString command = job->command();
         if (!commandInfo.isAbsolute()) {
-            for (QString searchpath : job->os()->searchpaths) {
+            for (QString searchpath : job->os().searchpaths) {
                 QString filepath = QDir::cleanPath(QDir(searchpath).filePath(command));
                 if (QFile::exists(filepath)) {
                     command = filepath;
@@ -368,8 +368,8 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
             bool failed = false;
             bool stopped = false;
             // pre process
-            Preprocess::Copyoriginal& copyoriginal = job->preprocess()->copyoriginal;
-            if (copyoriginal.run()) {
+            Preprocess::Copyoriginal copyoriginal = job->preprocess().copyoriginal;
+            if (copyoriginal.valid()) {
                 QFileInfo fileInfo(copyoriginal.filename);
                 QString originalname = QDir(job->dir()).filePath(fileInfo.baseName() + "_original." + fileInfo.suffix());
                 QFile file(fileInfo.filePath());
@@ -407,17 +407,17 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                 if (process->exists(command)) {
                     QElapsedTimer elapsed;
                     elapsed.start();
-                    process->run(command, job->arguments(), job->startin(), job->os()->environmentvars);
+                    process->run(command, job->arguments(), job->startin(), job->os().environmentvars);
                     int pid = process->pid();
                     job->setPid(pid);
-                    QList<QPair<QString, QString>> environmentvars = job->os()->environmentvars;
+                    QList<QPair<QString, QString>> environmentvars = job->os().environmentvars;
                     if (environmentvars.count()) {
                         log += QString("\nEnvironment:\n");
                         for (const QPair<QString, QString>& environmentvar : environmentvars) {
                             log += QString("%1=%2\n").arg(environmentvar.first).arg(environmentvar.second);
                         }
                     }
-                    QList<QString> searchpaths = job->os()->searchpaths;
+                    QList<QString> searchpaths = job->os().searchpaths;
                     if (searchpaths.count()) {
                         log += QString("\nSearch paths:\n");
                         for (const QString& searchpath : searchpaths) {

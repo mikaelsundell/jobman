@@ -93,7 +93,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
 
             if (first) {
                 if (paths.copyoriginal) {
-                    job->preprocess()->copyoriginal.filename = file;
+                    job->preprocess().copyoriginal.filename = file;
                 }
                 first = false;
             }
@@ -292,12 +292,12 @@ void
 ProcessorPrivate::updateEnvironment(QSharedPointer<Job> job, const Paths& paths)
 {
     QSettings settings(APP_IDENTIFIER, APP_NAME);
-    job->os()->searchpaths = settings.value("searchpaths", paths.searchpaths).toStringList();
+    job->os().searchpaths = settings.value("searchpaths", paths.searchpaths).toStringList();
     QVariantList environmentvars = settings.value("environmentvars").toList();
     for (const QVariant& environmentvar : environmentvars) {
         QVariantMap environmentvarmap = environmentvar.toMap();
         if (environmentvarmap["checked"].toBool()) {
-            job->os()->environmentvars.append(qMakePair(QString(environmentvarmap["name"].toString()),
+            job->os().environmentvars.append(qMakePair(QString(environmentvarmap["name"].toString()),
                                                         QString(environmentvarmap["value"].toString())));
         }
     }

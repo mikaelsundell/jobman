@@ -88,7 +88,7 @@ PreferencesPrivate::eventFilter(QObject* object, QEvent* event)
     if (event->type() == QEvent::Hide) {
         saveSettings();
     }
-    return QObject::eventFilter(object, event);  // Pass other events to base class
+    return QObject::eventFilter(object, event);
 }
 
 void

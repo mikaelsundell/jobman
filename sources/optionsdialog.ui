@@ -25,6 +25,9 @@
     <height>600</height>
    </size>
   </property>
+  <property name="acceptDrops">
+   <bool>true</bool>
+  </property>
   <property name="windowTitle">
    <string>Options</string>
   </property>
@@ -136,7 +139,7 @@
            </property>
            <property name="icon">
             <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Load.png</normaloff>:/icons/resources/Load.png</iconset>
+             <normaloff>:/icons/resources/Folder.png</normaloff>:/icons/resources/Folder.png</iconset>
            </property>
           </widget>
          </item>
