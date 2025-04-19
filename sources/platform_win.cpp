@@ -4,6 +4,8 @@
 
 #include "platform.h"
 #include <QApplication>
+#include <QDir>
+#include <QFileInfo>
 #include <QScreen>
 #include <windows.h>
 
@@ -67,6 +69,12 @@ grabIccProfile(WId wid)
 }
 
 QString
+getFileBrowser()
+{
+    return "Explorer";
+}
+
+QString
 getIccProfileUrl(WId wid)
 {
     return grabIccProfile(wid).displayProfileUrl;
@@ -94,6 +102,25 @@ QString
 saveBookmark(const QString& bookmark)
 {
     return bookmark;  // ignore on win32
+}
+
+void
+openPath(const QString& path)
+{
+    QFileInfo info(path);
+    if (info.exists()) {
+        QString explorer = "explorer.exe";
+        QStringList args;
+
+        if (info.isDir()) {
+            args << QDir::toNativeSeparators(info.absoluteFilePath());
+        }
+        else {
+            args << "/select," << QDir::toNativeSeparators(info.absoluteFilePath());
+        }
+
+        QProcess::startDetached(explorer, args);
+    }
 }
 
 double

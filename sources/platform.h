@@ -18,6 +18,8 @@ setDarkTheme();
 QString
 getIccProfileUrl(WId wid);
 QString
+getFileBrowser();
+QString
 getApplicationPath();
 QString
 getExecutablePath();
@@ -25,6 +27,8 @@ QString
 resolveBookmark(const QString& bookmark);
 QString
 saveBookmark(const QString& bookmark);
+void
+openPath(const QString& path);
 double
 getCpuUsage();
 }  // namespace platform

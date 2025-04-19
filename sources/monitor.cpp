@@ -4,6 +4,7 @@
 
 #include "monitor.h"
 #include "icctransform.h"
+#include "platform.h"
 #include "question.h"
 #include "queue.h"
 
@@ -60,7 +61,8 @@ public Q_SLOTS:
     void copyCommand();
     void copyFilename();
     void copyLog();
-    void showPath();
+    void showFilename();
+    void showOutputDir();
     void running();
     void restore();
     void stopped();
@@ -820,25 +822,50 @@ MonitorPrivate::copyLog()
 }
 
 void
-MonitorPrivate::showPath()
+MonitorPrivate::showFilename()
+{
+    QList<QString> filenames;
+    selectedItems([this, &filenames](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
+        QString filename = job->filename();
+        if (!filenames.contains(filename) && QFile(filename).exists()) {
+            filenames.append(filename);
+        }
+        return false;
+    });
+    if (filenames.count() > 10) {
+        if (!Question::askQuestion(dialog.data(),
+                                   QString("%1 jobs are selected. Are you sure you want to show all files in %2?")
+                                       .arg(filenames.count())
+                                       .arg(platform::getFileBrowser()))) {
+            return;
+        }
+    }
+    for (const QString& output : filenames) {
+        platform::openPath(output);
+    }
+}
+
+void
+MonitorPrivate::showOutputDir()
 {
     QList<QString> outputs;
     selectedItems([this, &outputs](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
-        QString output = job->dir();
-        if (!outputs.contains(output) && QDir(output).exists()) {
+        QString output = job->output();
+        if (!outputs.contains(output) && QFile(output).exists()) {
             outputs.append(output);
         }
         return false;
     });
     if (outputs.count() > 10) {
         if (!Question::askQuestion(dialog.data(),
-                                   QString("%1 jobs are selected. Are you sure you want to show all of them in Finder?")
-                                       .arg(outputs.count()))) {
+                                   QString("%1 jobs are selected. Are you sure you want to show all output directories in %2?")
+                                       .arg(outputs.count())
+                                       .arg(platform::getFileBrowser()))) {
             return;
         }
     }
     for (const QString& output : outputs) {
-        QDesktopServices::openUrl(QUrl::fromLocalFile(output));
+        platform::openPath(output);
     }
 }
 
@@ -990,7 +1017,7 @@ MonitorPrivate::showMenu(const QPoint& pos)
 
         QAction* priority = new QAction("Priority", this);
         {
-            QMenu* priorityMenu = new QMenu("Set Priority", ui->items);
+            QMenu* priorityMenu = new QMenu(ui->items);
             QAction* critical = new QAction("Critical", this);
             QAction* high = new QAction("High", this);
             QAction* medium = new QAction("Medium", this);
@@ -1017,7 +1044,7 @@ MonitorPrivate::showMenu(const QPoint& pos)
 
         QAction* copy = new QAction("Copy", this);
         {
-            QMenu* copyMenu = new QMenu("Copy", ui->items);
+            QMenu* copyMenu = new QMenu(ui->items);
             QAction* uuid = new QAction("Uuid", this);
             QAction* command = new QAction("Command", this);
             QAction* filename = new QAction("Filename", this);
@@ -1036,15 +1063,22 @@ MonitorPrivate::showMenu(const QPoint& pos)
             copy->setMenu(copyMenu);
         }
         contextMenu.addAction(copy);
-
         contextMenu.addSeparator();
 
-#ifdef __APPLE__
-        QAction* show = new QAction("Show in finder", this);
-#elif _WIN32
-        QAction* show = new QAction("Show in explorer", this);
-#endif
-        connect(show, &QAction::triggered, this, &MonitorPrivate::showPath);
+        QAction* show = new QAction(QString("Show in %1").arg(platform::getFileBrowser()), this);
+        {
+            QMenu* showMenu = new QMenu(ui->items);
+            QAction* filename = new QAction("Filename", this);
+            QAction* outputdir = new QAction("Output", this);
+
+            // connect
+            connect(filename, &QAction::triggered, this, &MonitorPrivate::showFilename);
+            connect(outputdir, &QAction::triggered, this, &MonitorPrivate::showOutputDir);
+            showMenu->addAction(filename);
+            showMenu->addSeparator();
+            showMenu->addAction(outputdir);
+            show->setMenu(showMenu);
+        }
         contextMenu.addAction(show);
         contextMenu.exec(ui->items->mapToGlobal(pos));
     }
