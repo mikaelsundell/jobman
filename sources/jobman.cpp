@@ -154,7 +154,8 @@ public:
     int offset;
     QFuture<FileDrop> filedropfuture;
     QFuture<QList<QUuid>> submitfuture;
-    QList<QUuid> submitteduuids;
+    QList<QUuid> waitinguuids;
+    QList<QUuid> processeduuids;
     QPointer<Queue> queue;
     QPointer<Jobman> window;
     QScopedPointer<About> about;
@@ -777,7 +778,7 @@ JobmanPrivate::processFiles(const QList<QString>& files)
                     QFileInfo fileinfo = it.fileInfo();
                     QTimer::singleShot(0, this, [=]() {
                         QString filename = fileinfo.fileName();
-                        QString label = "Add file: ";
+                        QString label = "Added file: ";
                         int width = ui->filedropLabel->width();
                         QFontMetrics metrics(ui->filedropLabel->font());
                         QString text = metrics.elidedText(filename, Qt::ElideMiddle,
@@ -792,7 +793,7 @@ JobmanPrivate::processFiles(const QList<QString>& files)
             }
             else if (info.isFile()) {
                 QString filename = info.fileName();
-                QString label = "Add file: ";
+                QString label = "Added file: ";
                 int width = ui->filedropLabel->width();
                 QFontMetrics metrics(ui->filedropLabel->font());
                 QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
@@ -874,10 +875,18 @@ JobmanPrivate::processCommand()
 void
 JobmanPrivate::processUuids(const QList<QUuid>& uuids)
 {
+    int value = 0;
     for (const QUuid& uuid : uuids) {
-        submitteduuids.append(uuid);
+        if (!processeduuids.contains(uuid)) { 
+            waitinguuids.append(uuid);
+        }
+        else {
+            value++;
+            processeduuids.removeAll(uuid); // skip, already processed
+        }
     }
-    ui->fileprogress->setMaximum(ui->fileprogress->maximum() + static_cast<int>(uuids.count()));
+    ui->fileprogress->setValue(ui->fileprogress->value() + value);
+    ui->fileprogress->setMaximum(ui->fileprogress->maximum() + uuids.count());
     if (!ui->progressWidget->currentIndex()) {
         ui->progressWidget->setCurrentIndex(1);
     }
@@ -886,7 +895,7 @@ JobmanPrivate::processUuids(const QList<QUuid>& uuids)
 void
 JobmanPrivate::jobProcessed(const QUuid& uuid)
 {
-    if (submitteduuids.contains(uuid)) {
+    if (waitinguuids.contains(uuid)) {
         int value = ui->fileprogress->value() + 1;
         if (value == ui->fileprogress->maximum()) {
             ui->fileprogress->setValue(0);
@@ -895,10 +904,19 @@ JobmanPrivate::jobProcessed(const QUuid& uuid)
         }
         else {
             ui->fileprogress->setValue(value);
-            ui->fileprogress->setToolTip(
-                QString("Completed %1 of %2").arg(ui->fileprogress->value()).arg(ui->fileprogress->maximum()));
+            int value = ui->fileprogress->value();
+            int maximum = ui->fileprogress->maximum();
+            QString tooltip = QString("Completed jobs: %1/%2").arg(value).arg(maximum);
+            int percentage = (maximum > 0) ? (value * 100) / maximum : 0;
+            if (percentage > 0 && percentage < 100) {
+                tooltip.append(QString(" - %1%").arg(percentage));
+            }
+            ui->fileprogress->setToolTip(tooltip);  
         }
-        submitteduuids.removeAll(uuid);
+        waitinguuids.removeAll(uuid);
+    }
+    else {
+        processeduuids.append(uuid);
     }
 }
 
@@ -907,12 +925,13 @@ JobmanPrivate::fileSubmitted(const QString& file)
 {
     int progress = static_cast<int>((submitcount * 100) / submittotal);
     QString filename = QFileInfo(file).fileName();
-    QString label = "Submit file: ";
+    QString label = "Submitted file: ";
     int width = ui->filedropLabel->width();
     QFontMetrics metrics(ui->filedropLabel->font());
     QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
+    int percentage = (submittotal > 0) ? (submitcount * 100) / submittotal : 0;
     ui->filedropLabel->setText(
-        QString("%1%2 (%3/%4)").arg(label).arg(QFileInfo(file).fileName()).arg(submitcount).arg(submittotal));
+        QString("%1%2 - %3/%4 %5%").arg(label).arg(QFileInfo(file).fileName()).arg(submitcount).arg(submittotal).arg(percentage));
     ui->filedropProgress->setValue(progress);
     submitcount++;
 }

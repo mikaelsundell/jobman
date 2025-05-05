@@ -148,11 +148,12 @@ JobTree::keyPressEvent(QKeyEvent* event)
         if (top && end) {
             setCurrentItem(top);
             scrollToItem(end);
-            QItemSelectionModel* sel = selectionModel();
+            QItemSelectionModel* model = selectionModel();
+            model->clear();
             QModelIndex topLeft = indexFromItem(top);
             QModelIndex bottomRight = indexFromItem(end);
             QItemSelection selection(topLeft, bottomRight);
-            sel->select(selection, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+            model->select(selection, QItemSelectionModel::Select | QItemSelectionModel::Rows);
         }
     }
     else {

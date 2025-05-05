@@ -58,23 +58,23 @@ public:
     int threads;
     QMutex mutex;
     QThread thread;
-    QThreadPool threadPool;
-    QMap<QUuid, QSharedPointer<Job>> allJobs;
-    QList<QSharedPointer<Job>> waitingJobs;
-    QSet<QUuid> completedJobs;
-    QMap<QUuid, QList<QSharedPointer<Job>>> dependentJobs;
-    QMap<QUuid, QSharedPointer<Job>> removedJobs;
-    QMap<QString, QUuid> exclusiveJobs;
-    QMap<QUuid, QList<QSharedPointer<Job>>> batchJobs;
-    QMap<QUuid, int> batchChunks;
+    QThreadPool threadpool;
+    QMap<QUuid, QSharedPointer<Job>> alljobs;
+    QList<QSharedPointer<Job>> waitingjobs;
+    QSet<QUuid> completedjobs;
+    QMap<QUuid, QList<QSharedPointer<Job>>> dependentjobs;
+    QMap<QUuid, QSharedPointer<Job>> removedjobs;
+    QMap<QString, QUuid> exclusivejobs;
+    QMap<QUuid, QList<QSharedPointer<Job>>> batchjobs;
+    QMap<QUuid, int> batchchunks;
     QPointer<Queue> queue;
 };
 
 QueuePrivate::QueuePrivate()
     : threads(1)
 {
-    threadPool.setMaxThreadCount(threads);
-    threadPool.setExpiryTimeout(-1);
+    threadpool.setMaxThreadCount(threads);
+    threadpool.setExpiryTimeout(-1);
 }
 
 void
@@ -92,28 +92,27 @@ QueuePrivate::init()
 void
 QueuePrivate::updateThreadCount()
 {
-    threadPool.setMaxThreadCount(threads);
+    threadpool.setMaxThreadCount(threads);
 }
 
 QUuid
 QueuePrivate::beginBatch(int chunks)
 {
     QUuid uuid = QUuid::createUuid();
-    batchJobs[uuid] = QList<QSharedPointer<Job>>();
-    batchChunks[uuid] = chunks;
+    batchjobs[uuid] = QList<QSharedPointer<Job>>();
+    batchchunks[uuid] = chunks;
     return uuid;
 }
-
 
 void
 QueuePrivate::endBatch(const QUuid& uuid)
 {
-    if (batchJobs.contains(uuid)) {
-        if (!batchJobs[uuid].isEmpty()) {
-            queue->batchSubmitted(batchJobs[uuid]);
+    if (batchjobs.contains(uuid)) {
+        if (!batchjobs[uuid].isEmpty()) {
+            queue->batchSubmitted(batchjobs[uuid]);
         }
-        batchJobs.remove(uuid);
-        batchChunks.remove(uuid);
+        batchjobs.remove(uuid);
+        batchchunks.remove(uuid);
     }
 }
 
@@ -137,22 +136,22 @@ QueuePrivate::submit(QSharedPointer<Job> job, const QUuid& batch)
                           .arg(job->command())
                           .arg(job->arguments().join(' '));
         job->setLog(log);
-        allJobs.insert(job->uuid(), job);
-        if (job->dependson().isNull() || completedJobs.contains(job->dependson())) {
-            waitingJobs.append(job);
+        alljobs.insert(job->uuid(), job);
+        if (job->dependson().isNull() || completedjobs.contains(job->dependson())) {
+            waitingjobs.append(job);
         }
         else {
-            dependentJobs[job->dependson()].append(job);
+            dependentjobs[job->dependson()].append(job);
         }
     }
     processNextJobs();
     processRemovedJobs();
     if (!batch.isNull()) {
-        batchJobs[batch].append(job);
-        int chunkSize = batchChunks[batch];
-        if (batchJobs[batch].size() % chunkSize == 0) {
-            queue->batchSubmitted(batchJobs[batch]);
-            batchJobs[batch].clear();
+        batchjobs[batch].append(job);
+        int chunksize = batchchunks[batch];
+        if (batchjobs[batch].size() % chunksize == 0) {
+            queue->batchSubmitted(batchjobs[batch]);
+            batchjobs[batch].clear();
         }
     }
     else {
@@ -167,10 +166,10 @@ QueuePrivate::start(const QUuid& uuid)
     bool start = false;
     {
         QMutexLocker locker(&mutex);
-        QSharedPointer<Job> job = allJobs[uuid];
+        QSharedPointer<Job> job = alljobs[uuid];
         if (job->status() == Job::Stopped) {
             job->setStatus(Job::Waiting);
-            waitingJobs.append(job);
+            waitingjobs.append(job);
             QString log = QString("Uuid:\n"
                                   "%1\n\n"
                                   "Command:\n"
@@ -192,7 +191,7 @@ QueuePrivate::stop(const QUuid& uuid)
 {
     {
         QMutexLocker locker(&mutex);
-        QSharedPointer<Job> job = allJobs[uuid];
+        QSharedPointer<Job> job = alljobs[uuid];
         if (job->status() == Job::Running) {
             job->setStatus(Job::Stopped);
             int pid = job->pid();
@@ -225,15 +224,15 @@ QueuePrivate::restart(const QList<QUuid>& uuids)
         QMutexLocker locker(&mutex);
         for (QUuid uuid : uuids) {
             std::function<void(const QUuid&)> restartJob = [&](const QUuid& jobUuid) {
-                QSharedPointer<Job> job = allJobs[jobUuid];
+                QSharedPointer<Job> job = alljobs[jobUuid];
                 if (job->status() != Job::Running) {
                     job->setStatus(Job::Waiting);
                     if (job->dependson().isNull()) {
-                        waitingJobs.append(job);
+                        waitingjobs.append(job);
                     }
                     else {
-                        if (!dependentJobs[job->dependson()].contains(job)) {
-                            dependentJobs[job->dependson()].append(job);
+                        if (!dependentjobs[job->dependson()].contains(job)) {
+                            dependentjobs[job->dependson()].append(job);
                         }
                     }
                     QString log = QString("Uuid:\n"
@@ -250,7 +249,7 @@ QueuePrivate::restart(const QList<QUuid>& uuids)
                                    .arg(startin);
                     }
                     job->setLog(log);
-                    for (QSharedPointer<Job>& dependentJob : allJobs) {
+                    for (QSharedPointer<Job>& dependentJob : alljobs) {
                         if (dependentJob->dependson() == jobUuid) {
                             restartJob(dependentJob->uuid());
                         }
@@ -266,32 +265,32 @@ QueuePrivate::restart(const QList<QUuid>& uuids)
 void
 QueuePrivate::remove(const QUuid& uuid)
 {
-    QList<QUuid> dependentUuids;
+    QList<QUuid> dependentuuids;
     {
         QMutexLocker locker(&mutex);
-        if (allJobs.contains(uuid)) {
-            QSharedPointer<Job> job = allJobs.take(uuid);
-            removedJobs.insert(uuid, job);  // mark as removed for threads
+        if (alljobs.contains(uuid)) {
+            QSharedPointer<Job> job = alljobs.take(uuid);
+            removedjobs.insert(uuid, job);  // mark as removed for threads
             if (job->status() == Job::Running) {
                 int pid = job->pid();
                 if (pid > 0) {
                     Process::kill(job->pid());
                 }
             }
-            for (auto it = allJobs.begin(); it != allJobs.end(); ++it) {
+            for (auto it = alljobs.begin(); it != alljobs.end(); ++it) {
                 QSharedPointer<Job> job = it.value();
                 if (job->dependson() == uuid) {
-                    dependentUuids.append(job->uuid());
+                    dependentuuids.append(job->uuid());
                 }
             }
-            dependentJobs.remove(uuid);  // prevent from trying to fail dependent deleted jobs
-            waitingJobs.removeAll(job);
-            completedJobs.remove(uuid);
+            dependentjobs.remove(uuid);  // prevent from trying to fail dependent deleted jobs
+            waitingjobs.removeAll(job);
+            completedjobs.remove(uuid);
             queue->jobProcessed(uuid);  // mark as processed, it's not removed
         }
     }
-    for (const QUuid& dependentUuid : dependentUuids) {
-        remove(dependentUuid);
+    for (const QUuid& dependentuuid : dependentuuids) {
+        remove(dependentuuid);
     }
     queue->jobRemoved(uuid);
 }
@@ -487,9 +486,9 @@ QueuePrivate::findNextJob()
 {
     int index = -1;
     QSharedPointer<Job> nextjob;
-    for (int i = 0; i < waitingJobs.size(); ++i) {
-        QSharedPointer<Job> job = waitingJobs[i];
-        if (job->exclusive() && exclusiveJobs.contains(job->command()))
+    for (int i = 0; i < waitingjobs.size(); ++i) {
+        QSharedPointer<Job> job = waitingjobs[i];
+        if (job->exclusive() && exclusivejobs.contains(job->command()))
             continue;
 
         if (!nextjob) {
@@ -507,10 +506,10 @@ QueuePrivate::findNextJob()
     }
     if (index != -1) {
         if (nextjob->exclusive()) {
-            exclusiveJobs[nextjob->command()] = nextjob->uuid();
+            exclusivejobs[nextjob->command()] = nextjob->uuid();
         }
 
-        return waitingJobs.takeAt(index);
+        return waitingjobs.takeAt(index);
     }
     return QSharedPointer<Job>();
 }
@@ -519,14 +518,14 @@ void
 QueuePrivate::processNextJobs()
 {
     QMutexLocker locker(&mutex);
-    qint64 free = threadPool.maxThreadCount() - threadPool.activeThreadCount();
-    qint64 jobsprocess = qMin(waitingJobs.size(), free);
+    qint64 free = threadpool.maxThreadCount() - threadpool.activeThreadCount();
+    qint64 jobsprocess = qMin(waitingjobs.size(), free);
     if (jobsprocess == 0) {
         return;
     }
     QList<QSharedPointer<Job>> jobsrun;
     for (int i = 0; i < jobsprocess; ++i) {
-        if (waitingJobs.isEmpty()) {
+        if (waitingjobs.isEmpty()) {
             break;
         }
         QSharedPointer<Job> job = findNextJob();
@@ -538,7 +537,7 @@ QueuePrivate::processNextJobs()
         }
     }
     for (QSharedPointer<Job>& job : jobsrun) {
-        QFuture<void> future = QtConcurrent::run(&threadPool, [this, job]() { processJob(job); });
+        QFuture<void> future = QtConcurrent::run(&threadpool, [this, job]() { processJob(job); });
         QFutureWatcher<void>* watcher = new QFutureWatcher<void>(this);
         connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher, job]() {
             watcher->deleteLater();
@@ -551,25 +550,25 @@ QueuePrivate::processNextJobs()
 void
 QueuePrivate::processRemovedJobs()
 {
-    removedJobs.clear();  // safe to clear at submit, all event are processed
+    removedjobs.clear();  // safe to clear at submit, all event are processed
 }
 
 void
 QueuePrivate::processDependentJobs(const QUuid& dependsonId)
 {
-    if (dependentJobs.contains(dependsonId)) {
-        for (QSharedPointer<Job> job : dependentJobs[dependsonId]) {
-            waitingJobs.append(job);
+    if (dependentjobs.contains(dependsonId)) {
+        for (QSharedPointer<Job> job : dependentjobs[dependsonId]) {
+            waitingjobs.append(job);
         }
-        dependentJobs.remove(dependsonId);
+        dependentjobs.remove(dependsonId);
     }
 }
 
 void
 QueuePrivate::failDependentJobs(const QUuid& dependsonId)
 {
-    if (dependentJobs.contains(dependsonId)) {
-        for (QSharedPointer<Job> job : dependentJobs[dependsonId]) {
+    if (dependentjobs.contains(dependsonId)) {
+        for (QSharedPointer<Job> job : dependentjobs[dependsonId]) {
             QString log = QString("Uuid:\n"
                                   "%1\n\n"
                                   "Command:\n"
@@ -586,15 +585,15 @@ QueuePrivate::failDependentJobs(const QUuid& dependsonId)
             notifyStatusChanged(job->uuid(), job->status());
             failDependentJobs(job->uuid());
         }
-        dependentJobs.remove(dependsonId);
+        dependentjobs.remove(dependsonId);
     }
 }
 
 void
 QueuePrivate::failCompletedJobs(const QUuid& uuid, const QUuid& dependsonId)
 {
-    if (allJobs.contains(dependsonId)) {
-        QSharedPointer<Job> job = allJobs[dependsonId];
+    if (alljobs.contains(dependsonId)) {
+        QSharedPointer<Job> job = alljobs[dependsonId];
         QString log = job->log();
         log += QString("\nDependent error:\n%1").arg("Dependent job failed: %1").arg(uuid.toString());
         job->setLog(log);
@@ -610,7 +609,7 @@ QueuePrivate::killJobs()
 {
     {
         QMutexLocker locker(&mutex);
-        for (QSharedPointer<Job>& job : allJobs) {
+        for (QSharedPointer<Job>& job : alljobs) {
             if (job->status() == Job::Running) {
                 job->setStatus(Job::Stopped);
                 if (job->pid() > 0) {
@@ -621,14 +620,14 @@ QueuePrivate::killJobs()
     }
     {
         QMutexLocker locker(&mutex);
-        waitingJobs.clear();
-        dependentJobs.clear();
-        allJobs.clear();
-        completedJobs.clear();
-        removedJobs.clear();
+        waitingjobs.clear();
+        dependentjobs.clear();
+        alljobs.clear();
+        completedjobs.clear();
+        removedjobs.clear();
     }
-    threadPool.clear();
-    threadPool.waitForDone();
+    threadpool.clear();
+    threadpool.waitForDone();
     thread.quit();
     thread.wait();
 }
@@ -637,13 +636,13 @@ bool
 QueuePrivate::isProcessing()
 {
     QMutexLocker locker(&mutex);
-    if (threadPool.activeThreadCount() > 0) {
+    if (threadpool.activeThreadCount() > 0) {
         return true;
     }
-    if (!waitingJobs.isEmpty()) {
+    if (!waitingjobs.isEmpty()) {
         return true;
     }
-    for (const QSharedPointer<Job> job : allJobs) {
+    for (const QSharedPointer<Job> job : alljobs) {
         if (job->status() == Job::Running) {
             return true;
         }
@@ -656,20 +655,20 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
 {
     {
         QMutexLocker locker(&mutex);
-        if (!removedJobs.contains(uuid)) {
-            QSharedPointer<Job> job = allJobs[uuid];
+        if (!removedjobs.contains(uuid)) {
+            QSharedPointer<Job> job = alljobs[uuid];
             if (status == Job::Completed ||  // only test finished jobs
                 status == Job::Failed || status == Job::DependencyFailed || status == Job::Stopped) {
                 if (job->exclusive()) {
                     const QString command = job->command();
-                    if (exclusiveJobs.contains(command)) {
-                        Q_ASSERT(exclusiveJobs[command] == job->uuid());
-                        exclusiveJobs.remove(command);
+                    if (exclusivejobs.contains(command)) {
+                        Q_ASSERT(exclusivejobs[command] == job->uuid());
+                        exclusivejobs.remove(command);
                     }
                 }
             }
             if (status == Job::Completed) {
-                completedJobs.insert(uuid);  // Mark the job as completed
+                completedjobs.insert(uuid);  // Mark the job as completed
                 processDependentJobs(uuid);
             }
             else if (status == Job::Failed) {

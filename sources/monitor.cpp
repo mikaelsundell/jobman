@@ -366,7 +366,6 @@ MonitorPrivate::updateProgress(QTreeWidgetItem* item)
         QLabel* status = widget->findChild<QLabel*>("status");
         status->setText(QString("%1 / %2").arg(items).arg(totals));
     }
-    updateMetrics();
 }
 
 void
