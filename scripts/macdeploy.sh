@@ -1,6 +1,5 @@
 #!/bin/bash
 ##  macdeploy.sh
-##  Colorman
 ##
 ##  Copyright (c) 2023 - present Mikael Sundell.
 ##  All Rights Reserved.
