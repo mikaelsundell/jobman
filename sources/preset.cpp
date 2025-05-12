@@ -199,20 +199,20 @@ PresetPrivate::read()
             else {
                 if (!(option->type.toLower() == "checkbox" || option->type.toLower() == "double"
                       || option->type.toLower() == "doubleslider" || option->type.toLower() == "dropdown"
-                      || option->type.toLower() == "file" || option->type.toLower() == "int"
-                      || option->type.toLower() == "intslider" || option->type.toLower() == "label"
-                      || option->type.toLower() == "text")) {
+                      || option->type.toLower() == "openfile" || option->type.toLower() == "savefile"
+                      || option->type.toLower() == "int" || option->type.toLower() == "intslider"
+                      || option->type.toLower() == "label" || option->type.toLower() == "text")) {
                     error = QString("Json for option: %1 contains an invalid type: %2, valid types are "
                                     "checkbox, double, doubleSlider, file, int, intslider, dropdown and text")
                                 .arg(i + 1)
-                                .arg(option->type);  // +1 for user readability
+                                .arg(option->type.toLower());  // +1 for user readability
                     valid = false;
                     return valid;
                 }
                 else {
                     // default and value required for non file and text
-                    if (!(option->type.toLower() == "file" || option->type.toLower() == "text"
-                          || option->type.toLower() == "label")) {
+                    if (!(option->type.toLower() == "openfile" || option->type.toLower() == "savefile"
+                          || option->type.toLower() == "text" || option->type.toLower() == "label")) {
                         if (!option->defaultvalue.isValid() || !option->value.isValid()) {
                             QList<QString> attributes;
                             if (!option->defaultvalue.isValid()) {

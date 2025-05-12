@@ -151,7 +151,6 @@ public:
     int submitcount;
     int submittotal;
     QSize size;
-    int offset;
     QFuture<FileDrop> filedropfuture;
     QFuture<QList<QUuid>> submitfuture;
     QList<QUuid> waitinguuids;
@@ -171,7 +170,6 @@ public:
 };
 
 JobmanPrivate::JobmanPrivate()
-    : offset(0)
 {
     qRegisterMetaType<QSharedPointer<Preset>>("QSharedPointer<Preset>");
 }
@@ -835,9 +833,10 @@ JobmanPrivate::processFiles(const QList<QString>& files)
             bool submit = true;
             if (result.submitfiles.size() > 10 && result.hasDir) {
                 submit = Question::askQuestion(
-                    window.data(), QString("You are about to submit %1 files for processing from one or more directories.\n"
-                                           "Do you want to continue?")
-                                       .arg(result.submitfiles.size()));
+                    window.data(),
+                    QString("You are about to submit %1 files for processing from one or more directories.\n"
+                            "Do you want to continue?")
+                        .arg(result.submitfiles.size()));
             }
             if (submit && !result.submitfiles.isEmpty()) {
                 submittotal = result.submitfiles.size();
@@ -877,12 +876,12 @@ JobmanPrivate::processUuids(const QList<QUuid>& uuids)
 {
     int value = 0;
     for (const QUuid& uuid : uuids) {
-        if (!processeduuids.contains(uuid)) { 
+        if (!processeduuids.contains(uuid)) {
             waitinguuids.append(uuid);
         }
         else {
             value++;
-            processeduuids.removeAll(uuid); // skip, already processed
+            processeduuids.removeAll(uuid);  // skip, already processed
         }
     }
     ui->fileprogress->setValue(ui->fileprogress->value() + value);
@@ -911,7 +910,7 @@ JobmanPrivate::jobProcessed(const QUuid& uuid)
             if (percentage > 0 && percentage < 100) {
                 tooltip.append(QString(" - %1%").arg(percentage));
             }
-            ui->fileprogress->setToolTip(tooltip);  
+            ui->fileprogress->setToolTip(tooltip);
         }
         waitinguuids.removeAll(uuid);
     }
@@ -930,8 +929,12 @@ JobmanPrivate::fileSubmitted(const QString& file)
     QFontMetrics metrics(ui->filedropLabel->font());
     QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
     int percentage = (submittotal > 0) ? (submitcount * 100) / submittotal : 0;
-    ui->filedropLabel->setText(
-        QString("%1%2 - %3/%4 %5%").arg(label).arg(QFileInfo(file).fileName()).arg(submitcount).arg(submittotal).arg(percentage));
+    ui->filedropLabel->setText(QString("%1%2 - %3/%4 %5%")
+                                   .arg(label)
+                                   .arg(QFileInfo(file).fileName())
+                                   .arg(submitcount)
+                                   .arg(submittotal)
+                                   .arg(percentage));
     ui->filedropProgress->setValue(progress);
     submitcount++;
 }
@@ -1181,9 +1184,6 @@ JobmanPrivate::presetsChanged(int index)
             ui->presettype->setCurrentIndex(0);
             ui->type->setText("Filedrop");
             ui->openOptions->setVisible(true);
-            window->setFixedSize(window->width(), size.height() - offset);
-            offset = 0;
-            size = window->size();
         }
         else {
             ui->presettype->setCurrentIndex(1);
@@ -1198,12 +1198,6 @@ JobmanPrivate::presetsChanged(int index)
             ui->optionsWidget->update(preset);
             ui->scrollarea->setWidget(ui->optionsWidget);
             ui->openOptions->setVisible(false);
-            if (!offset) {
-                offset = 200;
-                window->setFixedSize(window->width(), size.height() + offset);
-                size = window->size();
-                enabled = false;
-            }
         }
         ui->editSubmitFiles->setEnabled(enabled);
         ui->editOpenOptions->setEnabled(enabled);

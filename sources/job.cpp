@@ -53,8 +53,7 @@ JobPrivate::JobPrivate()
 
 void
 JobPrivate::init()
-{
-}
+{}
 
 #include "job.moc"
 

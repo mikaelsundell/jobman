@@ -45,7 +45,7 @@ void
 OptionsWidgetPrivate::init()
 {
     preset.reset(new Preset());
-    // font 
+    // font
     font.setPointSize(10);
 }
 
@@ -78,11 +78,10 @@ OptionsWidgetPrivate::update()
 
             QVariant defaultvalue = option->defaultvalue;
             QString tooltiptext = option->description;
-            if (defaultvalue.isValid() && !defaultvalue.isNull()) {
+            if (defaultvalue.isValid() && !defaultvalue.isNull() && defaultvalue.toString().size()) {
                 QString formatted = (defaultvalue.typeId() == QMetaType::Double)
                                         ? QString::number(defaultvalue.toDouble(), 'f', 3)
                                         : defaultvalue.toString();
-
                 tooltiptext += QString(" (default: %1)").arg(formatted);
             }
             tooltip->setToolTip(tooltiptext);
@@ -241,7 +240,7 @@ OptionsWidgetPrivate::update()
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
             layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
-        else if (option->type.toLower() == "file") {
+        else if (option->type.toLower() == "openfile" || option->type.toLower() == "savefile") {
             QWidget* optionwidget = new QWidget(widget.data());
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
             optionlayout->setContentsMargins(margins);
@@ -258,7 +257,13 @@ OptionsWidgetPrivate::update()
             filelayout->addWidget(button);
 
             connect(button, &QToolButton::clicked, this, [this, lineedit, option]() {
-                QString filepath = QFileDialog::getOpenFileName(nullptr, tr("Select File"));
+                QString filepath;
+                if (option->type.toLower() == "openfile") {
+                    filepath = QFileDialog::getOpenFileName(nullptr, tr("Open File"));
+                }
+                else {
+                    filepath = QFileDialog::getSaveFileName(nullptr, tr("Save File"));
+                }
                 if (!filepath.isEmpty()) {
                     lineedit->setText(filepath);
                     valueChanged(option->id, filepath);

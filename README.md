@@ -66,7 +66,7 @@ Here's an example of a preset file format, tailored for converting image files o
 {
     "id": "convertimage",
     "name": "Internal: Convert image",
-    "type": "file",
+    "type": "savefile",
     "options": [
       {
         "id": "jpegquality",
@@ -243,7 +243,7 @@ Preset files support various variables that can be used to customize arguments d
 - Required: __No__
 
 `type`
-- Description: Specifies the ui type of the option. Supported types `checkbox`,`double`, `doubleslider`, `dropdown`, `file`, `int`, `intSlider` and `text`.
+- Description: Specifies the ui type of the option. Supported types `checkbox`,`double`, `doubleslider`, `dropdown`, `openfile`, `savefile`, `int`, `intSlider` and `text`.
 - Usage: Used as user interface control to present the option.
 - Required: __Yes__
 

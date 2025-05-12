@@ -8,10 +8,10 @@
 #include "question.h"
 #include "urlfilter.h"
 
+#include <QFileDialog>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QFileDialog>
 #include <QMessageBox>
 #include <QPointer>
 #include <QSettings>
@@ -165,7 +165,7 @@ OptionsDialogPrivate::loadStateFile(const QString& filename)
     }
     update();
 }
- 
+
 void
 OptionsDialogPrivate::saveState()
 {

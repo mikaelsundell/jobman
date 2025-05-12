@@ -298,7 +298,7 @@ ProcessorPrivate::updateEnvironment(QSharedPointer<Job> job, const Paths& paths)
         QVariantMap environmentvarmap = environmentvar.toMap();
         if (environmentvarmap["checked"].toBool()) {
             job->os().environmentvars.append(qMakePair(QString(environmentvarmap["name"].toString()),
-                                                        QString(environmentvarmap["value"].toString())));
+                                                       QString(environmentvarmap["value"].toString())));
         }
     }
 }

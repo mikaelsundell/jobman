@@ -24,8 +24,7 @@ struct Preprocess {
     Copyoriginal copyoriginal;
 };
 
-struct Postprocess : public QObject {
-};
+struct Postprocess : public QObject {};
 
 class JobPrivate;
 class Job : public QObject {

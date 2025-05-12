@@ -624,7 +624,7 @@ MonitorPrivate::toggleButtons()
     bool cleanup = false;
     bool remove = false;
     selectedItems([&start, &stop, &restart, &priority, &remove, &cleanup](const QTreeWidgetItem* item,
-                                                                 const QSharedPointer<Job>& job) {
+                                                                          const QSharedPointer<Job>& job) {
         if (job->status() == Job::Stopped) {
             start = true;
         }
@@ -667,7 +667,7 @@ MonitorPrivate::toggleButtons()
     if (ui->items->topLevelItemCount() > 0) {
         ui->running->setEnabled(true);
         ui->stopped->setEnabled(true);
-        ui->restore->setEnabled(true);  
+        ui->restore->setEnabled(true);
     }
     else {
         ui->running->setEnabled(false);
@@ -856,10 +856,11 @@ MonitorPrivate::showOutputDir()
         return false;
     });
     if (outputs.count() > 10) {
-        if (!Question::askQuestion(dialog.data(),
-                                   QString("%1 jobs are selected. Are you sure you want to show all output directories in %2?")
-                                       .arg(outputs.count())
-                                       .arg(platform::getFileBrowser()))) {
+        if (!Question::askQuestion(
+                dialog.data(),
+                QString("%1 jobs are selected. Are you sure you want to show all output directories in %2?")
+                    .arg(outputs.count())
+                    .arg(platform::getFileBrowser()))) {
             return;
         }
     }
