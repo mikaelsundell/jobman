@@ -100,12 +100,12 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
             if (task->dependson.isEmpty()) {
                 QUuid uuid = queue->submit(job, batchuuid);
                 jobuuids[task->id] = uuid;
-                joboutputs[task->id] = job->output();
                 uuids.append(uuid);
             }
             else {
                 dependentjobs.append(qMakePair(job, task->dependson));
             }
+            joboutputs[task->id] = job->output();
         }
         for (QPair<QSharedPointer<Job>, QString> depedentjob : dependentjobs) {
             QSharedPointer<Job> job = depedentjob.first;
@@ -228,6 +228,13 @@ QString
 ProcessorPrivate::updatePaths(const QString& input, const QString& pattern, const QFileInfo& fileinfo)
 {
     QString result = input;
+
+    qDebug() << "replacements for: " << input;
+    qDebug() << "- " << QString("%%1dir%").arg(pattern) << " == " << fileinfo.absolutePath();
+    qDebug() << "- " << QString("%%1file%").arg(pattern) << " == " << fileinfo.absoluteFilePath();
+    qDebug() << "- " << QString("%%1ext%").arg(pattern) << " == " << fileinfo.suffix();
+    qDebug() << "- " << QString("%%1base%").arg(pattern) << " == " << fileinfo.baseName();
+
     QList<QPair<QString, QString>> replacements = { { QString("%%1dir%").arg(pattern), fileinfo.absolutePath() },
                                                     { QString("%%1file%").arg(pattern), fileinfo.absoluteFilePath() },
                                                     { QString("%%1ext%").arg(pattern), fileinfo.suffix() },
