@@ -722,7 +722,7 @@
            <item>
             <widget class="QStackedWidget" name="presettype">
              <property name="currentIndex">
-              <number>2</number>
+              <number>0</number>
              </property>
              <widget class="Filedrop" name="filedrop">
               <property name="styleSheet">
@@ -774,8 +774,8 @@
                       <rect>
                        <x>0</x>
                        <y>0</y>
-                       <width>98</width>
-                       <height>28</height>
+                       <width>382</width>
+                       <height>221</height>
                       </rect>
                      </property>
                     </widget>
@@ -1164,7 +1164,7 @@
      <x>0</x>
      <y>0</y>
      <width>430</width>
-     <height>24</height>
+     <height>37</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuHelp">

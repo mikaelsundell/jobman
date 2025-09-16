@@ -172,31 +172,15 @@ PresetPrivate::read()
                     i++;
                 }
             }
-            if (option->id.isEmpty() || option->name.isEmpty() || option->type.isEmpty()) {
-                QList<QString> attributes;
-                if (option->id.isEmpty()) {
-                    attributes.append("id");
+            if (!option->id.isEmpty() && !option->name.isEmpty() && !option->type.isEmpty()) {
+                // validation
+                for (QSharedPointer<Option> other : options) {
+                    if (other->id == option->id) {
+                        error = QString("Json for option: %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
+                        valid = false;
+                        return valid;
+                    }
                 }
-                if (option->name.isEmpty()) {
-                    attributes.append("name");
-                }
-                if (option->type.isEmpty()) {
-                    attributes.append("type");
-                }
-                if (!option->name.isEmpty()) {
-                    error = QString("Json for option: \"%1\" is missing required attributes: %2\n")
-                                .arg(option->name)
-                                .arg(attributes.join(", "));
-                }
-                else {
-                    error = QString("Json for option is missing required attributes\n"
-                                    "Attributes: %1")
-                                .arg(attributes.join(", "));
-                }
-                valid = false;
-                return valid;
-            }
-            else {
                 if (!(option->type.toLower() == "checkbox" || option->type.toLower() == "double"
                       || option->type.toLower() == "doubleslider" || option->type.toLower() == "dropdown"
                       || option->type.toLower() == "openfile" || option->type.toLower() == "savefile"
@@ -230,62 +214,93 @@ PresetPrivate::read()
                         }
                     }
                 }
-            }
-            if (option->flagonly.isNull()) {
-                option->flagonly = false;
-            }
-            if (option->minimum.isNull()) {
-                option->minimum = 0;
-            }
-            if (option->maximum.isNull()) {
-                option->maximum = 100;
-            }
-            if (option->defaultvalue.isNull()) {
-                option->defaultvalue = option->value;
-            }
-            if (option->toggle.isEmpty()) {
-                option->enabled = true;
-            }
-            else {
-                option->enabled = false;
-            }
-            bool hasdefault = true, hasvalue = true;
-            for (const QPair<QString, QVariant>& pair : option->options) {
-                if (pair.second == option->defaultvalue) {
-                    hasdefault = true;
+
+                if (option->flagonly.isNull()) {
+                    option->flagonly = false;
                 }
-                if (pair.second == option->value) {
-                    hasvalue = true;
+                if (option->minimum.isNull()) {
+                    option->minimum = 0;
                 }
-            }
-            if (!hasdefault) {
-                error
-                    = QString(
-                          "Invalid default value for option \"%1\": The specified default value is not listed in its options.")
-                          .arg(option->name);
-                valid = false;
-                return valid;
-            }
-            if (!hasvalue) {
-                error = QString("Invalid value for option \"%1\": The specified value is not listed in its options.")
-                            .arg(option->name);
-                valid = false;
-                return valid;
-            }
-            for (QSharedPointer<Option> other : options) {
-                if (other->id == option->id) {
-                    error = QString("Json for option: %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
+                if (option->maximum.isNull()) {
+                    option->maximum = 100;
+                }
+                if (option->defaultvalue.isNull()) {
+                    option->defaultvalue = option->value;
+                }
+                if (option->toggle.isEmpty()) {
+                    option->enabled = true;
+                }
+                else {
+                    option->enabled = false;
+                }
+                bool hasdefault = true, hasvalue = true;
+                for (const QPair<QString, QVariant>& pair : option->options) {
+                    if (pair.second == option->defaultvalue) {
+                        hasdefault = true;
+                    }
+                    if (pair.second == option->value) {
+                        hasvalue = true;
+                    }
+                }
+                if (!hasdefault) {
+                    error
+                        = QString(
+                              "Invalid default value for option \"%1\": The specified default value is not listed in its options.")
+                              .arg(option->name);
                     valid = false;
                     return valid;
                 }
+                if (!hasvalue) {
+                    error = QString(
+                                "Invalid value for option \"%1\": The specified value is not listed in its options.")
+                                .arg(option->name);
+                    valid = false;
+                    return valid;
+                }
+                for (QSharedPointer<Option> other : options) {
+                    if (other->id == option->id) {
+                        error = QString("Json for option: %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
+                        valid = false;
+                        return valid;
+                    }
+                }
+                options.append(option);
             }
-            options.append(option);
+            else {
+                QList<QString> attributes;
+                if (option->id.isEmpty()) {
+                    attributes.append("id");
+                }
+                if (option->name.isEmpty()) {
+                    attributes.append("name");
+                }
+                if (option->type.isEmpty()) {
+                    attributes.append("type");
+                }
+                error = QString("Json for option is missing required attributes\n"
+                                "Attributes: %1")
+                            .arg(attributes.join(", "));
+                valid = false;
+                return valid;
+            }
         }
     }
     if (json.contains("tasks") && json["tasks"].isArray()) {
         QJsonArray tasksArray = json["tasks"].toArray();
-        for (int i = 0; i < tasksArray.size(); ++i) {
-            QJsonObject jsontask = tasksArray[i].toObject();
+        QVector<QJsonObject> tasksVec;
+        tasksVec.reserve(tasksArray.size());
+        for (const QJsonValue& val : tasksArray) {
+            if (val.isObject()) {
+                tasksVec.append(val.toObject());
+            }
+        }
+        std::sort(tasksVec.begin(), tasksVec.end(), [](const QJsonObject& a, const QJsonObject& b) {  // sort by id
+            QString ida = a.contains("id") && a["id"].isString() ? a["id"].toString() : "";
+            QString idb = b.contains("id") && b["id"].isString() ? b["id"].toString() : "";
+            return ida < idb;
+        });
+        for (int i = 0; i < tasksVec.size(); ++i) {
+            QJsonObject jsontask = tasksVec[i];
             QSharedPointer<Task> task(new Task());
             if (jsontask.contains("id") && jsontask["id"].isString())
                 task->id = jsontask["id"].toString();
@@ -313,6 +328,14 @@ PresetPrivate::read()
                 task->exclusive = jsontask["exclusive"].toVariant();
             if (!task->id.isEmpty() && !task->name.isEmpty() && !task->command.isEmpty() && !task->extension.isEmpty()
                 && !task->arguments.isEmpty()) {
+                // validation
+                for (QSharedPointer<Task> other : tasks) {
+                    if (other->id == task->id) {
+                        error = QString("Json for task: \"%1\" contain a duplicate id: %2").arg(i + 1).arg(other->id);
+                        valid = false;
+                        return valid;
+                    }
+                }
                 if (task->dependson.length() > 0) {
                     bool found = false;
                     for (int j = 0; j < tasks.size(); ++j) {
@@ -331,27 +354,25 @@ PresetPrivate::read()
                 tasks.append(task);
             }
             else {
-                if (task->name.length() > 0) {
-                    error = QString("Json for task: \"%1\" does not contain all required attributes").arg(task->name);
-                }
-                else {
-                    error = QString("Json for task: %1 does not contain all required attributes").arg(i);
-                }
+                QList<QString> attributes;
                 if (task->id.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("id");
+                    attributes.append("id");
                 }
                 if (task->name.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("name");
+                    attributes.append("name");
                 }
                 if (task->command.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("command");
+                    attributes.append("command");
                 }
                 if (task->extension.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("extension");
+                    attributes.append("extension");
                 }
                 if (task->arguments.isEmpty()) {
-                    error += QString("\nMissing attribute: %1").arg("arguments");
+                    attributes.append("arguments");
                 }
+                error = QString("Json for task is missing required attributes\n"
+                                "Attributes: %1")
+                            .arg(attributes.join(", "));
                 valid = false;
                 return valid;
             }

@@ -9,6 +9,7 @@
 
 #include <os/log.h>
 #include <QApplication>
+#include <QFileInfo>
 #include <QScreen>
 
 namespace platform
@@ -105,6 +106,12 @@ namespace platform
         return getIccProfile(wid).displayProfileUrl;
     }
 
+    QString
+    getFileBrowser()
+    {
+        return "Finder";
+    }
+
     QString getApplicationPath()
     {
         return getExecutablePath() + "/..";
@@ -139,6 +146,25 @@ namespace platform
             QString();
         }
         return QString();
+    }
+
+    void openPath(const QString& path)
+    {
+        @autoreleasepool {
+            QString normPath = QFileInfo(path).absoluteFilePath();
+            NSURL* url = [NSURL fileURLWithPath:normPath.toNSString()];
+
+            BOOL isDir = NO;
+            [[NSFileManager defaultManager] fileExistsAtPath:[url path] isDirectory:&isDir];
+
+            if (isDir) {
+                // Open folder directly in Finder
+                [[NSWorkspace sharedWorkspace] openURL:url];
+            } else {
+                // Reveal file in Finder
+                [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[ url ]];
+            }
+        }
     }
 
     QString saveBookmark(const QString& bookmark)

@@ -149,7 +149,7 @@ public:
     bool overwrite;
     int threads;
     int submitcount;
-    int submittotal;
+    qsizetype submittotal;
     QSize size;
     QFuture<FileDrop> filedropfuture;
     QFuture<QList<QUuid>> submitfuture;
@@ -169,10 +169,7 @@ public:
     QScopedPointer<Ui_Jobman> ui;
 };
 
-JobmanPrivate::JobmanPrivate()
-{
-    qRegisterMetaType<QSharedPointer<Preset>>("QSharedPointer<Preset>");
-}
+JobmanPrivate::JobmanPrivate() { qRegisterMetaType<QSharedPointer<Preset>>("QSharedPointer<Preset>"); }
 
 void
 JobmanPrivate::init()
@@ -242,9 +239,9 @@ JobmanPrivate::init()
     connect(ui->selectSaveto, &QPushButton::clicked, this, &JobmanPrivate::selectSaveto);
     connect(ui->showSaveto, &QPushButton::clicked, this, &JobmanPrivate::showSaveto);
     connect(savetourlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToUrl);
-    connect(ui->copyOriginal, &QCheckBox::stateChanged, this, &JobmanPrivate::copyOriginalChanged);
-    connect(ui->createFolders, &QCheckBox::stateChanged, this, &JobmanPrivate::createFolderChanged);
-    connect(ui->overwrite, &QCheckBox::stateChanged, this, &JobmanPrivate::overwriteChanged);
+    connect(ui->copyOriginal, &QCheckBox::checkStateChanged, this, &JobmanPrivate::copyOriginalChanged);
+    connect(ui->createFolders, &QCheckBox::checkStateChanged, this, &JobmanPrivate::createFolderChanged);
+    connect(ui->overwrite, &QCheckBox::checkStateChanged, this, &JobmanPrivate::overwriteChanged);
     connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::processFiles, Qt::QueuedConnection);
     connect(ui->presets, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             &JobmanPrivate::presetsChanged);
@@ -543,6 +540,7 @@ JobmanPrivate::enable(bool enable)
     ui->filedrop->setEnabled(enable);
     ui->fileprogress->setEnabled(enable);
     ui->options->setEnabled(enable);
+    ui->openOptions->setEnabled(enable);
 }
 
 bool
@@ -885,7 +883,7 @@ JobmanPrivate::processUuids(const QList<QUuid>& uuids)
         }
     }
     ui->fileprogress->setValue(ui->fileprogress->value() + value);
-    ui->fileprogress->setMaximum(ui->fileprogress->maximum() + uuids.count());
+    ui->fileprogress->setMaximum(ui->fileprogress->maximum() + static_cast<int>(uuids.count()));
     if (!ui->progressWidget->currentIndex()) {
         ui->progressWidget->setCurrentIndex(1);
     }
@@ -1298,19 +1296,24 @@ JobmanPrivate::openOptions()
 {
     QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
     optionsdialog->update(preset);
-    optionsdialog->exec();
+    if (optionsdialog->isVisible()) {
+        optionsdialog->raise();
+        optionsdialog->activateWindow();
+    } else {
+        optionsdialog->show();
+    }
 }
 
 void
 JobmanPrivate::openGithubReadme()
 {
-    QDesktopServices::openUrl(QUrl("https://github.com/mikaelsundell/jobman/blob/master/README.md"));
+    QDesktopServices::openUrl(QUrl(QString(GITHUBURL) + "/blob/master/README.md"));
 }
 
 void
 JobmanPrivate::openGithubIssues()
 {
-    QDesktopServices::openUrl(QUrl("https://github.com/mikaelsundell/jobman/issues"));
+    QDesktopServices::openUrl(QUrl(QString(GITHUBURL) + "/issues"));
 }
 
 #include "jobman.moc"

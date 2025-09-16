@@ -16,7 +16,6 @@
 #include <QPointer>
 #include <QSettings>
 #include <QStandardPaths>
-#include <QUUid>
 
 // generated files
 #include "ui_optionsdialog.h"
@@ -255,6 +254,12 @@ OptionsDialog::OptionsDialog(QWidget* parent)
 }
 
 OptionsDialog::~OptionsDialog() {}
+
+QSharedPointer<Preset>
+OptionsDialog::preset() const
+{
+    return p->preset;
+}
 
 void
 OptionsDialog::update(QSharedPointer<Preset> preset)

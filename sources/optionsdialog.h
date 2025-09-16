@@ -14,6 +14,7 @@ class OptionsDialog : public QDialog {
 public:
     OptionsDialog(QWidget* parent = nullptr);
     virtual ~OptionsDialog();
+    QSharedPointer<Preset> preset() const;
     void update(QSharedPointer<Preset> preset);
 
 private:
