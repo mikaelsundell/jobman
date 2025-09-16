@@ -34,6 +34,8 @@ parse_args() {
                 major_version="${1#*=}" ;;
             --sign)
                 sign_code=ON ;;
+            --github)
+                github=ON ;;
             --provisioning=*)
                 provisioning_profile="${1#*=}" ;;
             --provisioningpath=*)
@@ -77,19 +79,30 @@ if [ "$sign_code" == "ON" ]; then
     default_mac_developer_identity=${MAC_DEVELOPER_IDENTITY:-}
     default_mac_installer_identity=${MAC_INSTALLER_IDENTITY:-}
 
-    read -p "enter Mac Developer certificate Identity [$default_mac_developer_identity]: " input_mac_developer_identity
-    mac_developer_identity=${input_mac_developer_identity:-$default_mac_developer_identity}
+    if [ "$appstore" == "ON" ]; then
+        read -p "enter Mac Developer certificate Identity [$default_mac_developer_identity]: " input_mac_developer_identity
+        mac_developer_identity=${input_mac_developer_identity:-$default_mac_developer_identity}
 
-    if [[ ! "$mac_developer_identity" == *"3rd Party Mac Developer Application"* ]]; then
-        echo "Mac Developer installer identity must contain '3rd Party Mac Developer Installer', required for appstore distribution."
+        if [[ ! "$mac_developer_identity" == *"3rd Party Mac Developer Application"* ]]; then
+            echo "Mac Developer identity must contain '3rd Party Mac Developer Application', required for appstore distribution."
+        fi
+
+        read -p "enter Mac Installer certificate Identity [$default_mac_installer_identity]: " input_mac_installer_identity
+        mac_installer_identity=${input_mac_installer_identity:-$default_mac_installer_identity}
+
+        if [[ ! "$mac_installer_identity" == *"3rd Party Mac Developer Installer"* ]]; then
+            echo "Mac Installer identity must contain '3rd Party Mac Developer Installer', required for appstore distribution."
+        fi
+
+    elif [ "$github" == "ON" ]; then
+        read -p "enter Mac Developer certificate Identity [$default_mac_developer_identity]: " input_mac_developer_identity
+        developerid_identity=${input_mac_developer_identity:-$default_mac_developer_identity}
+
+        if [[ ! "$developerid_identity" == *"Developer ID Application"* ]]; then
+            echo "Mac Developer identity identity must contain 'Developer ID Application', required for appstore distribution."
+        fi
     fi
 
-    read -p "enter Mac Installer certificate Identity [$default_mac_installer_identity]: " input_mac_installer_identity
-    mac_installer_identity=${input_mac_installer_identity:-$default_mac_installer_identity}
-
-    if [[ ! "$mac_installer_identity" == *"3rd Party Mac Developer Installer"* ]]; then
-        echo "Mac Developer installer identity must contain '3rd Party Mac Developer Installer', required for appstore distribution."
-    fi
     echo ""
 fi
 
@@ -191,6 +204,43 @@ build_jobman() {
             fi  
         else
             productbuild --component "$xcode_type/${app_name}.app" "/Applications" --product "$xcode_type/${app_name}.app/Contents/Info.plist" "$pkg_file" 
+        fi
+    fi
+
+    if [ "$github" == "ON" ]; then
+        dmg_file="$script_dir/${pkg_name}_macOS${major_version}_${machine_arch}_${build_type}.dmg"
+        if [ -f "$dmg_file" ]; then
+            rm -f "$dmg_file"
+        fi
+
+        # deploy
+        debug=""
+        if [ "$build_type" = "debug" ]; then
+            debug="-no-strip -verbose=1"
+        fi
+        $prefix/bin/macdeployqt "$xcode_type/${app_name}.app" ${debug}
+
+        # sign
+        if [ -n "$developerid_identity" ]; then
+            if [ "$sign_code" == "ON" ]; then
+                echo "Developer ID signing of bundle for github distribution."
+                codesign --force --deep --sign "$developerid_identity" --timestamp --options runtime "$xcode_type/${app_name}.app"
+            fi
+        else
+            echo "Developer ID identity must be set for github distribution, will use ad-hoc sign."
+            codesign --force --deep --sign - "$xcode_type/${app_name}.app"
+        fi
+
+        # deploy dmg
+        $script_dir/scripts/deploydmg.sh -b "$xcode_type/${app_name}.app" -d "$dmg_file"
+        if [ -n "$developerid_identity" ]; then
+            if [ "$sign_code" == "ON" ]; then
+                echo "Developer ID signing of bundle for github distribution."
+                codesign --force --deep --sign "$developerid_identity" --timestamp --options runtime --verbose "$dmg_file"
+            fi
+        else 
+            echo "Developer ID identity must be set for github distribution, will use ad-hoc sign."
+            codesign --force --deep --sign - "$dmg_file"
         fi
     fi
 }
