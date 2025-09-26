@@ -239,9 +239,15 @@ JobmanPrivate::init()
     connect(ui->selectSaveto, &QPushButton::clicked, this, &JobmanPrivate::selectSaveto);
     connect(ui->showSaveto, &QPushButton::clicked, this, &JobmanPrivate::showSaveto);
     connect(savetourlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToUrl);
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
     connect(ui->copyOriginal, &QCheckBox::checkStateChanged, this, &JobmanPrivate::copyOriginalChanged);
     connect(ui->createFolders, &QCheckBox::checkStateChanged, this, &JobmanPrivate::createFolderChanged);
     connect(ui->overwrite, &QCheckBox::checkStateChanged, this, &JobmanPrivate::overwriteChanged);
+    #else
+    connect(ui->copyOriginal, &QCheckBox::stateChanged, this, &JobmanPrivate::copyOriginalChanged);
+    connect(ui->createFolders, &QCheckBox::stateChanged, this, &JobmanPrivate::createFolderChanged);
+    connect(ui->overwrite, &QCheckBox::stateChanged, this, &JobmanPrivate::overwriteChanged);
+    #endif
     connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::processFiles, Qt::QueuedConnection);
     connect(ui->presets, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             &JobmanPrivate::presetsChanged);
