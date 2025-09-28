@@ -141,7 +141,6 @@ OptionsDialogPrivate::loadStateFile(const QString& filename)
                 const QString& field = keyparts[2];
                 if (preset->hasOption(id) && field == "value") {
                     const QJsonValue& value = it.value();
-                    qDebug() << id << " == " << value.toBool();
                     if (value.isString()) {
                         preset->option(id)->value = value.toString();
                     }
@@ -155,7 +154,6 @@ OptionsDialogPrivate::loadStateFile(const QString& filename)
                 if (preset->hasOption(id) && field == "enabled") {
                     const QJsonValue& value = it.value();
                     if (value.isBool()) {
-                        qDebug() << id << " == " << value.toBool();
                         preset->option(id)->enabled = value.toBool();
                     }
                 }

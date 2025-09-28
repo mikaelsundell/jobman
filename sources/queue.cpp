@@ -120,8 +120,6 @@ QUuid
 QueuePrivate::submit(QSharedPointer<Job> job, const QUuid& batch)
 {
     {
-        qDebug() << "Adding job: " << job->uuid();
-        
         QMutexLocker locker(&mutex);
         QString log = QString("Uuid:\n"
                               "%1\n\n"
@@ -489,7 +487,6 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
         if (!job->dependson().isNull()) {
             failCompletedJobs(job->uuid(), job->dependson());
         }
-        qDebug() << "Job failed: " << job->uuid();
     }
     queue->jobProcessed(job->uuid());
 }

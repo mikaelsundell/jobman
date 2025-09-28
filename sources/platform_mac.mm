@@ -12,8 +12,7 @@
 #include <QFileInfo>
 #include <QScreen>
 
-namespace platform
-{
+namespace platform {
     namespace {
         QPointF toNativeCursor(int x, int y)
         {
@@ -148,36 +147,36 @@ namespace platform
         return QString();
     }
 
-void openPaths(const QList<QString>& paths)
-{
-    @autoreleasepool {
-        QHash<QString, NSMutableArray<NSURL*>*> grouped;
+    void openPaths(const QList<QString>& paths)
+    {
+        @autoreleasepool {
+            QHash<QString, NSMutableArray<NSURL*>*> grouped;
 
-        for (const QString& path : paths) {
-            QString normPath = QFileInfo(path).absoluteFilePath();
-            NSURL* url = [NSURL fileURLWithPath:normPath.toNSString()];
+            for (const QString& path : paths) {
+                QString normPath = QFileInfo(path).absoluteFilePath();
+                NSURL* url = [NSURL fileURLWithPath:normPath.toNSString()];
 
-            BOOL isDir = NO;
-            [[NSFileManager defaultManager] fileExistsAtPath:[url path] isDirectory:&isDir];
+                BOOL isDir = NO;
+                [[NSFileManager defaultManager] fileExistsAtPath:[url path] isDirectory:&isDir];
 
-            if (isDir) {
-                [[NSWorkspace sharedWorkspace] openURL:url];
-            } else {
-                QString parent = QFileInfo(normPath).absolutePath();
-                if (!grouped.contains(parent)) {
-                    grouped[parent] = [NSMutableArray array];
+                if (isDir) {
+                    [[NSWorkspace sharedWorkspace] openURL:url];
+                } else {
+                    QString parent = QFileInfo(normPath).absolutePath();
+                    if (!grouped.contains(parent)) {
+                        grouped[parent] = [NSMutableArray array];
+                    }
+                    [grouped[parent] addObject:url];
                 }
-                [grouped[parent] addObject:url];
             }
-        }
-        for (auto it = grouped.begin(); it != grouped.end(); ++it) {
-            NSArray<NSURL*>* urls = it.value();
-            if ([urls count] > 0) {
-                [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:urls];
+            for (auto it = grouped.begin(); it != grouped.end(); ++it) {
+                NSArray<NSURL*>* urls = it.value();
+                if ([urls count] > 0) {
+                    [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:urls];
+                }
             }
         }
     }
-}
 
     QString saveBookmark(const QString& bookmark)
     {
