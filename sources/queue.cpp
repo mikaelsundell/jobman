@@ -414,8 +414,6 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                 if (process->exists(command)) {
                     QElapsedTimer elapsed;
                     elapsed.start();
-                    log += QString("\nStarted:\n%1\n").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"));
-                    job->setLog(log);
                     process->run(command, job->arguments(), job->startin(), job->os().environmentvars);
                     int pid = process->pid();
                     job->setPid(pid);
@@ -434,6 +432,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                         }
                     }
                     log += QString("\nProcess id:\n%1\n").arg(pid);
+                    log += QString("\nStarted:\n%1\n").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"));
                     job->setLog(log);
                     if (process->wait()) {
                         job->setStatus(Job::Completed);
