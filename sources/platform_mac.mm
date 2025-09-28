@@ -148,9 +148,12 @@ namespace platform
         return QString();
     }
 
-    void openPath(const QString& path)
-    {
-        @autoreleasepool {
+void openPaths(const QList<QString>& paths)
+{
+    @autoreleasepool {
+        QHash<QString, NSMutableArray<NSURL*>*> grouped;
+
+        for (const QString& path : paths) {
             QString normPath = QFileInfo(path).absoluteFilePath();
             NSURL* url = [NSURL fileURLWithPath:normPath.toNSString()];
 
@@ -158,14 +161,23 @@ namespace platform
             [[NSFileManager defaultManager] fileExistsAtPath:[url path] isDirectory:&isDir];
 
             if (isDir) {
-                // Open folder directly in Finder
                 [[NSWorkspace sharedWorkspace] openURL:url];
             } else {
-                // Reveal file in Finder
-                [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[ url ]];
+                QString parent = QFileInfo(normPath).absolutePath();
+                if (!grouped.contains(parent)) {
+                    grouped[parent] = [NSMutableArray array];
+                }
+                [grouped[parent] addObject:url];
+            }
+        }
+        for (auto it = grouped.begin(); it != grouped.end(); ++it) {
+            NSArray<NSURL*>* urls = it.value();
+            if ([urls count] > 0) {
+                [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:urls];
             }
         }
     }
+}
 
     QString saveBookmark(const QString& bookmark)
     {

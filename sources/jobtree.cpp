@@ -3,7 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "jobtree.h"
-#include "icctransform.h"
+#include "job.h"
 
 #include <QMouseEvent>
 #include <QPainter>
@@ -80,21 +80,37 @@ JobTreePrivate::init()
     connect(widget.data(), &QTreeWidget::itemSelectionChanged, this, &JobTreePrivate::selectionChanged);
 }
 
+
 void
 JobTreePrivate::loadFilter()
 {
-    std::function<bool(QTreeWidgetItem*)> matchfilter = [&](QTreeWidgetItem* item) -> bool {
+    auto matchfilter = [&](QTreeWidgetItem* item, auto&& matchfilter_ref) -> bool {
         bool matches = false;
+        
         for (int col = 0; col < widget->columnCount(); ++col) {
             if (item->text(col).contains(filter, Qt::CaseInsensitive)) {
                 matches = true;
                 break;
             }
         }
+
+        QVariant data = item->data(0, Qt::UserRole);
+        if (data.isValid()) {
+            QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
+            if (job) {
+                if (job->name().contains(filter, Qt::CaseInsensitive)
+                    || job->filename().contains(filter, Qt::CaseInsensitive)
+                    || job->command().contains(filter, Qt::CaseInsensitive)
+                    || job->arguments().join(' ').contains(filter, Qt::CaseInsensitive)
+                    || job->log().contains(filter, Qt::CaseInsensitive)) {
+                    matches = true;
+                }
+            }
+        }
+        
         bool childMatches = false;
         for (int i = 0; i < item->childCount(); ++i) {
-            QTreeWidgetItem* child = item->child(i);
-            if (matchfilter(child)) {
+            if (matchfilter_ref(item->child(i), matchfilter_ref)) {
                 childMatches = true;
             }
         }
@@ -103,8 +119,9 @@ JobTreePrivate::loadFilter()
         item->setHidden(!visible);
         return visible;
     };
+
     for (int i = 0; i < widget->topLevelItemCount(); ++i) {
-        matchfilter(widget->topLevelItem(i));
+        matchfilter(widget->topLevelItem(i), matchfilter);
     }
 }
 

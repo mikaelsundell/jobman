@@ -28,7 +28,7 @@ resolveBookmark(const QString& bookmark);
 QString
 saveBookmark(const QString& bookmark);
 void
-openPath(const QString& path);
+openPaths(const QList<QString>& paths);
 double
 getCpuUsage();
 }  // namespace platform

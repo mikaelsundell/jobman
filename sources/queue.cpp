@@ -1,4 +1,4 @@
-﻿// Copyright 2022-present Contributors to the jobman project.
+// Copyright 2022-present Contributors to the jobman project.
 // SPDX-License-Identifier: BSD-3-Clause
 // https://github.com/mikaelsundell/jobman
 
@@ -120,6 +120,8 @@ QUuid
 QueuePrivate::submit(QSharedPointer<Job> job, const QUuid& batch)
 {
     {
+        qDebug() << "Adding job: " << job->uuid();
+        
         QMutexLocker locker(&mutex);
         QString log = QString("Uuid:\n"
                               "%1\n\n"
@@ -137,11 +139,19 @@ QueuePrivate::submit(QSharedPointer<Job> job, const QUuid& batch)
                           .arg(job->arguments().join(' '));
         job->setLog(log);
         alljobs.insert(job->uuid(), job);
-        if (job->dependson().isNull() || completedjobs.contains(job->dependson())) {
-            waitingjobs.append(job);
+        bool failed = false;
+        if (!job->dependson().isNull() && alljobs[job->dependson()]->status() == Job::Failed) { // edge case, dependson job already failed when added
+            job->setStatus(Job::Failed);
+            queue->jobProcessed(job->uuid());
+            failed = true;
         }
-        else {
-            dependentjobs[job->dependson()].append(job);
+        if (!failed) {
+            if (job->dependson().isNull() || completedjobs.contains(job->dependson())) {
+                waitingjobs.append(job);
+            }
+            else {
+                dependentjobs[job->dependson()].append(job);
+            }
         }
     }
     processNextJobs();
@@ -354,7 +364,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
             }
             else if (!dirInfo.isDir()) {
                 log += QString("\nStatus:\n"
-                               "Could not create directory, a file with the same name already exists: %1\n")
+                               "Could not create directory, a directory or file with the same name already exists: %1\n")
                            .arg(dirname);
                 job->setStatus(Job::Failed);
             }
@@ -406,6 +416,8 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                 if (process->exists(command)) {
                     QElapsedTimer elapsed;
                     elapsed.start();
+                    log += QString("\nStarted:\n%1\n").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"));
+                    job->setLog(log);
                     process->run(command, job->arguments(), job->startin(), job->os().environmentvars);
                     int pid = process->pid();
                     job->setPid(pid);
@@ -477,6 +489,7 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
         if (!job->dependson().isNull()) {
             failCompletedJobs(job->uuid(), job->dependson());
         }
+        qDebug() << "Job failed: " << job->uuid();
     }
     queue->jobProcessed(job->uuid());
 }
@@ -668,7 +681,7 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
                 }
             }
             if (status == Job::Completed) {
-                completedjobs.insert(uuid);  // Mark the job as completed
+                completedjobs.insert(uuid);  // mark the job as completed
                 processDependentJobs(uuid);
             }
             else if (status == Job::Failed) {

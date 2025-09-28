@@ -839,9 +839,7 @@ MonitorPrivate::showFilename()
             return;
         }
     }
-    for (const QString& output : filenames) {
-        platform::openPath(output);
-    }
+    platform::openPaths(filenames);
 }
 
 void
@@ -864,9 +862,7 @@ MonitorPrivate::showOutputDir()
             return;
         }
     }
-    for (const QString& output : outputs) {
-        platform::openPath(output);
-    }
+    platform::openPaths(outputs);
 }
 
 void

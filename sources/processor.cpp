@@ -228,13 +228,6 @@ QString
 ProcessorPrivate::updatePaths(const QString& input, const QString& pattern, const QFileInfo& fileinfo)
 {
     QString result = input;
-
-    qDebug() << "replacements for: " << input;
-    qDebug() << "- " << QString("%%1dir%").arg(pattern) << " == " << fileinfo.absolutePath();
-    qDebug() << "- " << QString("%%1file%").arg(pattern) << " == " << fileinfo.absoluteFilePath();
-    qDebug() << "- " << QString("%%1ext%").arg(pattern) << " == " << fileinfo.suffix();
-    qDebug() << "- " << QString("%%1base%").arg(pattern) << " == " << fileinfo.baseName();
-
     QList<QPair<QString, QString>> replacements = { { QString("%%1dir%").arg(pattern), fileinfo.absolutePath() },
                                                     { QString("%%1file%").arg(pattern), fileinfo.absoluteFilePath() },
                                                     { QString("%%1ext%").arg(pattern), fileinfo.suffix() },
