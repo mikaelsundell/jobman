@@ -122,26 +122,32 @@ namespace platform {
                 }
             }
         }
+
         for (auto it = grouped.begin(); it != grouped.end(); ++it) {
-            QString parentPath = it.key();
+            QString parentPath = QDir::toNativeSeparators(it.key());
             QList<QString> filePaths = it.value();
 
-            PIDLIST_ABSOLUTE pidlFolder;
+            PIDLIST_ABSOLUTE pidlFolder = nullptr;
             HRESULT hr = SHParseDisplayName((LPCWSTR)parentPath.utf16(), nullptr, &pidlFolder, 0, nullptr);
-            if (FAILED(hr))
+            if (FAILED(hr)) {
                 continue;
-
+            }
             std::vector<PCUITEMID_CHILD> childItems;
+            std::vector<PIDLIST_ABSOLUTE> allocatedItems;
             for (const QString& filePath : filePaths) {
-                PIDLIST_ABSOLUTE pidlFile;
-                hr = SHParseDisplayName((LPCWSTR)filePath.utf16(), nullptr, &pidlFile, 0, nullptr);
+                QString nativeFile = QDir::toNativeSeparators(filePath);
+                PIDLIST_ABSOLUTE pidlFile = nullptr;
+                hr = SHParseDisplayName((LPCWSTR)nativeFile.utf16(), nullptr, &pidlFile, 0, nullptr);
                 if (SUCCEEDED(hr)) {
                     childItems.push_back(ILFindLastID(pidlFile));
+                    allocatedItems.push_back(pidlFile);
                 }
             }
-
             if (!childItems.empty()) {
-                SHOpenFolderAndSelectItems(pidlFolder, (UINT)childItems.size(), childItems.data(), 0);
+                SHOpenFolderAndSelectItems(pidlFolder, static_cast<UINT>(childItems.size()), childItems.data(), 0);
+            }
+            for (auto pidl : allocatedItems) {
+                CoTaskMemFree(pidl);
             }
             CoTaskMemFree(pidlFolder);
         }

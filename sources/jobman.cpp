@@ -194,7 +194,6 @@ JobmanPrivate::init()
     about.reset(new About(window.data()));
     // monitor
     monitor.reset(new Monitor(window.data()));
-    monitor->setModal(false);
     // options
     optionsdialog.reset(new OptionsDialog(window.data()));
     // preferences
