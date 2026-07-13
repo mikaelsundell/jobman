@@ -188,10 +188,12 @@ PresetPrivate::read()
                       || option->type.toLower() == "openfile" || option->type.toLower() == "savefile"
                       || option->type.toLower() == "integer" || option->type.toLower() == "integerslider"
                       || option->type.toLower() == "label" || option->type.toLower() == "text")) {
-                    error = QString("Json for option %1 contains an invalid type: %2, valid types are "
-                                    "checkbox, double, doubleslider, openfile, savefile, integer, integerslider, dropdown and text")
-                                .arg(i + 1)
-                                .arg(option->type.toLower());  // +1 for user readability
+                    error
+                        = QString(
+                              "Json for option %1 contains an invalid type: %2, valid types are "
+                              "checkbox, double, doubleslider, openfile, savefile, integer, integerslider, dropdown and text")
+                              .arg(i + 1)
+                              .arg(option->type.toLower());  // +1 for user readability
                     valid = false;
                     return valid;
                 }

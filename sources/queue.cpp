@@ -880,10 +880,7 @@ Queue::Queue()
     p->init();
 }
 
-Queue::~Queue()
-{
-    p->killJobs();
-}
+Queue::~Queue() { p->killJobs(); }
 
 Queue*
 Queue::instance()
