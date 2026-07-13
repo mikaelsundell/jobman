@@ -3,7 +3,6 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "monitor.h"
-#include "icctransform.h"
 #include "platform.h"
 #include "question.h"
 #include "queue.h"
@@ -84,22 +83,20 @@ public:
             opt.widget->style()->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt, painter, opt.widget);
             QColor color;
             QString status = index.data().toString();
-            // icc profile
-            ICCTransform* transform = ICCTransform::instance();
             if (status == "Dependency failed" || status == "Failed" || status == "Cancelled") {
-                color = transform->map(QColor::fromHsl(359, 90, 40).rgb());
+                color = QColor::fromHsl(359, 90, 40).rgb();
             }
             else if (status == "Waiting") {
-                color = transform->map(QColor::fromHsl(309, 150, 50).rgb());
+                color = QColor::fromHsl(309, 150, 50).rgb();
             }
             else if (status == "Stopped") {
-                color = transform->map(QColor::fromHsl(309, 90, 40).rgb());
+                color = QColor::fromHsl(309, 90, 40).rgb();
             }
             else if (status == "Running") {
-                color = transform->map(QColor::fromHsl(120, 150, 50).rgb());
+                color = QColor::fromHsl(120, 150, 50).rgb();
             }
             else if (status == "Completed") {
-                color = transform->map(QColor::fromHsl(120, 90, 40).rgb());
+                color = QColor::fromHsl(120, 90, 40).rgb();
             }
             else {
                 color = Qt::transparent;

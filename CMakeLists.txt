@@ -15,8 +15,6 @@ set (CMAKE_AUTORCC ON)
 set (CMAKE_AUTOUIC ON)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package (Lcms2 REQUIRED)
-
 file (GLOB app_sources
     "sources/*.h"
     "sources/*.cpp"
@@ -50,7 +48,7 @@ source_group ("Preset Files" FILES ${app_presets})
 set (app_name ${project_name})
 set (app_copyright "Copyright 2022-present Contributors to the ${app_name} project")
 set (app_identifier "com.github.mikaelsundell.jobman")
-set (app_long_version "1.4.6")
+set (app_long_version "1.4.7")
 set (app_short_version "1.4")
 set (app_url "https://github.com/mikaelsundell/jobman")
 
@@ -92,10 +90,8 @@ if (APPLE)
         OUTPUT_NAME ${project_name}
     )
     target_compile_options (${project_name} PRIVATE -Wno-deprecated-register)
-    target_include_directories (${project_name} PRIVATE ${LCMS2_INCLUDE_DIR})
     target_link_libraries (${project_name} 
         Qt6::Core Qt6::Concurrent Qt6::Gui Qt6::Widgets
-        ${LCMS2_LIBRARY}
         "-framework CoreFoundation"
         "-framework AppKit")
 elseif (WIN32)
@@ -103,10 +99,8 @@ elseif (WIN32)
     list (APPEND app_resources "${CMAKE_SOURCE_DIR}/resources/AppIcon.ico")
     add_executable (${project_name} WIN32 ${app_sources} ${app_resources} ${app_presets})
     add_definitions (-DWIN32 -DNOMINMAX -DWIN32_LEAN_AND_MEAN -DWINVER=0x0A00)
-    target_include_directories (${project_name} PRIVATE ${LCMS2_INCLUDE_DIR})
     target_link_libraries (${project_name} 
         Qt6::Core Qt6::Concurrent Qt6::Gui Qt6::Widgets
-        ${LCMS2_LIBRARY}
         "User32.lib"
         "Gdi32.lib"
         "Shell32.lib"

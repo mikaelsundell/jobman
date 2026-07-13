@@ -141,6 +141,8 @@ PresetPrivate::read()
                 option->toggle = jsonoption["toggle"].toString();
             if (jsonoption.contains("flagonly"))
                 option->flagonly = jsonoption["flagonly"].toVariant();
+            if (jsonoption.contains("valueonly"))
+                option->valueonly = jsonoption["valueonly"].toVariant();
             if (jsonoption.contains("value"))
                 option->value = jsonoption["value"].toVariant();
             if (jsonoption.contains("default"))
@@ -160,7 +162,7 @@ PresetPrivate::read()
                         optValue = optObj["value"].toVariant();
                     }
                     else {
-                        error = QString("Json for option: \"%1\" in list contains no value").arg(i);
+                        error = QString("Json for option \"%1\" in list contains no value").arg(i);
                         valid = false;
                         return valid;
                     }
@@ -176,7 +178,7 @@ PresetPrivate::read()
                 // validation
                 for (QSharedPointer<Option> other : options) {
                     if (other->id == option->id) {
-                        error = QString("Json for option: %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
+                        error = QString("Json for option %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
                         valid = false;
                         return valid;
                     }
@@ -184,10 +186,10 @@ PresetPrivate::read()
                 if (!(option->type.toLower() == "checkbox" || option->type.toLower() == "double"
                       || option->type.toLower() == "doubleslider" || option->type.toLower() == "dropdown"
                       || option->type.toLower() == "openfile" || option->type.toLower() == "savefile"
-                      || option->type.toLower() == "int" || option->type.toLower() == "intslider"
+                      || option->type.toLower() == "integer" || option->type.toLower() == "integerslider"
                       || option->type.toLower() == "label" || option->type.toLower() == "text")) {
-                    error = QString("Json for option: %1 contains an invalid type: %2, valid types are "
-                                    "checkbox, double, doubleSlider, file, int, intslider, dropdown and text")
+                    error = QString("Json for option %1 contains an invalid type: %2, valid types are "
+                                    "checkbox, double, doubleslider, file, integer, integerslider, dropdown and text")
                                 .arg(i + 1)
                                 .arg(option->type.toLower());  // +1 for user readability
                     valid = false;
@@ -207,7 +209,7 @@ PresetPrivate::read()
                             }
                             error
                                 = QString(
-                                      "Json for option: \"%1\" is missing required attributes for non field or text type\n"
+                                      "Json for option \"%1\" is missing required attributes for non field or text type\n"
                                       "Attributes: %2")
                                       .arg(option->name)
                                       .arg(attributes.join(", "));
@@ -217,6 +219,9 @@ PresetPrivate::read()
 
                 if (option->flagonly.isNull()) {
                     option->flagonly = false;
+                }
+                if (option->valueonly.isNull()) {
+                    option->valueonly = false;
                 }
                 if (option->minimum.isNull()) {
                     option->minimum = 0;
@@ -259,7 +264,7 @@ PresetPrivate::read()
                 }
                 for (QSharedPointer<Option> other : options) {
                     if (other->id == option->id) {
-                        error = QString("Json for option: %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
+                        error = QString("Json for option %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
                         valid = false;
                         return valid;
                     }

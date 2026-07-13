@@ -59,7 +59,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
             else {
                 outputdir = paths.outputpath;
             }
-            QString outputfile = outputdir + "/" + inputinfo.baseName() + "." + extension;
+            QString outputfile = outputdir + "/" + inputinfo.completeBaseName() + "." + extension;
             QFileInfo outputinfo(outputfile);
             QString command
                 = updateOptions(preset->options(), updateFiles(task->command, inputinfo, outputinfo)).join(" ");
@@ -159,7 +159,7 @@ ProcessorPrivate::submit(const QSharedPointer<Preset>& preset, const Paths& path
             outputdir = paths.outputpath;
         }
 
-        QString outputfile = outputdir + "/" + inputinfo.baseName() + "." + extension;
+        QString outputfile = outputdir + "/" + inputinfo.completeBaseName() + "." + extension;
         QFileInfo outputinfo(outputfile);
         QString command = updateOptions(preset->options(), updateFiles(task->command, inputinfo, outputinfo)).join(" ");
         QString output = updateOptions(preset->options(), updateFiles(task->output, inputinfo, outputinfo)).join(" ");
@@ -231,7 +231,7 @@ ProcessorPrivate::updatePaths(const QString& input, const QString& pattern, cons
     QList<QPair<QString, QString>> replacements = { { QString("%%1dir%").arg(pattern), fileinfo.absolutePath() },
                                                     { QString("%%1file%").arg(pattern), fileinfo.absoluteFilePath() },
                                                     { QString("%%1ext%").arg(pattern), fileinfo.suffix() },
-                                                    { QString("%%1base%").arg(pattern), fileinfo.baseName() } };
+                                                    { QString("%%1base%").arg(pattern), fileinfo.completeBaseName() } };
     for (const auto& replacement : replacements) {
         result.replace(replacement.first, replacement.second);
     }
@@ -261,10 +261,13 @@ ProcessorPrivate::updateOptions(QList<QSharedPointer<Option>> options, const QSt
         QString pattern = QString("%options:%1%").arg(option->id);
         if (input.contains(pattern)) {
             if (option->enabled) {
-                QString replacement = option->flag;
-                if (!option->flagonly.toBool()) {
-                    if (replacement.length()) {
-                        replacement += " ";
+                if (option->flagonly.toBool()) {
+                    result.append(option->flag);
+                }
+                else {
+                    QString replacement;
+                    if (!option->valueonly.toBool()) {
+                        replacement = option->flag + " ";
                     }
                     if (option->value.typeId() == QMetaType::Double) {
                         replacement += utils::formatDouble(option->value.toDouble());
@@ -273,9 +276,6 @@ ProcessorPrivate::updateOptions(QList<QSharedPointer<Option>> options, const QSt
                         replacement += option->value.toString();
                     }
                     result.append(QString(input).replace(pattern, replacement).split(" "));
-                }
-                else {
-                    result.append(replacement);
                 }
             }
             found = true;

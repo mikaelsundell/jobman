@@ -86,7 +86,7 @@ JobTreePrivate::loadFilter()
 {
     auto matchfilter = [&](QTreeWidgetItem* item, auto&& matchfilter_ref) -> bool {
         bool matches = false;
-        
+
         for (int col = 0; col < widget->columnCount(); ++col) {
             if (item->text(col).contains(filter, Qt::CaseInsensitive)) {
                 matches = true;
@@ -107,7 +107,7 @@ JobTreePrivate::loadFilter()
                 }
             }
         }
-        
+
         bool childMatches = false;
         for (int i = 0; i < item->childCount(); ++i) {
             if (matchfilter_ref(item->child(i), matchfilter_ref)) {

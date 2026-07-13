@@ -24,6 +24,7 @@ public:
     QVariant minimum;
     QVariant maximum;
     QVariant flagonly;
+    QVariant valueonly;
     bool enabled;
     QList<QPair<QString, QVariant>> options;
 };

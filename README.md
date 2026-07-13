@@ -71,7 +71,7 @@ Here's an example of a preset file format, tailored for converting image files o
       {
         "id": "jpegquality",
         "name": "JPEG Quality",
-        "type": "Slider",
+        "type": "integerslider",
         "default": 80,
         "minimum": 0,
         "maximum": 100,
@@ -81,7 +81,7 @@ Here's an example of a preset file format, tailored for converting image files o
       {
         "id": "resizewidth",
         "name": "Resize width",
-        "type": "Dropdown",
+        "type": "dropdown",
         "default": "Medium",
         "options": [
           {
@@ -103,7 +103,7 @@ Here's an example of a preset file format, tailored for converting image files o
       {
         "id": "verbose",
         "name": "Verbose",
-        "type": "Checkbox",
+        "type": "checkbox",
         "default": "true",
         "value": "true",
         "flag": "--verbose"
@@ -111,7 +111,7 @@ Here's an example of a preset file format, tailored for converting image files o
       {
         "id": "value as double",
         "name": "Double",
-        "type": "Double",
+        "type": "double",
         "default": "1.0",
         "minimum": 0,
         "maximum": 100,
@@ -242,8 +242,13 @@ Preset files support various variables that can be used to customize arguments d
 - Usage: Used to provide "flag only" arguments.
 - Required: __No__
 
+`valueonly`
+- Description: A toggle flag for enabling use of the "value only" without the flag.
+- Usage: Used to provide "flag only" arguments.
+- Required: __No__
+
 `type`
-- Description: Specifies the ui type of the option. Supported types `checkbox`,`double`, `doubleslider`, `dropdown`, `openfile`, `savefile`, `int`, `intSlider` and `text`.
+- Description: Specifies the ui type of the option. Supported types `checkbox`,`double`, `doubleslider`, `dropdown`, `openfile`, `savefile`, `integer`, `integerslider` and `text`.
 - Usage: Used as user interface control to present the option.
 - Required: __Yes__
 

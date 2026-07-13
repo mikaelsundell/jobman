@@ -138,7 +138,9 @@ QueuePrivate::submit(QSharedPointer<Job> job, const QUuid& batch)
         job->setLog(log);
         alljobs.insert(job->uuid(), job);
         bool failed = false;
-        if (!job->dependson().isNull() && alljobs[job->dependson()]->status() == Job::Failed) { // edge case, dependson job already failed when added
+        if (!job->dependson().isNull()
+            && alljobs[job->dependson()]->status()
+                   == Job::Failed) {  // edge case, dependson job already failed when added
             job->setStatus(Job::Failed);
             queue->jobProcessed(job->uuid());
             failed = true;
@@ -361,8 +363,9 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
                 }
             }
             else if (!dirInfo.isDir()) {
-                log += QString("\nStatus:\n"
-                               "Could not create directory, a directory or file with the same name already exists: %1\n")
+                log += QString(
+                           "\nStatus:\n"
+                           "Could not create directory, a directory or file with the same name already exists: %1\n")
                            .arg(dirname);
                 job->setStatus(Job::Failed);
             }
@@ -378,7 +381,8 @@ QueuePrivate::processJob(QSharedPointer<Job> job)
             Preprocess::Copyoriginal copyoriginal = job->preprocess().copyoriginal;
             if (copyoriginal.valid()) {
                 QFileInfo fileInfo(copyoriginal.filename);
-                QString originalname = QDir(job->dir()).filePath(fileInfo.baseName() + "_original." + fileInfo.suffix());
+                QString originalname
+                    = QDir(job->dir()).filePath(fileInfo.completeBaseName() + "_original." + fileInfo.suffix());
                 QFile file(fileInfo.filePath());
                 log += QString("\nPre-process:");
                 log += QString("\nCopy original: %1 to %2\n").arg(copyoriginal.filename).arg(originalname);

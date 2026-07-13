@@ -8,7 +8,7 @@ set "app_name=Jobman"
 set "pkg_name=jobman"
 set "build_type="
 set "deploy=0"
-set "cmake_generator=Visual Studio 16 2019"
+set "cmake_generator=Visual Studio 17 2022"
 
 REM Parse arguments
 :parse_args

@@ -291,7 +291,7 @@ OptionsWidgetPrivate::update()
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
             layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
-        else if (option->type.toLower() == "int") {
+        else if (option->type.toLower() == "integer") {
             QWidget* optionwidget = new QWidget(widget.data());
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
             optionlayout->setContentsMargins(margins);
@@ -314,7 +314,7 @@ OptionsWidgetPrivate::update()
             layout->addWidget(optionwidget, row, 1, Qt::AlignTop);
             layout->setRowMinimumHeight(layout->rowCount() - 1, rowheight);
         }
-        else if (option->type.toLower() == "intslider") {
+        else if (option->type.toLower() == "integerslider") {
             QWidget* optionwidget = new QWidget(widget.data());
             QVBoxLayout* optionlayout = new QVBoxLayout(optionwidget);
             optionlayout->setContentsMargins(margins);

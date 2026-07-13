@@ -4,7 +4,6 @@
 
 #include "jobman.h"
 #include "clickfilter.h"
-#include "icctransform.h"
 #include "message.h"
 #include "monitor.h"
 #include "optionsdialog.h"
@@ -19,6 +18,7 @@
 #include "urlfilter.h"
 
 #include <QAction>
+#include <QColorSpace>
 #include <QDesktopServices>
 #include <QDir>
 #include <QDirIterator>
@@ -54,7 +54,6 @@ public:
     JobmanPrivate();
     void init();
     void stylesheet();
-    void profile();
     void activate();
     void enable(bool enable);
     bool eventFilter(QObject* object, QEvent* event);
@@ -122,11 +121,13 @@ public:
             about->github->setTextInteractionFlags(Qt::TextBrowserInteraction);
             about->github->setOpenExternalLinks(true);
             QFile file(":/files/resources/Copyright.txt");
-            file.open(QIODevice::ReadOnly | QIODevice::Text);
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                qWarning() << "Could not open license file:" << file.errorString();
+                about->licenses->setText(tr("Unable to load license information."));
+                return;
+            }
             QTextStream in(&file);
-            QString text = in.readAll();
-            file.close();
-            about->licenses->setText(text);
+            about->licenses->setText(in.readAll());
         }
     };
     struct FileDrop {
@@ -175,14 +176,13 @@ void
 JobmanPrivate::init()
 {
     platform::setDarkTheme();
+    //
+    QSurfaceFormat format = QSurfaceFormat::defaultFormat();
+    format.setColorSpace(QColorSpace::SRgb);
+    QSurfaceFormat::setDefaultFormat(format);
+
     documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     presets = platform::getApplicationPath() + "/Presets";
-    // icc profile
-    ICCTransform* transform = ICCTransform::instance();
-    QDir resources(platform::getApplicationPath() + "/Resources");
-    QString inputProfile = resources.filePath("sRGB2014.icc");  // built-in Qt input profile
-    transform->setInputProfile(inputProfile);
-    profile();
     // queue
     queue = Queue::instance();
     // ui
@@ -238,15 +238,15 @@ JobmanPrivate::init()
     connect(ui->selectSaveto, &QPushButton::clicked, this, &JobmanPrivate::selectSaveto);
     connect(ui->showSaveto, &QPushButton::clicked, this, &JobmanPrivate::showSaveto);
     connect(savetourlfilter.data(), &Urlfilter::urlChanged, this, &JobmanPrivate::saveToUrl);
-    #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
     connect(ui->copyOriginal, &QCheckBox::checkStateChanged, this, &JobmanPrivate::copyOriginalChanged);
     connect(ui->createFolders, &QCheckBox::checkStateChanged, this, &JobmanPrivate::createFolderChanged);
     connect(ui->overwrite, &QCheckBox::checkStateChanged, this, &JobmanPrivate::overwriteChanged);
-    #else
+#else
     connect(ui->copyOriginal, &QCheckBox::stateChanged, this, &JobmanPrivate::copyOriginalChanged);
     connect(ui->createFolders, &QCheckBox::stateChanged, this, &JobmanPrivate::createFolderChanged);
     connect(ui->overwrite, &QCheckBox::stateChanged, this, &JobmanPrivate::overwriteChanged);
-    #endif
+#endif
     connect(ui->filedrop, &Filedrop::filesDropped, this, &JobmanPrivate::processFiles, Qt::QueuedConnection);
     connect(ui->presets, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             &JobmanPrivate::presetsChanged);
@@ -307,7 +307,10 @@ void
 JobmanPrivate::stylesheet()
 {
     QFile stylesheet(platform::getApplicationPath() + "/Resources/App.css");
-    stylesheet.open(QFile::ReadOnly);
+    if (!stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "could not open stylesheet:" << stylesheet.fileName() << stylesheet.errorString();
+        return;
+    }
     QString qss = stylesheet.readAll();
     QRegularExpression hslRegex("hsl\\(\\s*(\\d+)\\s*,\\s*(\\d+)%\\s*,\\s*(\\d+)%\\s*\\)");
     QString transformqss = qss;
@@ -320,9 +323,6 @@ JobmanPrivate::stylesheet()
                 int s = match.captured(2).toInt();
                 int l = match.captured(3).toInt();
                 QColor color = QColor::fromHslF(h / 360.0f, s / 100.0f, l / 100.0f);
-                // icc profile
-                ICCTransform* transform = ICCTransform::instance();
-                color = transform->map(color.rgb());
                 QString hsl = QString("hsl(%1, %2%, %3%)")
                                   .arg(color.hue() == -1 ? 0 : color.hue())
                                   .arg(static_cast<int>(color.hslSaturationF() * 100))
@@ -358,15 +358,6 @@ JobmanPrivate::applicationPath(const QString& path) const
         return false;
     }
     return canonicalDir == canonicalAppDir || canonicalDir.startsWith(canonicalAppDir + QDir::separator());
-}
-
-void
-JobmanPrivate::profile()
-{
-    QString outputProfile = platform::getIccProfileUrl(window->winId());
-    // icc profile
-    ICCTransform* transform = ICCTransform::instance();
-    transform->setOutputProfile(outputProfile);
 }
 
 void
@@ -552,7 +543,6 @@ bool
 JobmanPrivate::eventFilter(QObject* object, QEvent* event)
 {
     if (event->type() == QEvent::ScreenChangeInternal) {
-        profile();
         stylesheet();
     }
     if (event->type() == QEvent::Close) {
@@ -1304,7 +1294,8 @@ JobmanPrivate::openOptions()
     if (optionsdialog->isVisible()) {
         optionsdialog->raise();
         optionsdialog->activateWindow();
-    } else {
+    }
+    else {
         optionsdialog->show();
     }
 }
