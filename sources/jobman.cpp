@@ -74,7 +74,7 @@ public Q_SLOTS:
     void processFiles(const QList<QString>& files);
     void processCommand();
     void processUuids(const QList<QUuid>& uuids);
-    void jobProcessed(const QUuid& uuid);
+    void jobsProcessed(const QList<QUuid>& uuids);
     void fileSubmitted(const QString& file);
     void submitFiles();
     void openPreferences();
@@ -263,7 +263,7 @@ JobmanPrivate::init()
     connect(ui->openOptions, &QPushButton::clicked, this, &JobmanPrivate::openOptions);
     connect(ui->helpOpenGithubReadme, &QAction::triggered, this, &JobmanPrivate::openGithubReadme);
     connect(ui->helpOpenGithubIssues, &QAction::triggered, this, &JobmanPrivate::openGithubIssues);
-    connect(queue.data(), &Queue::jobProcessed, this, &JobmanPrivate::jobProcessed);
+    connect(queue.data(), &Queue::jobsProcessed, this, &JobmanPrivate::jobsProcessed);
     connect(processor.data(), &Processor::fileSubmitted, this, &JobmanPrivate::fileSubmitted);
     size = window->size();
     // threads
@@ -885,30 +885,37 @@ JobmanPrivate::processUuids(const QList<QUuid>& uuids)
 }
 
 void
-JobmanPrivate::jobProcessed(const QUuid& uuid)
+JobmanPrivate::jobsProcessed(const QList<QUuid>& uuids)
 {
-    if (waitinguuids.contains(uuid)) {
-        int value = ui->fileprogress->value() + 1;
-        if (value == ui->fileprogress->maximum()) {
-            ui->fileprogress->setValue(0);
-            ui->fileprogress->setMaximum(0);
-            ui->progressWidget->setCurrentIndex(0);
-        }
-        else {
-            ui->fileprogress->setValue(value);
-            int value = ui->fileprogress->value();
-            int maximum = ui->fileprogress->maximum();
-            QString tooltip = QString("Completed jobs: %1/%2").arg(value).arg(maximum);
-            int percentage = (maximum > 0) ? (value * 100) / maximum : 0;
-            if (percentage > 0 && percentage < 100) {
-                tooltip.append(QString(" - %1%").arg(percentage));
+    for (const QUuid& uuid : uuids) {
+        if (waitinguuids.contains(uuid)) {
+            const int progress = ui->fileprogress->value() + 1;
+
+            waitinguuids.removeAll(uuid);
+
+            if (progress >= ui->fileprogress->maximum()) {
+                ui->fileprogress->setValue(0);
+                ui->fileprogress->setMaximum(0);
+                ui->fileprogress->setToolTip(QString());
+                ui->progressWidget->setCurrentIndex(0);
             }
-            ui->fileprogress->setToolTip(tooltip);
+            else {
+                ui->fileprogress->setValue(progress);
+
+                const int maximum = ui->fileprogress->maximum();
+                QString tooltip = QString("Completed jobs: %1/%2").arg(progress).arg(maximum);
+
+                const int percentage = maximum > 0 ? (progress * 100) / maximum : 0;
+                if (percentage > 0 && percentage < 100) {
+                    tooltip.append(QString(" - %1%").arg(percentage));
+                }
+
+                ui->fileprogress->setToolTip(tooltip);
+            }
         }
-        waitinguuids.removeAll(uuid);
-    }
-    else {
-        processeduuids.append(uuid);
+        else if (!processeduuids.contains(uuid)) {
+            processeduuids.append(uuid);
+        }
     }
 }
 

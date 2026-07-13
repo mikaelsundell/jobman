@@ -12,26 +12,29 @@
 class QueuePrivate;
 class Queue : public QObject {
     Q_OBJECT
+
 public:
     static Queue* instance();
     QUuid beginBatch(int chunks = 256);
     void endBatch(const QUuid& uuid);
-    QUuid submit(QSharedPointer<Job> job, const QUuid& uuid = QUuid());
+    QUuid submit(QSharedPointer<Job> job, const QUuid& batch = QUuid());
+    QList<QUuid> submit(const QList<QSharedPointer<Job>>& jobs, const QUuid& batch = QUuid());
     void start(const QUuid& uuid);
     void stop(const QUuid& uuid);
     void restart(const QUuid& uuid);
     void restart(const QList<QUuid>& uuids);
     void remove(const QUuid& uuid);
+    void remove(const QList<QUuid>& uuids);
     int threads() const;
     void setThreads(int threads);
     bool isBatch();
     bool isProcessing();
 
 Q_SIGNALS:
-    void batchSubmitted(QList<QSharedPointer<Job>> jobs);
-    void jobSubmitted(QSharedPointer<Job> job);
-    void jobProcessed(const QUuid& uuid);
-    void jobRemoved(const QUuid& uuid);
+    void batchSubmitted(const QList<QSharedPointer<Job>>& jobs);
+    void jobsSubmitted(const QList<QSharedPointer<Job>>& jobs);
+    void jobsProcessed(const QList<QUuid>& uuids);
+    void jobsRemoved(const QList<QUuid>& uuids);
 
 private:
     Queue();

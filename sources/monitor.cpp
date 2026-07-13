@@ -43,9 +43,9 @@ public:
     bool eventFilter(QObject* object, QEvent* event);
 
 public Q_SLOTS:
-    void batchSubmitted(QList<QSharedPointer<Job>> jobs);
-    void jobSubmitted(QSharedPointer<Job> job);
-    void jobRemoved(const QUuid& uuid);
+    void batchSubmitted(const QList<QSharedPointer<Job>>& jobs);
+    void jobsSubmitted(const QList<QSharedPointer<Job>>& jobs);
+    void jobsRemoved(const QList<QUuid>& uuids);
     void logChanged(const QString& log);
     void priorityChanged(int priority);
     void statusChanged(Job::Status status);
@@ -166,46 +166,6 @@ public:
             }
         }
     }
-    template<typename Func> void removeItems(Func func)
-    {
-        std::function<bool(QTreeWidgetItem*)> iterateItems = [&](QTreeWidgetItem* item) -> bool {
-            QVariant data = item->data(0, Qt::UserRole);
-            QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
-            if (func(item, job)) {
-                return true;
-            }
-            for (int i = 0; i < item->childCount(); ++i) {
-                if (item->child(i)->isSelected()) {
-                    if (iterateItems(item->child(i))) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        };
-
-        QList<QTreeWidgetItem*> selectedItems = ui->items->selectedItems();
-        QList<QTreeWidgetItem*> filteredItems;
-        for (QTreeWidgetItem* item : selectedItems) {
-            QTreeWidgetItem* parent = item->parent();
-            bool skip = false;
-            while (parent) {
-                if (selectedItems.contains(parent)) {
-                    skip = true;
-                    break;
-                }
-                parent = parent->parent();
-            }
-            if (!skip) {
-                filteredItems.append(item);
-            }
-        }
-        for (QTreeWidgetItem* item : filteredItems) {
-            if (iterateItems(item)) {
-                break;
-            }
-        }
-    }
     template<typename Func> void selectedItems(Func func)
     {
         std::function<bool(QTreeWidgetItem*)> iterateItems = [&](QTreeWidgetItem* item) -> bool {
@@ -292,8 +252,8 @@ MonitorPrivate::init()
     connect(ui->filter, &QLineEdit::textChanged, ui->items, &JobTree::setFilter);
     connect(ui->clear, &QPushButton::pressed, this, &MonitorPrivate::clear);
     connect(queue.data(), &Queue::batchSubmitted, this, &MonitorPrivate::batchSubmitted);
-    connect(queue.data(), &Queue::jobSubmitted, this, &MonitorPrivate::jobSubmitted);
-    connect(queue.data(), &Queue::jobRemoved, this, &MonitorPrivate::jobRemoved);
+    connect(queue.data(), &Queue::jobsSubmitted, this, &MonitorPrivate::jobsSubmitted);
+    connect(queue.data(), &Queue::jobsRemoved, this, &MonitorPrivate::jobsRemoved);
 }
 
 void
@@ -445,82 +405,107 @@ MonitorPrivate::eventFilter(QObject* object, QEvent* event)
 }
 
 void
-MonitorPrivate::batchSubmitted(QList<QSharedPointer<Job>> jobs)
+MonitorPrivate::batchSubmitted(const QList<QSharedPointer<Job>>& jobs)
 {
-    for (QSharedPointer<Job> job : jobs) {
+    ui->items->setUpdatesEnabled(false);
+
+    for (const QSharedPointer<Job>& job : jobs) {
+        if (!job)
+            continue;
+
         QTreeWidgetItem* parent = nullptr;
-        QUuid dependsonUuid = job->dependson();
-        if (!dependsonUuid.isNull()) {
+        const QUuid dependsonUuid = job->dependson();
+
+        if (!dependsonUuid.isNull())
             parent = findItemByUuid(dependsonUuid);
-        }
+
         QTreeWidgetItem* item = new QTreeWidgetItem();
         item->setData(0, Qt::UserRole, QVariant::fromValue(job));
         updateJob(item);
-        if (parent) {
+
+        if (parent)
             parent->addChild(item);
-        }
-        else {
+        else
             ui->items->addTopLevelItem(item);
-        }
-        // connect
+
         connect(job.data(), &Job::priorityChanged, this, &MonitorPrivate::priorityChanged, Qt::QueuedConnection);
         connect(job.data(), &Job::statusChanged, this, &MonitorPrivate::statusChanged, Qt::QueuedConnection);
-        // update
+
         jobitems.insert(job->uuid(), item);
     }
+
+    ui->items->setUpdatesEnabled(true);
+    ui->items->viewport()->update();
+
     updateMetrics();
 }
 
 void
-MonitorPrivate::jobSubmitted(QSharedPointer<Job> job)
+MonitorPrivate::jobsSubmitted(const QList<QSharedPointer<Job>>& jobs)
 {
-    QTreeWidgetItem* parent = nullptr;
-    QUuid dependsonUuid = job->dependson();
-    if (!dependsonUuid.isNull()) {
-        parent = findItemByUuid(dependsonUuid);
-    }
-    QTreeWidgetItem* item = new QTreeWidgetItem();
-    item->setData(0, Qt::UserRole, QVariant::fromValue(job));
-    updateJob(item);
-    if (parent) {
-        parent->addChild(item);
-    }
-    else {
-        ui->items->addTopLevelItem(item);
-    }
-    // connect
-    connect(job.data(), &Job::priorityChanged, this, &MonitorPrivate::priorityChanged, Qt::QueuedConnection);
-    connect(job.data(), &Job::statusChanged, this, &MonitorPrivate::statusChanged, Qt::QueuedConnection);
-    // update
-    jobitems.insert(job->uuid(), item);
-    updateMetrics();
+    batchSubmitted(jobs);
 }
 
 void
-MonitorPrivate::jobRemoved(const QUuid& uuid)
+MonitorPrivate::jobsRemoved(const QList<QUuid>& uuids)
 {
-    verifyItems([this, &uuid](QTreeWidgetItem* item, const QSharedPointer<Job>& job) -> bool {
-        if (job->uuid() == uuid) {
-            if (item->isSelected()) {
-                item->setSelected(false);
+    if (uuids.isEmpty())
+        return;
+
+    QSignalBlocker blocker(ui->items);
+    ui->items->setUpdatesEnabled(false);
+
+    QSet<QTreeWidgetItem*> removedItems;
+    removedItems.reserve(uuids.size());
+
+    for (const QUuid& uuid : uuids) {
+        QTreeWidgetItem* item = jobitems.take(uuid);
+        if (item)
+            removedItems.insert(item);
+    }
+
+    QList<QTreeWidgetItem*> rootItems;
+    rootItems.reserve(removedItems.size());
+
+    for (QTreeWidgetItem* item : std::as_const(removedItems)) {
+        bool parentRemoved = false;
+
+        for (QTreeWidgetItem* parent = item->parent(); parent; parent = parent->parent()) {
+            if (removedItems.contains(parent)) {
+                parentRemoved = true;
+                break;
             }
-            QTreeWidgetItem* parent = item->parent();
-            if (parent) {
-                parent->removeChild(item);
-                delete item;
-            }
-            else {
-                int index = ui->items->indexOfTopLevelItem(item);
-                if (index != -1) {
-                    delete ui->items->takeTopLevelItem(index);
-                }
-            }
-            jobitems.remove(uuid);
-            return true;
         }
-        return false;
-    });
+
+        if (!parentRemoved)
+            rootItems.append(item);
+    }
+
+    for (QTreeWidgetItem* item : std::as_const(rootItems)) {
+        if (QTreeWidgetItem* parent = item->parent()) {
+            parent->removeChild(item);
+            delete item;
+        }
+        else {
+            const int index = ui->items->indexOfTopLevelItem(item);
+            if (index >= 0)
+                delete ui->items->takeTopLevelItem(index);
+        }
+    }
+
+    if (jobitem && uuids.contains(jobitem->uuid())) {
+        if (logchanged)
+            QObject::disconnect(logchanged);
+
+        jobitem.clear();
+        ui->job->clear();
+    }
+
+    ui->items->setUpdatesEnabled(true);
+    ui->items->viewport()->update();
+
     updateMetrics();
+    selectionChanged();
 }
 
 void
@@ -742,19 +727,46 @@ MonitorPrivate::priority()
 void
 MonitorPrivate::remove()
 {
-    qint64 selectionCount = ui->items->selectedItems().count();
-    if (selectionCount > 10) {
+    const QList<QTreeWidgetItem*> selected = ui->items->selectedItems();
+    if (selected.isEmpty())
+        return;
+
+    if (selected.size() > 10) {
         if (!Question::askQuestion(dialog.data(),
                                    "More than 10 jobs have been selected for removal. Do you want to proceed?\n")) {
             return;
         }
     }
-    removeItems([this](QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
-        item->setSelected(false);
-        queue->remove(job->uuid());
-        return false;
-    });
-    toggleButtons();
+
+    QSet<QTreeWidgetItem*> selectedSet;
+    selectedSet.reserve(selected.size());
+
+    for (QTreeWidgetItem* item : selected)
+        selectedSet.insert(item);
+
+    QList<QUuid> uuids;
+    uuids.reserve(selected.size());
+
+    for (QTreeWidgetItem* item : selected) {
+        bool parentSelected = false;
+
+        for (QTreeWidgetItem* parent = item->parent(); parent; parent = parent->parent()) {
+            if (selectedSet.contains(parent)) {
+                parentSelected = true;
+                break;
+            }
+        }
+
+        if (parentSelected)
+            continue;
+
+        const QSharedPointer<Job> job = itemJob(item);
+        if (job)
+            uuids.append(job->uuid());
+    }
+
+    if (!uuids.isEmpty())
+        queue->remove(uuids);
 }
 
 void
@@ -1090,7 +1102,7 @@ MonitorPrivate::findTopLevelItem(QTreeWidgetItem* item)
 QTreeWidgetItem*
 MonitorPrivate::findItemByUuid(const QUuid& uuid)
 {
-    return jobitems[uuid];
+    return jobitems.value(uuid, nullptr);
 }
 
 QSharedPointer<Job>
