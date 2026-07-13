@@ -130,7 +130,8 @@ xcopy "%presets_path%" "%deploy_dir%\Presets" /E /I /Y
 xcopy "%resources_path%" "%deploy_dir%\Resources" /E /I /Y
 
 REM copy dependencies
-copy "%THIRDPARTY_DIR%\bin\lcms2.dll" "%deploy_dir%"
+copy "%THIRDPARTY_DIR%\bin\zlib.dll" "%deploy_dir%"
+copy "%THIRDPARTY_DIR%\bin\libpng16.dll" "%deploy_dir%"
 
 REM run windeployqt
 "%windeployqt%" "%deploy_dir%\%app_name%.exe" --dir "%deploy_dir%"
