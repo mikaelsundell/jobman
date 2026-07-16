@@ -6,7 +6,7 @@
       {
         "id": "jpegquality",
         "name": "JPEG Quality",
-        "type": "IntSlider",
+        "type": "integerslider",
         "default": 80,
         "minimum": 0,
         "maximum": 100,
@@ -16,7 +16,7 @@
       {
         "id": "resizewidth",
         "name": "Resize width",
-        "type": "Dropdown",
+        "type": "dropdown",
         "default": "400",
         "options": [
           {
@@ -38,7 +38,7 @@
       {
         "id": "verbose",
         "name": "Verbose",
-        "type": "Checkbox",
+        "type": "checkbox",
         "default": "true",
         "value": "true",
         "flag": "--verbose"

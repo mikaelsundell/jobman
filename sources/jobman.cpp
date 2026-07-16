@@ -176,12 +176,13 @@ void
 JobmanPrivate::init()
 {
     platform::setDarkTheme();
-    //
+    // surface
     QSurfaceFormat format = QSurfaceFormat::defaultFormat();
     format.setColorSpace(QColorSpace::SRgb);
     QSurfaceFormat::setDefaultFormat(format);
-
+    // documents
     documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    // presets
     presets = platform::getApplicationPath() + "/Presets";
     // queue
     queue = Queue::instance();
