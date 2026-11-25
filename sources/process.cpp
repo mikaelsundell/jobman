@@ -4,13 +4,18 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "process.h"
-#include <signal.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #ifdef __APPLE__
+#    include <AvailabilityMacros.h>
+#    include <cerrno>
 #    include <crt_externs.h>
+#    include <fcntl.h>
+#    include <poll.h>
+#    include <signal.h>
 #    include <spawn.h>
+#    include <sys/stat.h>
+#    include <sys/wait.h>
+#    include <unistd.h>
 #endif
 
 #ifdef _WIN32
@@ -18,9 +23,12 @@
 #    include <windows.h>
 #endif
 
+#include <QByteArray>
 #include <QDir>
 #include <QProcess>
 #include <QThread>
+
+#include <vector>
 
 class ProcessPrivate : public QObject {
     Q_OBJECT
@@ -39,8 +47,9 @@ public:
     char** mapEnvironment(QList<QPair<QString, QString>> environment);
     bool running;
     int exitcode;
-    QString outputBuffer;
-    QString errorBuffer;
+    // Keep raw bytes until capture is complete so reads cannot split UTF-8 characters.
+    QByteArray outputBuffer;
+    QByteArray errorBuffer;
 
 #ifdef __APPLE__
     pid_t pid;
@@ -61,6 +70,8 @@ ProcessPrivate::ProcessPrivate()
 {
 #ifdef __APPLE__
     pid = -1;
+    outputpipe[0] = outputpipe[1] = -1;
+    errorpipe[0] = errorpipe[1] = -1;
 #elif defined(_WIN32)
     ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
 #endif
@@ -87,6 +98,7 @@ ProcessPrivate::run(const QString& command, const QStringList& arguments, const 
                     const QList<QPair<QString, QString>>& environment)
 {
     running = false;
+    exitcode = -1;
     outputBuffer.clear();
     errorBuffer.clear();
     QString absolutepath = mapCommand(command);
@@ -101,31 +113,76 @@ ProcessPrivate::run(const QString& command, const QStringList& arguments, const 
         argv.push_back(argbytes.back().data());
     }
     argv.push_back(nullptr);
-    posix_spawn_file_actions_t actions;
-    posix_spawn_file_actions_init(&actions);
+    const auto closePipes = [&]() {
+        for (int* pipefds : { outputpipe, errorpipe }) {
+            for (int i = 0; i < 2; ++i) {
+                if (pipefds[i] != -1)
+                    close(pipefds[i]);
+                pipefds[i] = -1;
+            }
+        }
+    };
     if (pipe(outputpipe) == -1 || pipe(errorpipe) == -1) {
+        closePipes();
         return;  // error creating pipes
     }
-    posix_spawn_file_actions_adddup2(&actions, outputpipe[1], STDOUT_FILENO);
-    posix_spawn_file_actions_adddup2(&actions, errorpipe[1], STDERR_FILENO);
-    posix_spawn_file_actions_addclose(&actions, outputpipe[0]);
-    posix_spawn_file_actions_addclose(&actions, errorpipe[0]);
-    if (!startin.isEmpty()) {
-        chdir(startin.toLocal8Bit().data());
+    posix_spawn_file_actions_t actions;
+    if (posix_spawn_file_actions_init(&actions) != 0) {
+        closePipes();
+        return;
     }
+    int status = posix_spawn_file_actions_adddup2(&actions, outputpipe[1], STDOUT_FILENO)
+                 || posix_spawn_file_actions_adddup2(&actions, errorpipe[1], STDERR_FILENO)
+                 || posix_spawn_file_actions_addclose(&actions, outputpipe[0])
+                 || posix_spawn_file_actions_addclose(&actions, errorpipe[0])
+                 || posix_spawn_file_actions_addclose(&actions, outputpipe[1])
+                 || posix_spawn_file_actions_addclose(&actions, errorpipe[1]);
+    // Preserve the previous stdin behavior while closing unrelated inherited descriptors.
+    if (status == 0 && fcntl(STDIN_FILENO, F_GETFD) != -1)
+        status = posix_spawn_file_actions_addinherit_np(&actions, STDIN_FILENO);
+    // Change only the child's directory; chdir() would affect every Jobman worker.
+    if (status == 0 && !startin.isEmpty()) {
+#    if defined(__MAC_26_0) && __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_26_0
+        if (__builtin_available(macOS 26.0, *)) {
+            status = posix_spawn_file_actions_addchdir(&actions, startin.toLocal8Bit().constData());
+        }
+        else
+#    endif
+        {
+            // Older macOS versions require the non-standard spelling.
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            status = posix_spawn_file_actions_addchdir_np(&actions, startin.toLocal8Bit().constData());
+#    pragma clang diagnostic pop
+        }
+    }
+    posix_spawnattr_t attributes;
+    const bool attributesInitialized = posix_spawnattr_init(&attributes) == 0;
+    if (!attributesInitialized)
+        status = -1;
+    // Other concurrent launches must not inherit these pipes and keep them open.
+    if (status == 0)
+        status = posix_spawnattr_setflags(&attributes, POSIX_SPAWN_CLOEXEC_DEFAULT);
     char** environ = mapEnvironment(environment);
-    int status = posix_spawn(&pid, commandbytes.data(), &actions, nullptr, argv.data(), environ);
+    pid = -1;
+    if (status == 0)
+        status = posix_spawn(&pid, commandbytes.data(), &actions, &attributes, argv.data(), environ);
     posix_spawn_file_actions_destroy(&actions);
+    if (attributesInitialized)
+        posix_spawnattr_destroy(&attributes);
     for (int i = 0; environ[i] != nullptr; ++i) {
         free(environ[i]);  // take care of environ
     }
+    delete[] environ;
     close(outputpipe[1]);
     close(errorpipe[1]);
+    outputpipe[1] = errorpipe[1] = -1;
     if (status == 0) {
         running = true;
     }
     else {
-        exitcode = -1;  // process failed to start
+        closePipes();
+        pid = -1;
     }
 
 #elif defined(_WIN32)
@@ -198,20 +255,25 @@ ProcessPrivate::run(const QString& command, const QStringList& arguments, const 
     envblocks.push_back(L'\0');
     LPVOID lpenvironment = const_cast<wchar_t*>(envblocks.c_str());
 
-    STARTUPINFO startupInfo;
-    ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
-    startupInfo.cb = sizeof(STARTUPINFO);
+    STARTUPINFOW startupInfo;
+    ZeroMemory(&startupInfo, sizeof(startupInfo));
+    startupInfo.cb = sizeof(startupInfo);
     startupInfo.hStdOutput = outputWrite;
     startupInfo.hStdError = errorWrite;
     startupInfo.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     startupInfo.wShowWindow = SW_HIDE;
 
+    const std::wstring workingDirectory = QDir::toNativeSeparators(startin).toStdWString();
     if (CreateProcessW(nullptr, commandline, nullptr, nullptr, TRUE, CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW,
-                       lpenvironment, nullptr, &startupInfo, &processInfo)) {
+                       lpenvironment, startin.isEmpty() ? nullptr : workingDirectory.c_str(), &startupInfo,
+                       &processInfo)) {
         running = true;
     }
     else {
         exitcode = -1;
+        CloseHandle(outputRead);
+        CloseHandle(errorRead);
+        ZeroMemory(&processInfo, sizeof(processInfo));
     }
     CloseHandle(outputWrite);
     CloseHandle(errorWrite);
@@ -223,28 +285,59 @@ ProcessPrivate::wait()
 {
     if (running) {
 #ifdef __APPLE__
-        int status;
-        waitpid(pid, &status, 0);
+        int status = 0;
+        bool exited = false;
+        bool captureFailed = false;
+        // Drain both streams while the child runs, including any bytes remaining at exit.
+        // Waiting first, or draining one pipe to EOF first, can deadlock a verbose child.
+        while (!exited || outputpipe[0] != -1 || errorpipe[0] != -1) {
+            if (!exited) {
+                const pid_t result = waitpid(pid, &status, WNOHANG);
+                if (result == pid)
+                    exited = true;
+                else if (result == -1 && errno != EINTR) {
+                    captureFailed = true;
+                    break;
+                }
+            }
+            pollfd pipes[] = { { outputpipe[0], POLLIN, 0 }, { errorpipe[0], POLLIN, 0 } };
+            if (poll(pipes, 2, 50) == -1) {
+                if (errno == EINTR)
+                    continue;
+                captureFailed = true;
+                break;
+            }
+            for (int i = 0; i < 2; ++i) {
+                if (!(pipes[i].revents & (POLLIN | POLLHUP | POLLERR | POLLNVAL)))
+                    continue;
+                char buffer[16384];
+                const ssize_t bytesread = read(pipes[i].fd, buffer, sizeof(buffer));
+                if (bytesread > 0) {
+                    (i == 0 ? outputBuffer : errorBuffer).append(buffer, bytesread);
+                }
+                else if (bytesread == 0 || errno != EINTR) {
+                    if (bytesread < 0)
+                        captureFailed = true;
+                    int& fd = i == 0 ? outputpipe[0] : errorpipe[0];
+                    close(fd);
+                    fd = -1;
+                }
+            }
+        }
+        if (!exited) {
+            ::kill(pid, SIGKILL);
+            while (waitpid(pid, &status, 0) == -1 && errno == EINTR) {}
+        }
+        for (int* pipefds : { outputpipe, errorpipe }) {
+            if (pipefds[0] != -1)
+                close(pipefds[0]);
+            pipefds[0] = -1;
+        }
         running = false;
-        char buffer[1024];
-        ssize_t bytesread;
-        if (outputpipe[0] != -1) {
-            while ((bytesread = read(outputpipe[0], buffer, sizeof(buffer) - 1)) > 0) {
-                buffer[bytesread] = '\0';
-                outputBuffer.append(buffer);
-            }
-            close(outputpipe[0]);
-            outputpipe[0] = -1;
+        if (captureFailed) {
+            exitcode = -1;
         }
-        if (errorpipe[0] != -1) {
-            while ((bytesread = read(errorpipe[0], buffer, sizeof(buffer) - 1)) > 0) {
-                buffer[bytesread] = '\0';
-                errorBuffer.append(buffer);
-            }
-            close(errorpipe[0]);
-            errorpipe[0] = -1;
-        }
-        if (WIFEXITED(status)) {
+        else if (WIFEXITED(status)) {
             exitcode = WEXITSTATUS(status);
         }
         else if (WIFSIGNALED(status)) {
@@ -278,8 +371,7 @@ ProcessPrivate::wait()
                     if (!success || bytesRead == 0) {
                         break;
                     }
-                    buffer[bytesRead] = '\0';
-                    outputBuffer.append(QString::fromLocal8Bit(buffer));
+                    outputBuffer.append(buffer, bytesRead);
                 }
                 while (true) {
                     DWORD bytesAvailable = 0;
@@ -291,8 +383,7 @@ ProcessPrivate::wait()
                     if (!success || bytesRead == 0) {
                         break;
                     }
-                    buffer[bytesRead] = '\0';
-                    errorBuffer.append(QString::fromLocal8Bit(buffer));
+                    errorBuffer.append(buffer, bytesRead);
                 }
                 if (!running) {
                     break;
@@ -439,13 +530,13 @@ Process::pid() const
 QString
 Process::standardOutput() const
 {
-    return p->outputBuffer;
+    return QString::fromUtf8(p->outputBuffer);
 }
 
 QString
 Process::standardError() const
 {
-    return p->errorBuffer;
+    return QString::fromUtf8(p->errorBuffer);
 }
 
 int

@@ -6,6 +6,7 @@
 #include "message.h"
 #include "optionswidget.h"
 #include "question.h"
+#include "ui.h"
 #include "urlfilter.h"
 
 #include <QFileDialog>
@@ -54,10 +55,13 @@ OptionsDialogPrivate::OptionsDialogPrivate() {}
 void
 OptionsDialogPrivate::init()
 {
+    ::ui();
     preset.reset(new Preset());
     // ui
     ui.reset(new Ui_OptionsDialog());
     ui->setupUi(dialog);
+    ::ui()->setIcon(ui->load, UI::Folder);
+    ::ui()->setIcon(ui->save, UI::Save);
     // settings
     loadSettings();
     // event filter

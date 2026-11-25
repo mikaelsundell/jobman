@@ -8,7 +8,7 @@ set (project_name "Jobman")
 project (${project_name})
 
 # packages
-set (qt6_modules Core Concurrent Gui Widgets)
+set (qt6_modules Core Concurrent Gui Widgets Network)
 find_package (Qt6 COMPONENTS ${qt6_modules} CONFIG REQUIRED)
 set (CMAKE_AUTOMOC ON)
 set (CMAKE_AUTORCC ON)
@@ -48,7 +48,7 @@ source_group ("Preset Files" FILES ${app_presets})
 set (app_name ${project_name})
 set (app_copyright "Copyright 2022-present Contributors to the ${app_name} project")
 set (app_identifier "com.github.mikaelsundell.jobman")
-set (app_long_version "1.4.8")
+set (app_long_version "1.4.9")
 set (app_short_version "1.4")
 set (app_url "https://github.com/mikaelsundell/jobman")
 
@@ -91,7 +91,7 @@ if (APPLE)
     )
     target_compile_options (${project_name} PRIVATE -Wno-deprecated-register)
     target_link_libraries (${project_name} 
-        Qt6::Core Qt6::Concurrent Qt6::Gui Qt6::Widgets
+        Qt6::Core Qt6::Concurrent Qt6::Gui Qt6::Widgets Qt6::Network
         "-framework CoreFoundation"
         "-framework AppKit")
 elseif (WIN32)
@@ -100,7 +100,7 @@ elseif (WIN32)
     add_executable (${project_name} WIN32 ${app_sources} ${app_resources} ${app_presets})
     add_definitions (-DWIN32 -DNOMINMAX -DWIN32_LEAN_AND_MEAN -DWINVER=0x0A00)
     target_link_libraries (${project_name} 
-        Qt6::Core Qt6::Concurrent Qt6::Gui Qt6::Widgets
+        Qt6::Core Qt6::Concurrent Qt6::Gui Qt6::Widgets Qt6::Network
         "User32.lib"
         "Gdi32.lib"
         "Shell32.lib"
@@ -137,4 +137,11 @@ elseif (WIN32)
     endforeach ()
 else ()
     message (WARNING "${project_name} is a Mac or Windows program, will not be built.")
+endif ()
+
+# Keep normal application builds unchanged; test_app enables the native regressions.
+option (BUILD_TESTING "Build native Jobman regression tests" OFF)
+include (CTest)
+if (BUILD_TESTING AND (APPLE OR WIN32))
+    add_subdirectory (CTest)
 endif ()

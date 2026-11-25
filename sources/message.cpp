@@ -3,6 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "message.h"
+#include "ui.h"
 
 #include <QPointer>
 
@@ -25,6 +26,7 @@ MessagePrivate::MessagePrivate() {}
 void
 MessagePrivate::init()
 {
+    ::ui();
     // ui
     ui.reset(new Ui_Message());
     ui->setupUi(dialog);

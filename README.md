@@ -1,404 +1,367 @@
-# <img src="resources/AppIcon.png" valign="middle" alt="Icon" width="50" height="50"> Jobman: Batch Processing #
+# <img src="resources/AppIcon.png" alt="Jobman icon" width="50" height="50"> Jobman: Batch Processing
 
-[![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg?style=flat-square)](https://github.com/mikaelsundell/jobman/blob/master/README.md)
+[![License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg?style=flat-square)](#resources-and-acknowledgments)
 
-Table of Contents
-=================
+Jobman is a macOS and Windows application for processing files with JSON presets.
+A preset defines commands, options, output paths, and task dependencies. Drop
+files or folders to create jobs, then inspect their status and logs in Monitor.
 
-- [ Jobman: Batch Processing](#-jobman-batch-processing)
-- [Table of Contents](#table-of-contents)
-  - [Introduction](#introduction)
-  - [Documentation](#documentation)
-    - [Preset fields](#preset-fields)
-    - [Option fields](#option-fields)
-  - [Building](#building)
-  - [Web Resources](#web-resources)
-  - [Copyright](#copyright)
-  
-Introduction
-------------
+<img src="resources/Jobman.png" alt="Jobman main window" />
 
-<img src="resources/Jobman.png" style="padding-bottom: 20px;" />
+[Mac App Store](https://apps.apple.com/se/app/jobman-batch-processing/id6738392819?l=en-GB&mt=12)
 
-Jobman is a user-friendly Mac and Windows application designed for batch processing files according to predefined job descriptions. It enables the creation of tool chains for drag-and-drop processing, streamlining workflows for efficiency and ease of use. The application boasts a straightforward drag-and-drop interface for file submission, monitoring and job control.
+- [Quick start](#quick-start)
+- [Preset format](#preset-format)
+- [Preset fields](#preset-fields)
+- [Option fields](#option-fields)
+- [Task fields](#task-fields)
+- [Template variables](#template-variables)
+- [Validation and errors](#validation-and-errors)
+- [Monitor](#monitor)
+- [MCP server](#mcp-server)
+- [Building](#building)
+- [Testing](#testing)
+- [UI styling](#ui-styling)
+- [Resources and acknowledgments](#resources-and-acknowledgments)
 
-<a href="https://apps.apple.com/se/app/jobman-batch-processing/id6738392819?l=en-GB&mt=12" target="_blank" style="cursor: pointer;">
-    <img src="resources/AppStore/Badge.png" valign="middle" alt="Icon" width="140">
-</a>
+## Quick start
 
-Documentation
--------------
+1. Select a preset and an existing **Save to** directory.
+2. Set its options. **Copy original** preserves the input alongside the output;
+   **Create folders** creates an output subfolder named after each input file;
+   **Overwrite** permits replacing an existing task output.
+3. Drop files or folders. File presets apply their wildcard filter and scan
+   folders recursively. Large folder drops ask for confirmation. Rejected files
+   are reported and do not become jobs; the drop area returns to ready afterward.
+4. Open **Monitor** to inspect output, errors, and dependencies or control jobs.
 
-**Introduction**
+**Max jobs** controls concurrency, not the number of jobs that can be queued.
+Folders can contain thousands of files. Command presets display options and a
+Submit button instead of a file-drop area. The **MCP** checkbox enables local
+agent access and remembers its state across application launches.
 
-Jobman is a tool designed to manage and monitor processing tasks with customizable presets and user-defined parameters. It features a main interface for configuring tasks and a monitor interface for managing job execution.
+## Preset format
 
-**The Jobman main interface**
+Presets are UTF-8 JSON objects stored as `.json` files in the selected preset
+folder. Refresh presets after editing. Use the built-in
+[Convert image preset](presets/Convert%20image.json) as another example.
 
-- **Preset**: Select or define the current preset configuration for processing.
-- **Save to**: Specify the output directory where processed files will be saved.
-- **Copy original**: Enable this option to copy the original (unprocessed) files to the output directory.
-- **Create folders**: Automatically create a new folder in the output directory for processed files.
-- **Overwrite**: Allow overwriting of existing files. The preset task output must be explicitly configured for this option.
-- **Max threads**: Define the number of threads to use for processing tasks, optimizing performance based on available system threads.
-
-**The jobman monitor interface**
-
-The monitor interface provides tools for controlling and prioritizing jobs.
-
-- <img src="resources/Start.png" width="16" valign="center" style="padding-right: 4px;" /> **Start**: Begin processing for selected jobs that are currently stopped.
-- <img src="resources/Stop.png" width="16" valign="center" style="padding-right: 4px;" /> **Stop**: Halt the execution of selected jobs.
-- <img src="resources/Restart.png" width="16" valign="center" style="padding-right: 4px;" /> **Restart**: Restart selected jobs from the beginning.
-- <img src="resources/Priority.png" width="16" valign="center" style="padding-right: 4px;" /> **Priority**: Adjust the priority level for selected jobs, influencing the order in which they are processed.
-
-**Quick start**
-
-Begin by selecting a preset, then drag and drop your files onto the designated file drop area within Jobman. The application will automatically commence processing your files in accordance with the chosen preset's specifications and associated tasks.
-
-**Understanding preset file format**
-
-A preset file articulates a sequence of tasks to be executed during file processing. It allows for the specification of commands, file extensions, arguments, and initial directories. Additionally, it supports the definition of dependencies among tasks using the dependson attribute, enabling complex processing chains.
-
-Here's an example of a preset file format, tailored for converting image files on the Mac:
-
+This macOS example uses `sips`; Windows presets should specify an executable
+available on Windows. Install external tools separately or configure search paths
+and environment variables in Preferences.
 
 ```json
 {
-    "id": "convertimage",
-    "name": "Internal: Convert image",
-    "type": "savefile",
-    "options": [
-      {
-        "id": "jpegquality",
-        "name": "JPEG Quality",
-        "type": "integerslider",
-        "default": 80,
-        "minimum": 0,
-        "maximum": 100,
-        "value": 80,
-        "flag": "--setProperty formatOptions"
-      },
-      {
-        "id": "resizewidth",
-        "name": "Resize width",
-        "type": "dropdown",
-        "default": "Medium",
-        "options": [
-          {
-            "label": "Small 200px",
-            "value": 200
-          },
-          {
-            "label": "Medium 400px",
-            "value": 400
-          },
-          {
-            "label": "Large 800px",
-            "value": 800
-          }
-        ],
-        "value": "400",
-        "flag": "--resampleWidth"
-      },
-      {
-        "id": "verbose",
-        "name": "Verbose",
-        "type": "checkbox",
-        "default": "true",
-        "value": "true",
-        "flag": "--verbose"
-      },
-      {
-        "id": "value as double",
-        "name": "Double",
-        "type": "double",
-        "default": "1.0",
-        "minimum": 0,
-        "maximum": 100,
-        "value": "1.0",
-        "flag": "--double"
-      }
-    ],
-    "tasks": [
-      {
-        "id": "1",
-        "name": "Convert to JPEG",
-        "command": "sips",
-        "extension": "jpg",
-        "output": "%outputdir%/%outputbase%.%outputext%",
-        "arguments": "-s format jpeg %inputfile% --out %outputfile%",
-        "startin": "",
-        "documentation": [
-          "sips -s format jpeg inputfile --out outputfile",
-          "Converts the input file to JPEG format using the sips command",
-          "-s format jpeg: Specifies the format to convert to",
-          "--out: Specifies the output file path"
-        ]
-      },
-      {
-        "id": "2",
-        "name": "Adjust JPEG quality",
-        "command": "sips",
-        "extension": "jpg",
-        "output": "%outputdir%/%outputbase%.%outputext%",
-        "arguments": "%options:jpegquality% %outputfile%",
-        "dependson": "1",
-        "documentation": [
-          "sips --setProperty formatOptions 80 outputfile",
-          "Adjusts the JPEG quality to 80 (out of 100)",
-          "--setProperty formatOptions: Sets the JPEG quality level"
-        ]
-      },
-      {
-        "id": "3",
-        "name": "Generate thumbnail",
-        "command": "sips",
-        "extension": "jpg",
-        "output": "%outputdir%/%outputbase%_thumbnail.%outputext%",
-        "arguments": "%options:resizewidth% %outputdir%/%outputbase%.%outputext% --out %outputfile%",
-        "dependson": "2",
-        "documentation": [
-          "sips --resampleWidth 200 outputfile --out thumbnailfile",
-          "Generates a thumbnail by resizing the width of the pixels",
-          "--resampleWidth: Specifies the width of the thumbnail",
-          "--out: Specifies the output file path for the thumbnail"
-        ]
-      }
-    ]
-  }
+  "id": "convertimage",
+  "name": "Convert image",
+  "type": "file",
+  "filter": "*.jpg;*.jpeg;*.png;*.tiff;*.bmp",
+  "options": [
+    {
+      "id": "quality",
+      "name": "JPEG quality",
+      "type": "integerslider",
+      "value": 80,
+      "default": 80,
+      "minimum": 0,
+      "maximum": 100,
+      "flag": "--setProperty formatOptions"
+    },
+    {
+      "id": "width",
+      "name": "Thumbnail width",
+      "type": "dropdown",
+      "value": 400,
+      "default": 400,
+      "flag": "--resampleWidth",
+      "options": [
+        { "label": "Small 200px", "value": 200 },
+        { "label": "Medium 400px", "value": 400 },
+        { "label": "Large 800px", "value": 800 }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "01",
+      "name": "Convert to JPEG",
+      "command": "sips",
+      "extension": "jpg",
+      "output": "%outputdir%/%outputbase%.%outputext%",
+      "arguments": "-s format jpeg %inputfile% --out %task:output%"
+    },
+    {
+      "id": "02",
+      "name": "Adjust JPEG quality",
+      "command": "sips",
+      "extension": "jpg",
+      "output": "%outputdir%/%outputbase%.%outputext%",
+      "arguments": "%options:quality% %task:input%",
+      "dependson": "01"
+    },
+    {
+      "id": "03",
+      "name": "Generate thumbnail",
+      "command": "sips",
+      "extension": "jpg",
+      "output": "%outputdir%/%outputbase%_thumbnail.%outputext%",
+      "arguments": "%options:width% %task:input% --out %task:output%",
+      "dependson": "02"
+    }
+  ]
+}
 ```
 
+## Preset fields
 
-**Supported variables**
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `id` | Yes | Nonempty string, unique among presets in the loaded folder. Also identifies saved option settings. |
+| `name` | Yes | Nonempty display name. |
+| `type` | No | `file` or `command`; omitted or empty means `file`. |
+| `filter` | No | Semicolon-separated wildcard patterns, such as `*.jpg;*.png`. Omitted or empty means `*.*` (all files). Whitespace around patterns is trimmed; empty patterns between separators are errors. |
+| `description` | No | Descriptive metadata: a string or array of strings. |
+| `options` | No | Array of option objects; omit it or use `[]` when no options are needed. |
+| `tasks` | Yes | Nonempty array of task objects. |
 
-Preset files support various variables that can be used to customize arguments during processing. These variables are dynamically replaced based on the context of the input and output files.
+Names, IDs, and commands must be strings, not JSON numbers or booleans. Field
+names are case-sensitive. Unknown fields are rejected to expose spelling errors.
 
-**Input variables:**
+## Option fields
 
-```shell
-%inputdir%         Replaces with the directory path of the input file.
-%inputfile%        Replaces with the full path of the input file.
-%inputext%         Replaces with the file extension of the input file.
-%inputbase%        Replaces with the base name (filename without extension) of the input file.
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `id` | Yes | Nonempty string, unique within the preset; referenced by `%options:id%`. |
+| `name` | Yes | Nonempty display name. |
+| `type` | Yes | One of the control types below. |
+| `value` | Yes | Explicit initial value. A `default` never fills a missing `value`. |
+| `default` | No | Reset value. If omitted, the explicitly supplied `value` becomes the reset value. |
+| `description` | No | Tooltip string. |
+| `flag` | No | Command-line flag string, such as `--quality`. |
+| `flagonly` | No | Emit the flag alone. Requires a nonempty flag. Default `false`. |
+| `valueonly` | No | Emit the value without a flag. Default `false`; cannot be combined with `flagonly: true`. |
+| `minimum`, `maximum` | No | Numeric controls only; default to 0 and 100. Both current and reset values must lie within the range. |
+| `toggle` | No | Optional enable-checkbox label. A nonempty label initially disables the option until enabled. |
+| `options` | Dropdown only | Required nonempty array of `{ "label": "Display text", "value": ... }` choices. Labels are optional strings; values are required and unique. |
+
+Supported control types:
+
+| Type | `value` and `default` |
+| --- | --- |
+| `integer`, `integerslider` | Signed 32-bit integers; integer strings such as `"80"` are also supported. Fractional values are rejected. |
+| `double`, `doubleslider` | Finite numbers or numeric strings such as `"1.25"`. A double slider requires a positive, finite range. |
+| `checkbox` | JSON booleans or `"true"` / `"false"` strings; these strings are normalized to booleans. |
+| `dropdown` | Strings, numbers, or booleans that match a listed choice value. Both `value` and `default` must match values, not display labels. |
+| `text`, `label`, `openfile`, `savefile` | Strings. Use `"value": ""` for an initially empty field. `label` displays static text. |
+
+Legacy numeric-string dropdown selections, such as `"400"` matching a numeric
+choice `400`, remain supported. Prefer consistent JSON types in new presets.
+Nulls, arrays, and objects are not option values. Checkbox values are values, not
+implicit enable switches: `toggle` controls whether an option is emitted.
+
+Saved preferences can override a preset's initial option values and enabled
+states when it is loaded. Changing an option interactively does not rewrite the
+preset file. Resetting options uses `default`.
+
+## Task fields
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `id` | Yes | Nonempty string, unique within the preset. Tasks are sorted by string ID. |
+| `name` | Yes | Nonempty display name. |
+| `command` | Yes | Nonempty executable name or path. Put arguments in `arguments`. |
+| `extension` | Yes | Nonempty output extension, usually without a leading dot, such as `jpg`. Supports input path variables. |
+| `output` | Yes | Nonempty task output path or template. Jobs require a tracked output path. |
+| `arguments` | Yes | Nonempty argument template. Repeated space separators are ignored. |
+| `startin` | No | Child process working-directory template. Empty uses the inherited directory; it does not change Jobman's directory. |
+| `dependson` | No | ID of one preceding task. Empty means independent. |
+| `exclusive` | No | Boolean or `"true"` / `"false"` string. Serializes jobs marked exclusive that share the same command string, through the existing queue. Default `false`. |
+| `documentation` | No | Array of help strings. |
+
+Dependencies must exist, must not refer to the task itself, and must not form a
+cycle. A dependency must sort before its dependent by **string** ID, preserving
+Jobman's existing submission order. Prefer zero-padded IDs such as `01`, `02`,
+`03`; `10` sorts before `2`. JSON array order does not set execution order.
+Nonexclusive jobs can still run concurrently with exclusive jobs; mark every
+job in a command group exclusive when that group must serialize.
+Dependent jobs run only after their required job succeeds. Different input files
+can process concurrently according to Max jobs, priorities, and exclusivity.
+
+## Template variables
+
+| Variable | Meaning |
+| --- | --- |
+| `%inputdir%` | Original input's directory. |
+| `%inputfile%` | Original input's full path. |
+| `%inputext%` | Original input's extension. |
+| `%inputbase%` | Original input's complete base name, excluding the final extension. |
+| `%outputdir%` | Calculated output directory, including a per-input folder when enabled. |
+| `%outputfile%` | Calculated output filename before applying the task's custom `output` template. |
+| `%outputext%` | Task output extension. |
+| `%outputbase%` | Calculated output base name. |
+| `%options:id%` | Option flag and value, or the selected flag-only/value-only form. |
+| `%task:output%` | This task's expanded `output` path; usable in `arguments` only. |
+| `%task:input%` | The dependency's expanded output path; usable in dependent-task `arguments` only. Use `%inputfile%` for an independent task's input. |
+
+Input/output path variables work in command, output, arguments, and startin.
+Extension supports input variables only. In command presets, input path variables
+are derived from the task output template rather than a dropped file; use
+explicit paths or option values where possible.
+
+Undefined option references and unsupported or unterminated reserved placeholders
+are errors. Each argument token, command, output, or startin field supports one
+distinct option reference; separate different option placeholders with spaces in
+arguments. Flag-only options must occupy a whole argument or field. Disabled
+options omit their containing argument/field, so use standalone argument tokens
+for optional flags.
+
+Arguments use Jobman's template expansion and space splitting, **not a shell
+parser**. Quote characters, shell redirection, and shell pipelines do not add
+shell semantics. Paths substituted from a file placeholder remain one argument,
+including embedded spaces; keep each argument placeholder in its own token.
+
+## Validation and errors
+
+An invalid preset is skipped and its error is shown in the preset-loading report.
+Other valid presets can still load. Errors identify the preset file, the option
+or task (using one-based positions and its ID when available), the field, and the
+reason. JSON syntax errors include line, column, and byte offset; columns count
+UTF-8 bytes.
+
+Validation covers required fields and types, unknown fields, duplicate IDs and
+choice values, dropdown membership, numeric bounds, boolean values, task
+references, dependency ordering/cycles, and supported placeholders. A failed
+read exposes no partial or previously loaded definition. Missing executables,
+inaccessible runtime output paths, and conversion failures are reported in job
+logs at execution time rather than guessed from the machine parsing the preset.
+
+For example, a dropdown default `999` with choices `200` and `400` reports:
+
+```text
+options[1] ("width").default: 999 is not a listed choice. Allowed values: 200, 400.
 ```
 
-**Output variables:**
+## Monitor
 
-```shell
-%outputdir%        Replaces with the directory path of the output file.
-%outputfile%       Replaces with the full path of the output file.
-%outputext%        Replaces with the file extension of the output file.
-%outputbase%       Replaces with the base name of the output file.
+Monitor shows Name, Filename, Time, Priority, Status, and Progress. Time shows
+creation time while waiting, elapsed time while running, and final duration when
+execution finishes. Tooltips include creation/start/finish timestamps. Metrics
+show file/job totals, selected jobs, and outcomes including dependency failures.
+
+Start resumes stopped jobs; Stop requests termination; Restart runs eligible
+finished jobs again. Priority, removal, filtering, and dependency views use the
+existing queue. Restart logs show **Restarted**, the timestamp, and **Filename**
+with its size. Captured stdout/stderr are decoded as UTF-8. The file-browser menu
+lists **Input file**, then **Output file** (Show in Finder on macOS).
+
+## MCP server
+
+Enable **MCP** beside Max jobs, or launch `Jobman --mcp`. The server is initially
+off, binds only to IPv4 loopback, and normally listens at
+`http://127.0.0.1:37652/mcp` (Stageviz uses 37651). The checkbox and selected port
+are remembered across launches. An occupied-port startup error leaves the switch
+unchecked and clears automatic startup; fix the error and check it to retry.
+**Help → MCP Server** opens the [MCP guide](docs/MCP.md) on GitHub.
+
+```sh
+Jobman --mcp --mcp-port 37652
+Jobman --mcp --mcp-port 0
+codex mcp add jobman --url http://127.0.0.1:37652/mcp
 ```
 
-**Options variables:**
+Port `0` chooses an available port; the checkbox tooltip and startup log show its
+endpoint. Explicit command-line startup takes precedence over the remembered
+port. The macOS executable is `Jobman.app/Contents/MacOS/Jobman`.
 
-```shell
-%options:name%     Replaces the variable with the options name and its value.
+The server supports stateless MCP Streamable HTTP JSON requests: `initialize`,
+`ping`, `tools/list`, `tools/call`, and notifications. Its named tools are:
+
+| Capability | Tools |
+| --- | --- |
+| Application and preset state | `jobman_get_status`, `jobman_list_presets`, `jobman_select_preset` |
+| Output location and preferences | `jobman_set_output_directory`, `jobman_save_preferences` |
+| Submit files/folders | `jobman_submit_files` |
+| Enumerate, inspect, and control jobs | `jobman_list_jobs`, `jobman_get_job`, `jobman_control_job` |
+| Read and answer application dialogs | `jobman_get_dialog`, `jobman_respond_dialog` |
+| Inspect and operate Qt widgets/actions | `jobman_get_qt_state`, `jobman_qt_action` |
+| Capture actual widgets as PNG images | `jobman_capture_widget` |
+
+Submissions use the selected preset and normal file-drop/queue path. There is no
+MCP file-count or total-job cap; folders can contain thousands of files. Listings
+are paginated: follow `nextCursor` until empty. The page size defaults to 100 and
+can be increased. HTTP request-size bounds still apply to explicit path arrays.
+
+Submission acceptance means scanning started, not that files passed validation or
+jobs completed. Inspect dialogs, wait for submission readiness, enumerate the new
+UUIDs, and inspect final job states/logs. Drive requests from an **external
+controller**: handlers execute on Jobman's Qt thread. The Qt tools provide named
+inspection/actions rather than an embedded Python interpreter. See
+[docs/MCP.md](docs/MCP.md) for schemas, pagination, async workflows, client setup,
+and screenshot examples; agents should read it before operating Jobman.
+
+## Building
+
+Dependencies are Qt 6 Core, Concurrent, Gui, Widgets, and Network, plus a C++17
+compiler and CMake 3.27 or later. Set `THIRDPARTY_DIR` to the **installed dependency
+prefix** containing `lib/cmake/Qt6/Qt6Config.cmake`, matching the configuration
+and architecture. Build scripts report missing tools and environment variables.
+
+On macOS, the Xcode build script retains its CMake **3.27.x** requirement:
+
+```sh
+export THIRDPARTY_DIR="/path/to/dependency/install/prefix"
+./build_app.sh debug --target=13
+./build_app.sh release --target=13
 ```
 
-### Preset fields
+Use `--github` for a deployed DMG or `--appstore` for an App Store package;
+signing/provisioning require the corresponding identities and profiles. Use
+`DYLD_IMAGE_SUFFIX=_debug` only with Debug Qt frameworks; unset it for Release.
 
-`id`
-- Description: A unique identifier for the preset.
-- Usage: Used internally to reference the preset.
+On Windows, the script discovers installed Visual Studio/Build Tools and a matching
+CMake generator. Install the Desktop development with C++ workload and Windows
+SDK, or pass `--cmake_generator=NAME` for another configured toolchain.
 
-`name`
-- Description: The display name of the preset.
-- Usage: This is used for user interfaces or logging where a readable name is required.
-
-`type`
-- Description: The type of the preset. Supported types  `file` and `command`. File presets accepts dropped files and command adds single command jobs without varying input files. Default is `file`.
-- Usage: Determines how the preset behaves in the interface, either allowing file drops or presenting a command-only option.
-
-`filter`
-- Description: Defines the file type filter for the preset. Use standard wildcard patterns like `*.*` for all files, or specific extensions such as `*.jpg;*.png;*.bmp` for common image formats.
-- Usage: Specifies which file types are accepted for drag-and-drop operations or when applying the preset. This helps limit the input to supported formats relevant to the preset’s purpose.
-
-### Option fields
-
-`id`
-- Description: A unique identifier for the option.
-- Usage: Used internally to reference the option.
-- Required: __Yes__
-
-`name`
-- Description: The display name of the option.
-- Usage: This is used for user interfaces or logging where a readable name is required.
-- Required: __No__
-- 
-`description`
-- Description: A short explanation of the option.
-- Usage: Used in tooltips to provide additional context.
-- Required: __No__
-- 
-`flag`
-- Description: The command-line flag associated with this option.
-- Usage: Used to set the flag of the option.
-- Required: __No__
-
-`flagonly`
-- Description: A toggle flag for enabling use of the "flag only" without the value.
-- Usage: Used to provide "flag only" arguments.
-- Required: __No__
-
-`valueonly`
-- Description: A toggle flag for enabling use of the "value only" without the flag.
-- Usage: Used to provide "flag only" arguments.
-- Required: __No__
-
-`type`
-- Description: Specifies the ui type of the option. Supported types `checkbox`,`double`, `doubleslider`, `dropdown`, `openfile`, `savefile`, `integer`, `integerslider` and `text`.
-- Usage: Used as user interface control to present the option.
-- Required: __Yes__
-
-`value`
-- Description: The current value assigned to this option.
-- Usage: This field represents the actual selected or set value.
-- Required: __Yes__
-
-`default`
-- Description: The default value assigned if no user value is provided.
-- Usage: Used to reset to default settings.
-- Required: __No__ will be set to `value` if not defined.
-
-`minimum`
-- Description: The minimum allowed value for the option.
-- Usage: Used for validation to prevent values below this threshold.
-- Required: __No__ will be set to 0 if not defined.
-
- `maximum`
-- Description: The maximum allowed value for the option.
-- Usage: Used for validation to prevent values exceeding this threshold.
-- Required: __No__ will be set to 100 if not defined.
-
- `toggle`
-- Description: A toggle switch used to turn the option on or off.
-- Usage: This field conditionally enables or disables the option based on its state.
-- Required: __No__
-
-### Task fields
-
-`id`  
-- Description: A unique identifier for the task.  
-- Usage: Used to reference and manage task order or dependencies.  
-- Required: __Yes__
-
-`name`  
-- Description: A descriptive display name of the task.  
-- Usage: Used in the UI or logs to show a human-readable task label.  
-- Required: __No__
-
-`command`  
-- Description: The name or path of the executable to run.  
-- Usage: This is the actual program that will be launched for the task.  
-- Required: __Yes__
-
-`arguments`  
-- Description: Command-line arguments passed to the executable.  
-- Usage: Supports template values like `%task:input%` and `%task:output%`.  
-- Required: __No__
-
-`startin`  
-- Description: The working directory for the task.  
-- Usage: Sets the context path where the command will execute.  
-- Required: __No__
-
-`output`  
-- Description: Output file path or expression for the result of the task.  
-- Usage: Supports variables such as `%outputdir%`, `%outputbase%`, `%outputext%`.  
-- Required: __No__
-
-`extension`  
-- Description: Output file extension (e.g., `usdz`, `fbx`, `gltf`).  
-- Usage: Defines how the output file will be named/formatted.  
-- Required: __No__
-
-`dependson`  
-- Description: ID of the task this one depends on.  
-- Usage: Ensures that the specified task runs before this one.  
-- Required: __No__
-
-`exclusive`  
-- Description: Prevents the task from running in parallel with others that share the same `command`.  
-- Usage: Accepts `"true"` or `"false"`. If `"true"`, this task will only run exclusively.  
-- Required: __No__
-
-`documentation`  
-- Description: A list of short descriptions or help lines for the task.  
-- Usage: Displayed in UIs or documentation views for user guidance.  
-- Required: __No__
-
-**Task variables**
-
-```shell
-%task:input%       Substitutes the task input, which defaults to the dependent task output, or inputfile if no dependent task exists.
-%task:output%      Substitutes the output of the dependent task.
-```
-
-Each variable is designed to simplify the scripting and automation within preset configurations, ensuring that file paths and details are handled efficiently without manual specification in every command.
-
-Building
---------
-
-**Mac**
-
-Build and Deploy, make sure Thirdparty is set to build configuration Debug/ Release.
-
-```shell
-export THIRDPARTY_DIR=<path>
-./build_app.sh debug --target=12
-```
-
-
-Creating a new Deploy (Appstore):
-```shell
-./build_app.sh release --appstore --target=12
-```
-
-Make sure DYLD_IMAGE_SUFFIX is set properly for debug frameworks on Mac
-
-```shell
-export DYLD_IMAGE_SUFFIX=_debug
-```
-
-**Windows**
-
-Make sure you're using the correct Visual Studio version and architecture.
-Example for Visual Studio 2019, targeting x64:
-
-```shell
-"C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
-```
-
-Build and Deploy, make sure Thirdparty is set to build configuration Debug/ Release.
-
-```shell
-set THIRDPARTY_DIR=<path>
-call build_app.bat Debug --deploy
-```
-
-Creating a new Deploy:
-```shell
+```bat
+set "THIRDPARTY_DIR=C:\path\to\dependency-install-prefix"
+call build_app.bat Debug
 call build_app.bat Release --deploy
 ```
 
-Web Resources
--------------
+Use separate configuration-matched dependency prefixes for Debug and Release.
 
-* GitHub page:        https://github.com/mikaelsundell/jobman
-* Issues              https://github.com/mikaelsundell/jobman/issues
+## Testing
 
-Copyright
----------
+After configuring a matching build, run:
 
-**3rdparty libraries acknowledgment and copyright notice**
+```sh
+./test_app.sh release --build-dir build.release
+./test_app.sh debug --build-dir build.debug
+./test_app.sh release --build-dir build.release --filter 'jobman.preset_'
+```
 
-This product includes software developed by third parties. The copyrights and terms of use of these third-party libraries are fully acknowledged and respected. Below is a list of said libraries and their respective copyright notices:
+Windows uses `test_app.bat Debug` / `Release` with equivalent runner options.
+Python 3 is required. Results, build logs, JSON summaries, and JUnit reports are
+saved under `build.test-results/`.
 
-App icon: Copyright flaticon.com
+Tests cover preset validation and README examples, option expansion and command
+chains, process output/UTF-8/working directories, queue scheduling and signals,
+monitor state, file-drop recovery, MCP transport and persistence, thousands of
+input files, complete pagination, and UI themes/icons. GUI tests use isolated
+preferences. See [CTest/README.md](CTest/README.md) for direct CMake/CTest commands
+and comparison against the original queue implementation.
 
-The Qt Company Ltd.: Copyright (C) 2016 by The Qt Company Ltd. All rights reserved.
+## UI styling
 
-The use of the above-mentioned software within this product is in compliance with the respective licenses and/or terms and conditions of the copyright holders. The inclusion of these third-party libraries does not imply any endorsement by the copyright holders of the products developed using their software.
+Views use the shared `ui.h` / `ui.cpp` palette, fonts, semantic icons, disabled
+states, and DPI-aware pixmap cache. External `Resources/App.css` overrides the
+embedded stylesheet; it applies across windows and dialogs. The Debug menu can
+reload it. See [docs/UI.md](docs/UI.md) for role names and view setup.
 
+## Resources and acknowledgments
+
+- [GitHub project](https://github.com/mikaelsundell/jobman)
+- [Issues](https://github.com/mikaelsundell/jobman/issues)
+- License: BSD-3-Clause; see the SPDX headers in the source files.
+- App icon: flaticon.com.
+- Qt: Copyright The Qt Company Ltd. and its contributors, under the applicable Qt licenses.

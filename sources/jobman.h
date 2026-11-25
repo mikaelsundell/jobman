@@ -4,6 +4,7 @@
 
 #pragma once
 #include <QMainWindow>
+#include <QUrl>
 
 class JobmanPrivate;
 class Jobman : public QMainWindow {
@@ -11,6 +12,11 @@ class Jobman : public QMainWindow {
 public:
     Jobman();
     virtual ~Jobman();
+    bool startMcpServer(quint16 port = 37652);
+    void stopMcpServer();
+    bool isMcpServerRunning() const;
+    QUrl mcpServerUrl() const;
+    QString mcpServerError() const;
 
 private:
     QScopedPointer<JobmanPrivate> p;

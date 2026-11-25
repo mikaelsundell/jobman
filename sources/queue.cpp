@@ -287,9 +287,16 @@ QueuePrivate::restart(const QList<QUuid>& uuids)
                     }
                     QString log = QString("Uuid:\n"
                                           "%1\n\n"
+                                          "Restarted:\n"
+                                          "%2\n\n"
+                                          "Filename:\n"
+                                          "%3 (%4)\n\n"
                                           "Command:\n"
-                                          "%2 %3\n")
+                                          "%5 %6\n")
                                       .arg(job->uuid().toString())
+                                      .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"))
+                                      .arg(job->filename())
+                                      .arg(filesize(job->filename()))
                                       .arg(job->command())
                                       .arg(job->arguments().join(' '));
                     QString startin = job->startin();
@@ -631,7 +638,7 @@ QueuePrivate::processNextJobs()
     QMutexLocker locker(&mutex);
 
     const int free = qMax(0, threadpool.maxThreadCount() - activejobs);
-    const int jobsprocess = qMin(waitingjobs.size(), free);
+    const qsizetype jobsprocess = qMin(waitingjobs.size(), qsizetype(free));
     if (jobsprocess <= 0) {
         return;
     }
@@ -639,7 +646,7 @@ QueuePrivate::processNextJobs()
     QList<QSharedPointer<Job>> jobsrun;
     jobsrun.reserve(jobsprocess);
 
-    for (int i = 0; i < jobsprocess; ++i) {
+    for (qsizetype i = 0; i < jobsprocess; ++i) {
         if (waitingjobs.isEmpty()) {
             break;
         }
@@ -846,7 +853,8 @@ QueuePrivate::statusChanged(const QUuid& uuid, Job::Status status)
         }
     }
 
-    QMetaObject::invokeMethod(this, [this]() { processNextJobs(); }, Qt::QueuedConnection);
+    QMetaObject::invokeMethod(
+        this, [this]() { processNextJobs(); }, Qt::QueuedConnection);
 }
 
 QString
@@ -936,7 +944,8 @@ Queue::endBatch(const QUuid& uuid)
         return;
     }
 
-    QMetaObject::invokeMethod(p.data(), [this, uuid]() { p->endBatch(uuid); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, uuid]() { p->endBatch(uuid); }, Qt::BlockingQueuedConnection);
 }
 
 QUuid
@@ -973,7 +982,8 @@ Queue::start(const QUuid& uuid)
         return;
     }
 
-    QMetaObject::invokeMethod(p.data(), [this, uuid]() { p->start(uuid); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, uuid]() { p->start(uuid); }, Qt::BlockingQueuedConnection);
 }
 
 void
@@ -984,7 +994,8 @@ Queue::stop(const QUuid& uuid)
         return;
     }
 
-    QMetaObject::invokeMethod(p.data(), [this, uuid]() { p->stop(uuid); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, uuid]() { p->stop(uuid); }, Qt::BlockingQueuedConnection);
 }
 
 void
@@ -995,7 +1006,8 @@ Queue::restart(const QUuid& uuid)
         return;
     }
 
-    QMetaObject::invokeMethod(p.data(), [this, uuid]() { p->restart(uuid); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, uuid]() { p->restart(uuid); }, Qt::BlockingQueuedConnection);
 }
 
 void
@@ -1006,7 +1018,8 @@ Queue::restart(const QList<QUuid>& uuids)
         return;
     }
 
-    QMetaObject::invokeMethod(p.data(), [this, uuids]() { p->restart(uuids); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, uuids]() { p->restart(uuids); }, Qt::BlockingQueuedConnection);
 }
 
 void
@@ -1017,7 +1030,8 @@ Queue::remove(const QUuid& uuid)
         return;
     }
 
-    QMetaObject::invokeMethod(p.data(), [this, uuid]() { p->remove(uuid); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, uuid]() { p->remove(uuid); }, Qt::BlockingQueuedConnection);
 }
 
 void
@@ -1028,7 +1042,8 @@ Queue::remove(const QList<QUuid>& uuids)
         return;
     }
 
-    QMetaObject::invokeMethod(p.data(), [this, uuids]() { p->remove(uuids); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, uuids]() { p->remove(uuids); }, Qt::BlockingQueuedConnection);
 }
 
 int
@@ -1039,7 +1054,8 @@ Queue::threads() const
     }
 
     int result = 0;
-    QMetaObject::invokeMethod(p.data(), [this, &result]() { result = p->threads; }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, &result]() { result = p->threads; }, Qt::BlockingQueuedConnection);
     return result;
 }
 
@@ -1079,7 +1095,8 @@ Queue::isBatch()
     }
 
     bool result = false;
-    QMetaObject::invokeMethod(p.data(), [this, &result]() { result = p->isBatch(); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, &result]() { result = p->isBatch(); }, Qt::BlockingQueuedConnection);
     return result;
 }
 
@@ -1091,6 +1108,7 @@ Queue::isProcessing()
     }
 
     bool result = false;
-    QMetaObject::invokeMethod(p.data(), [this, &result]() { result = p->isProcessing(); }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(
+        p.data(), [this, &result]() { result = p->isProcessing(); }, Qt::BlockingQueuedConnection);
     return result;
 }

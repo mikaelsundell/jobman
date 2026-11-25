@@ -3,6 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "optionswidget.h"
+#include "ui.h"
 #include "utils.h"
 
 #include <QCheckBox>
@@ -46,7 +47,7 @@ OptionsWidgetPrivate::init()
 {
     preset.reset(new Preset());
     // font
-    font.setPointSize(10);
+    font.setPointSize(::ui()->fontSize(UI::Small));
 }
 
 void
@@ -70,10 +71,7 @@ OptionsWidgetPrivate::update()
             QToolButton* tooltip = new QToolButton(labelwidget);
             tooltip->setObjectName("tooltip");
             tooltip->setMaximumSize(QSize(16, 16));
-            QIcon icon;
-            icon.addFile(QString::fromUtf8(":/icons/resources/Tooltip.png"), QSize(), QIcon::Mode::Normal,
-                         QIcon::State::Off);
-            tooltip->setIcon(icon);
+            ::ui()->setIcon(tooltip, UI::Tooltip);
             tooltip->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonIconOnly);
 
             QVariant defaultvalue = option->defaultvalue;
@@ -250,10 +248,8 @@ OptionsWidgetPrivate::update()
             lineedit->setReadOnly(true);
             filelayout->addWidget(lineedit);
 
-            QIcon icon;
-            icon.addFile(QString::fromUtf8(":/icons/resources/Folder.png"), QSize(), QIcon::Normal, QIcon::Off);
             QToolButton* button = new QToolButton(optionwidget);
-            button->setIcon(icon);
+            ::ui()->setIcon(button, UI::Folder);
             filelayout->addWidget(button);
 
             connect(button, &QToolButton::clicked, this, [this, lineedit, option]() {

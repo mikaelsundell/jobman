@@ -8,15 +8,156 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMap>
 #include <QPointer>
+#include <QRegularExpression>
+#include <QSet>
 
-Option::Option() {}
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
+Option::Option()
+    : enabled(true)
+{}
 
 Option::~Option() {}
 
 Task::Task() {}
 
 Task::~Task() {}
+
+namespace {
+QString
+jsonText(const QJsonValue& value)
+{
+    const QByteArray encoded = QJsonDocument(QJsonArray { value }).toJson(QJsonDocument::Compact);
+    return QString::fromUtf8(encoded.mid(1, encoded.size() - 2));
+}
+
+class PresetValidation {
+public:
+    explicit PresetValidation(const QString& filename)
+        : filename(filename)
+    {}
+
+    bool fail(const QString& context, const QString& message)
+    {
+        error = QString("Preset file: %1\n%2: %3").arg(filename, context, message);
+        return false;
+    }
+
+    bool members(const QJsonObject& object, const QStringList& allowed, const QString& context)
+    {
+        for (auto it = object.begin(); it != object.end(); ++it) {
+            if (!allowed.contains(it.key()))
+                return fail(context + '.' + it.key(), "Unknown field.");
+        }
+        return true;
+    }
+
+    bool string(const QJsonObject& object, const QString& key, QString& result, const QString& context,
+                bool required = false)
+    {
+        if (!object.contains(key))
+            return !required || fail(context + '.' + key, "Required field is missing.");
+        const auto value = object.value(key);
+        if (!value.isString())
+            return fail(context + '.' + key, "Expected a string; got " + jsonText(value) + '.');
+        result = value.toString();
+        if (required && result.trimmed().isEmpty())
+            return fail(context + '.' + key, "Required string must not be empty or whitespace.");
+        return true;
+    }
+
+    bool boolean(const QJsonValue& value, bool& result, const QString& context)
+    {
+        if (value.isBool()) {
+            result = value.toBool();
+            return true;
+        }
+        if (value.isString()) {
+            const QString text = value.toString().toLower();
+            if (text == "true" || text == "false") {
+                result = text == "true";
+                return true;
+            }
+        }
+        return fail(context, "Expected true or false (a JSON boolean or string); got " + jsonText(value) + '.');
+    }
+
+    bool number(const QJsonValue& value, bool integer, double& result, const QString& context)
+    {
+        bool ok = value.isDouble();
+        result = value.toDouble();
+        if (value.isString()) {
+            if (integer)
+                result = static_cast<double>(value.toString().toInt(&ok));
+            else
+                result = value.toString().toDouble(&ok);
+        }
+        if (!ok || !std::isfinite(result)
+            || (integer
+                && (std::floor(result) != result || result < std::numeric_limits<int>::min()
+                    || result > std::numeric_limits<int>::max()))) {
+            return fail(context, QString("Expected a finite %1; got %2.")
+                                     .arg(integer ? "32-bit integer" : "number", jsonText(value)));
+        }
+        return true;
+    }
+
+    bool scalar(const QJsonValue& value, const QString& context)
+    {
+        return value.isString() || value.isBool() || (value.isDouble() && std::isfinite(value.toDouble()))
+               || fail(context, "Expected a string, number, or boolean; got " + jsonText(value) + '.');
+    }
+
+    bool variables(const QString& source, const QString& field, const QString& context,
+                   const QList<QSharedPointer<Option>>& options, bool dependent)
+    {
+        const QStringList paths { "inputdir",  "inputfile",  "inputext",  "inputbase",
+                                  "outputdir", "outputfile", "outputext", "outputbase" };
+        const QRegularExpression reserved("%(?:[A-Za-z_][A-Za-z0-9_]*:|options|task|input|output)");
+        auto matches = reserved.globalMatch(source);
+        QSet<QString> references;
+        while (matches.hasNext()) {
+            const auto match = matches.next();
+            const qsizetype end = source.indexOf('%', match.capturedStart() + 1);
+            if (end < 0)
+                return fail(context, "Unterminated placeholder beginning at " + match.captured() + '.');
+            const QString token = source.mid(match.capturedStart() + 1, end - match.capturedStart() - 1);
+            if (token.startsWith("options:")) {
+                const QString id = token.mid(8);
+                const auto found = std::find_if(options.cbegin(), options.cend(),
+                                                [&](const auto& option) { return option->id == id; });
+                if (found == options.cend())
+                    return fail(context, QString("Placeholder %%%1% references an undefined option.").arg(token));
+                if (field == "extension")
+                    return fail(context, "Option placeholders are not supported in extension.");
+                references.insert(id);
+                if ((*found)->flagonly.toBool() && source != '%' + token + '%')
+                    return fail(context, "A flagonly option must occupy its own argument or field.");
+            }
+            else if (token.startsWith("task:")) {
+                if (field != "arguments" || (token != "task:input" && token != "task:output"))
+                    return fail(context,
+                                "Supported task placeholders are %task:input% and %task:output%, in arguments only.");
+                if (token == "task:input" && !dependent)
+                    return fail(context, "%task:input% requires dependson; use %inputfile% for the original input.");
+            }
+            else if (!paths.contains(token) || (field == "extension" && token.startsWith("output"))) {
+                return fail(context, QString("Unsupported placeholder %%%1% in %2.").arg(token, field));
+            }
+        }
+        if (references.size() > 1)
+            return fail(context, "Only one distinct option placeholder is supported per argument token or field.");
+        return true;
+    }
+
+    QString filename;
+    QString error;
+};
+}  // namespace
 
 class PresetPrivate {
 public:
@@ -51,349 +192,343 @@ PresetPrivate::init()
 bool
 PresetPrivate::read()
 {
-    QFile file(filename);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        error = QString("Failed to open file: %1").arg(filename);
-        valid = false;
-        return valid;
-    }
-    QByteArray jsonData = file.readAll();
-    if (jsonData.size() == 0) {
-        error = QString("Parse error:\n"
-                        "File is empty");
-        valid = false;
-        return valid;
-    }
-    file.close();
-    QJsonParseError jsonError;
-    QJsonDocument document = QJsonDocument::fromJson(jsonData, &jsonError);
-    if (document.isNull()) {
-        int line = 1;  // get line and column
-        int column = 1;
-        for (int i = 0; i < jsonError.offset && i < jsonData.size(); ++i) {
-            if (jsonData[i] == '\n') {
-                ++line;
-                column = 1;
+    // A failed read must not expose data or errors left over from a previous file.
+    valid = false;
+    error.clear();
+    id.clear();
+    name.clear();
+    type.clear();
+    filter.clear();
+    description.clear();
+    options.clear();
+    tasks.clear();
+    PresetValidation check(filename);
+    const auto parse = [&]() -> bool {
+        QFile file(filename);
+        if (!file.open(QIODevice::ReadOnly))
+            return check.fail("file", "Could not open for reading: " + file.errorString());
+        const QByteArray bytes = file.readAll();
+        if (file.error() != QFileDevice::NoError)
+            return check.fail("file", "Could not read: " + file.errorString());
+        if (bytes.trimmed().isEmpty())
+            return check.fail("JSON", "File is empty.");
+        QJsonParseError parseError;
+        const QJsonDocument document = QJsonDocument::fromJson(bytes, &parseError);
+        if (parseError.error != QJsonParseError::NoError) {
+            qsizetype line = 1, column = 1;
+            for (qsizetype i = 0; i < parseError.offset && i < bytes.size(); ++i) {
+                if (bytes[i] == '\n') {
+                    ++line;
+                    column = 1;
+                }
+                else {
+                    ++column;
+                }
+            }
+            return check.fail("JSON", QString("%1 at line %2, column %3 (byte offset %4).")
+                                          .arg(parseError.errorString())
+                                          .arg(line)
+                                          .arg(column)
+                                          .arg(parseError.offset));
+        }
+        if (!document.isObject())
+            return check.fail("preset", "Expected a JSON object.");
+        const QJsonObject root = document.object();
+        if (!check.members(root, { "id", "name", "type", "filter", "description", "options", "tasks" }, "preset"))
+            return false;
+        QString parsedId, parsedName, parsedType, parsedFilter;
+        if (!check.string(root, "id", parsedId, "preset", true)
+            || !check.string(root, "name", parsedName, "preset", true)
+            || !check.string(root, "type", parsedType, "preset")
+            || !check.string(root, "filter", parsedFilter, "preset"))
+            return false;
+        parsedType = parsedType.isEmpty() ? "file" : parsedType.toLower();
+        if (parsedType != "file" && parsedType != "command")
+            return check.fail("preset.type", "Expected file or command; got " + jsonText(root.value("type")) + '.');
+        if (parsedFilter.isEmpty())
+            parsedFilter = "*.*";
+        QStringList patterns = parsedFilter.split(';');
+        for (QString& pattern : patterns) {
+            pattern = pattern.trimmed();
+            if (pattern.isEmpty())
+                return check.fail("preset.filter", "Empty wildcard pattern in semicolon-separated filter.");
+        }
+        parsedFilter = patterns.join(';');
+        QStringList parsedDescription;
+        if (root.contains("description")) {
+            const QJsonValue value = root.value("description");
+            if (value.isString())
+                parsedDescription.append(value.toString());
+            else if (value.isArray()) {
+                for (const auto& entry : value.toArray()) {
+                    if (!entry.isString())
+                        return check.fail("preset.description", "Expected a string or array of strings.");
+                    parsedDescription.append(entry.toString());
+                }
             }
             else {
-                ++column;
+                return check.fail("preset.description", "Expected a string or array of strings.");
             }
         }
-        error = QString("Parse error:\n"
-                        "%1 at line %2, column %3 (offset %4)")
-                    .arg(jsonError.errorString())
-                    .arg(line)
-                    .arg(column)
-                    .arg(jsonError.offset);
-        valid = false;
-        return valid;
-    }
-    if (!document.isObject()) {
-        error = QString("Json document is not an object for file: %1").arg(filename);
-        valid = false;
-        return valid;
-    }
-    QJsonObject json = document.object();
-    if (json.contains("id") && json["id"].isString()) {
-        id = json["id"].toString();
-    }
-    else {
-        error = QString("Json for preset: \"%1\" contains no a unique id").arg(filename);
-        valid = false;
-        return valid;
-    }
-    if (json.contains("name") && json["name"].isString()) {
-        name = json["name"].toString();
-    }
-    else {
-        error = QString("Json contains no a name").arg(filename);
-        valid = false;
-        return valid;
-    }
-    if (json.contains("type") && json["type"].isString()) {
-        type = json["type"].toString();
-    }
-    if (json.contains("filter") && json["filter"].isString()) {
-        filter = json["filter"].toString();
-    }
-    if (!type.length()) {
-        type = "file";
-    }
-    if (!filter.length()) {
-        filter = "*.*";
-    }
-    if (json.contains("options") && json["options"].isArray()) {
-        QJsonArray optionsArray = json["options"].toArray();
-        for (int i = 0; i < optionsArray.size(); ++i) {
-            QJsonObject jsonoption = optionsArray[i].toObject();
+        QList<QSharedPointer<Option>> parsedOptions;
+        QSet<QString> optionIds;
+        if (root.contains("options") && !root.value("options").isArray())
+            return check.fail("preset.options", "Expected an array of option objects.");
+        const auto optionArray = root.value("options").toArray();
+        for (qsizetype i = 0; i < optionArray.size(); ++i) {
+            QString context = QString("options[%1]").arg(i + 1);
+            if (!optionArray[i].isObject())
+                return check.fail(context, "Expected an option object.");
+            const auto object = optionArray[i].toObject();
+            if (!check.members(object,
+                               { "id", "name", "description", "flag", "type", "toggle", "flagonly", "valueonly",
+                                 "value", "default", "minimum", "maximum", "options" },
+                               context))
+                return false;
             QSharedPointer<Option> option(new Option());
-            if (jsonoption.contains("id") && jsonoption["id"].isString())
-                option->id = jsonoption["id"].toString();
-            if (jsonoption.contains("name") && jsonoption["name"].isString())
-                option->name = jsonoption["name"].toString();
-            if (jsonoption.contains("description") && jsonoption["description"].isString())
-                option->description = jsonoption["description"].toString();
-            if (jsonoption.contains("flag") && jsonoption["flag"].isString())
-                option->flag = jsonoption["flag"].toString();
-            if (jsonoption.contains("type") && jsonoption["type"].isString())
-                option->type = jsonoption["type"].toString();
-            if (jsonoption.contains("toggle") && jsonoption["toggle"].isString())
-                option->toggle = jsonoption["toggle"].toString();
-            if (jsonoption.contains("flagonly"))
-                option->flagonly = jsonoption["flagonly"].toVariant();
-            if (jsonoption.contains("valueonly"))
-                option->valueonly = jsonoption["valueonly"].toVariant();
-            if (jsonoption.contains("value"))
-                option->value = jsonoption["value"].toVariant();
-            if (jsonoption.contains("default"))
-                option->defaultvalue = jsonoption["default"].toVariant();
-            if (jsonoption.contains("minimum"))
-                option->minimum = jsonoption["minimum"].toVariant();
-            if (jsonoption.contains("maximum"))
-                option->maximum = jsonoption["maximum"].toVariant();
-            if (jsonoption.contains("options") && jsonoption["options"].isArray()) {
-                QJsonArray optionsArray = jsonoption["options"].toArray();
-                int i = 0;
-                for (const QJsonValue& opt : optionsArray) {
-                    QJsonObject optObj = opt.toObject();
-                    QString label;
-                    QVariant optValue;
-                    if (optObj.contains("value")) {
-                        optValue = optObj["value"].toVariant();
-                    }
-                    else {
-                        error = QString("Json for option \"%1\" in list contains no value").arg(i);
-                        valid = false;
-                        return valid;
-                    }
-                    if (optObj.contains("label") && optObj["label"].isString())
-                        label = optObj["label"].toString();
-                    else
-                        label = optValue.toString();  // use value as label if not set
-                    option->options.append(qMakePair(label, optValue));
-                    i++;
-                }
-            }
-            if (!option->id.isEmpty() && !option->name.isEmpty() && !option->type.isEmpty()) {
-                // validation
-                for (QSharedPointer<Option> other : options) {
-                    if (other->id == option->id) {
-                        error = QString("Json for option %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
-                        valid = false;
-                        return valid;
-                    }
-                }
-                if (!(option->type.toLower() == "checkbox" || option->type.toLower() == "double"
-                      || option->type.toLower() == "doubleslider" || option->type.toLower() == "dropdown"
-                      || option->type.toLower() == "openfile" || option->type.toLower() == "savefile"
-                      || option->type.toLower() == "integer" || option->type.toLower() == "integerslider"
-                      || option->type.toLower() == "label" || option->type.toLower() == "text")) {
-                    error
-                        = QString(
-                              "Json for option %1 contains an invalid type: %2, valid types are "
-                              "checkbox, double, doubleslider, openfile, savefile, integer, integerslider, dropdown and text")
-                              .arg(i + 1)
-                              .arg(option->type.toLower());  // +1 for user readability
-                    valid = false;
-                    return valid;
-                }
-                else {
-                    // default and value required for non file and text
-                    if (!(option->type.toLower() == "openfile" || option->type.toLower() == "savefile"
-                          || option->type.toLower() == "text" || option->type.toLower() == "label")) {
-                        if (!option->defaultvalue.isValid() || !option->value.isValid()) {
-                            QList<QString> attributes;
-                            if (!option->defaultvalue.isValid()) {
-                                attributes.append("defaultvalue");
-                            }
-                            if (!option->value.isValid()) {
-                                attributes.append("value");
-                            }
-                            error
-                                = QString(
-                                      "Json for option \"%1\" is missing required attributes for non field or text type\n"
-                                      "Attributes: %2")
-                                      .arg(option->name)
-                                      .arg(attributes.join(", "));
-                        }
-                    }
-                }
-
-                if (option->flagonly.isNull()) {
-                    option->flagonly = false;
-                }
-                if (option->valueonly.isNull()) {
-                    option->valueonly = false;
-                }
-                if (option->minimum.isNull()) {
-                    option->minimum = 0;
-                }
-                if (option->maximum.isNull()) {
-                    option->maximum = 100;
-                }
-                if (option->defaultvalue.isNull()) {
-                    option->defaultvalue = option->value;
-                }
-                if (option->toggle.isEmpty()) {
-                    option->enabled = true;
-                }
-                else {
-                    option->enabled = false;
-                }
-                bool hasdefault = true, hasvalue = true;
-                for (const QPair<QString, QVariant>& pair : option->options) {
-                    if (pair.second == option->defaultvalue) {
-                        hasdefault = true;
-                    }
-                    if (pair.second == option->value) {
-                        hasvalue = true;
-                    }
-                }
-                if (!hasdefault) {
-                    error
-                        = QString(
-                              "Invalid default value for option \"%1\": The specified default value is not listed in its options.")
-                              .arg(option->name);
-                    valid = false;
-                    return valid;
-                }
-                if (!hasvalue) {
-                    error = QString(
-                                "Invalid value for option \"%1\": The specified value is not listed in its options.")
-                                .arg(option->name);
-                    valid = false;
-                    return valid;
-                }
-                for (QSharedPointer<Option> other : options) {
-                    if (other->id == option->id) {
-                        error = QString("Json for option %1 contain a duplicate id: %2").arg(i + 1).arg(other->id);
-                        valid = false;
-                        return valid;
-                    }
-                }
-                options.append(option);
+            if (!check.string(object, "id", option->id, context, true))
+                return false;
+            context += QString(" (\"%1\")").arg(option->id);
+            if (optionIds.contains(option->id))
+                return check.fail(context + ".id", "Duplicate option id: " + option->id);
+            optionIds.insert(option->id);
+            if (!check.string(object, "name", option->name, context, true)
+                || !check.string(object, "type", option->type, context, true)
+                || !check.string(object, "description", option->description, context)
+                || !check.string(object, "flag", option->flag, context)
+                || !check.string(object, "toggle", option->toggle, context))
+                return false;
+            option->type = option->type.toLower();
+            const QStringList types { "checkbox", "double",  "doubleslider",  "dropdown", "openfile",
+                                      "savefile", "integer", "integerslider", "label",    "text" };
+            if (!types.contains(option->type))
+                return check.fail(context + ".type", "Unsupported type; expected one of: " + types.join(", ") + '.');
+            bool flagOnly = false, valueOnly = false;
+            if ((object.contains("flagonly")
+                 && !check.boolean(object.value("flagonly"), flagOnly, context + ".flagonly"))
+                || (object.contains("valueonly")
+                    && !check.boolean(object.value("valueonly"), valueOnly, context + ".valueonly")))
+                return false;
+            if (flagOnly && valueOnly)
+                return check.fail(context, "flagonly and valueonly cannot both be true.");
+            if (flagOnly && option->flag.trimmed().isEmpty())
+                return check.fail(context + ".flag", "flagonly requires a nonempty flag.");
+            option->flagonly = flagOnly;
+            option->valueonly = valueOnly;
+            if (!object.contains("value"))
+                return check.fail(context + ".value", "Required field is missing; default does not replace value.");
+            if (!check.scalar(object.value("value"), context + ".value"))
+                return false;
+            option->value = object.value("value").toVariant();
+            const QJsonValue reset = object.contains("default") ? object.value("default") : object.value("value");
+            if (!check.scalar(reset, context + ".default"))
+                return false;
+            option->defaultvalue = reset.toVariant();
+            const bool integer = option->type == "integer" || option->type == "integerslider";
+            const bool numeric = integer || option->type == "double" || option->type == "doubleslider";
+            if (numeric) {
+                double minimum = 0, maximum = 100, value = 0, defaultValue = 0;
+                if ((object.contains("minimum")
+                     && !check.number(object.value("minimum"), integer, minimum, context + ".minimum"))
+                    || (object.contains("maximum")
+                        && !check.number(object.value("maximum"), integer, maximum, context + ".maximum"))
+                    || !check.number(object.value("value"), integer, value, context + ".value")
+                    || !check.number(reset, integer, defaultValue, context + ".default"))
+                    return false;
+                if (minimum > maximum)
+                    return check.fail(context + ".minimum", "Minimum must not exceed maximum.");
+                if (option->type == "doubleslider" && (minimum == maximum || !std::isfinite(maximum - minimum)))
+                    return check.fail(context, "doubleslider requires a positive, finite range (maximum - minimum).");
+                if (value < minimum || value > maximum)
+                    return check.fail(context + ".value", QString("%1 is outside [%2, %3].")
+                                                              .arg(jsonText(object.value("value")))
+                                                              .arg(minimum)
+                                                              .arg(maximum));
+                if (defaultValue < minimum || defaultValue > maximum)
+                    return check.fail(context + ".default",
+                                      QString("%1 is outside [%2, %3].").arg(jsonText(reset)).arg(minimum).arg(maximum));
+                option->minimum = integer ? QVariant(static_cast<int>(minimum)) : QVariant(minimum);
+                option->maximum = integer ? QVariant(static_cast<int>(maximum)) : QVariant(maximum);
             }
             else {
-                QList<QString> attributes;
-                if (option->id.isEmpty()) {
-                    attributes.append("id");
-                }
-                if (option->name.isEmpty()) {
-                    attributes.append("name");
-                }
-                if (option->type.isEmpty()) {
-                    attributes.append("type");
-                }
-                error = QString("Json for option is missing required attributes\n"
-                                "Attributes: %1")
-                            .arg(attributes.join(", "));
-                valid = false;
-                return valid;
+                if (object.contains("minimum") || object.contains("maximum"))
+                    return check.fail(context, "minimum and maximum are only supported for numeric option types.");
+                option->minimum = 0;
+                option->maximum = 100;
             }
-        }
-    }
-    if (json.contains("tasks") && json["tasks"].isArray()) {
-        QJsonArray tasksArray = json["tasks"].toArray();
-        QVector<QJsonObject> tasksVec;
-        tasksVec.reserve(tasksArray.size());
-        for (const QJsonValue& val : tasksArray) {
-            if (val.isObject()) {
-                tasksVec.append(val.toObject());
+            if (option->type == "checkbox") {
+                bool value, defaultValue;
+                if (!check.boolean(object.value("value"), value, context + ".value")
+                    || !check.boolean(reset, defaultValue, context + ".default"))
+                    return false;
+                option->value = value;
+                option->defaultvalue = defaultValue;
             }
+            if ((option->type == "text" || option->type == "label" || option->type == "openfile"
+                 || option->type == "savefile")
+                && (!object.value("value").isString() || !reset.isString()))
+                return check.fail(context,
+                                  "value and default must be strings for text, label, openfile, and savefile options.");
+            if (option->type == "dropdown") {
+                const auto choices = object.value("options");
+                if (!choices.isArray() || choices.toArray().isEmpty())
+                    return check.fail(context + ".options", "Dropdown requires a nonempty array of choices.");
+                QStringList allowed;
+                for (qsizetype j = 0; j < choices.toArray().size(); ++j) {
+                    const QString choiceContext = context + QString(".options[%1]").arg(j + 1);
+                    const auto entry = choices.toArray()[j];
+                    if (!entry.isObject())
+                        return check.fail(choiceContext, "Expected a choice object.");
+                    const auto choice = entry.toObject();
+                    if (!check.members(choice, { "label", "value" }, choiceContext))
+                        return false;
+                    if (!choice.contains("value"))
+                        return check.fail(choiceContext + ".value", "Required field is missing.");
+                    if (!check.scalar(choice.value("value"), choiceContext + ".value"))
+                        return false;
+                    QString label = choice.value("value").toVariant().toString();
+                    if (!check.string(choice, "label", label, choiceContext))
+                        return false;
+                    const QVariant value = choice.value("value").toVariant();
+                    for (const auto& previous : option->options) {
+                        if (previous.second == value)
+                            return check.fail(choiceContext + ".value",
+                                              "Duplicate dropdown value: " + jsonText(choice.value("value")));
+                    }
+                    option->options.append(qMakePair(label, value));
+                    allowed.append(jsonText(choice.value("value")));
+                }
+                const auto listed = [&](const QVariant& value) {
+                    return std::any_of(option->options.cbegin(), option->options.cend(),
+                                       [&](const auto& choice) { return choice.second == value; });
+                };
+                if (!listed(option->defaultvalue))
+                    return check.fail(context + ".default",
+                                      jsonText(reset) + " is not a listed choice. Allowed values: " + allowed.join(", ")
+                                          + '.');
+                if (!listed(option->value))
+                    return check.fail(context + ".value",
+                                      jsonText(object.value("value"))
+                                          + " is not a listed choice. Allowed values: " + allowed.join(", ") + '.');
+            }
+            else if (object.contains("options")) {
+                return check.fail(context + ".options", "Choice lists are only supported for dropdown options.");
+            }
+            option->enabled = option->toggle.isEmpty();
+            parsedOptions.append(option);
         }
-        std::sort(tasksVec.begin(), tasksVec.end(), [](const QJsonObject& a, const QJsonObject& b) {  // sort by id
-            QString ida = a.contains("id") && a["id"].isString() ? a["id"].toString() : "";
-            QString idb = b.contains("id") && b["id"].isString() ? b["id"].toString() : "";
-            return ida < idb;
-        });
-        for (int i = 0; i < tasksVec.size(); ++i) {
-            QJsonObject jsontask = tasksVec[i];
+        if (!root.value("tasks").isArray() || root.value("tasks").toArray().isEmpty())
+            return check.fail("preset.tasks", "Required nonempty array of task objects is missing or invalid.");
+        struct TaskRecord {
+            QSharedPointer<Task> task;
+            QString context;
+        };
+        QList<TaskRecord> records;
+        QSet<QString> taskIds;
+        const auto taskArray = root.value("tasks").toArray();
+        for (qsizetype i = 0; i < taskArray.size(); ++i) {
+            QString context = QString("tasks[%1]").arg(i + 1);
+            if (!taskArray[i].isObject())
+                return check.fail(context, "Expected a task object.");
+            const auto object = taskArray[i].toObject();
+            if (!check.members(object,
+                               { "id", "name", "command", "extension", "output", "arguments", "startin", "dependson",
+                                 "documentation", "exclusive" },
+                               context))
+                return false;
             QSharedPointer<Task> task(new Task());
-            if (jsontask.contains("id") && jsontask["id"].isString())
-                task->id = jsontask["id"].toString();
-            if (jsontask.contains("name") && jsontask["name"].isString())
-                task->name = jsontask["name"].toString();
-            if (jsontask.contains("command") && jsontask["command"].isString())
-                task->command = jsontask["command"].toString();
-            if (jsontask.contains("extension") && jsontask["extension"].isString())
-                task->extension = jsontask["extension"].toString();
-            if (jsontask.contains("output") && jsontask["output"].isString())
-                task->output = jsontask["output"].toString();
-            if (jsontask.contains("arguments") && jsontask["arguments"].isString())
-                task->arguments = jsontask["arguments"].toString();
-            if (jsontask.contains("startin") && jsontask["startin"].isString())
-                task->startin = jsontask["startin"].toString();
-            if (jsontask.contains("dependson") && jsontask["dependson"].isString())
-                task->dependson = jsontask["dependson"].toString();
-            if (jsontask.contains("documentation") && jsontask["documentation"].isArray()) {
-                QJsonArray docarray = jsontask["documentation"].toArray();
-                for (int i = 0; i < docarray.size(); ++i) {
-                    task->documentation.append(docarray[i].toString());
+            if (!check.string(object, "id", task->id, context, true))
+                return false;
+            context += QString(" (\"%1\")").arg(task->id);
+            if (taskIds.contains(task->id))
+                return check.fail(context + ".id", "Duplicate task id: " + task->id);
+            taskIds.insert(task->id);
+            if (!check.string(object, "name", task->name, context, true)
+                || !check.string(object, "command", task->command, context, true)
+                || !check.string(object, "extension", task->extension, context, true)
+                || !check.string(object, "output", task->output, context, true)
+                || !check.string(object, "arguments", task->arguments, context, true)
+                || !check.string(object, "startin", task->startin, context)
+                || !check.string(object, "dependson", task->dependson, context))
+                return false;
+            if (object.contains("documentation")) {
+                if (!object.value("documentation").isArray())
+                    return check.fail(context + ".documentation", "Expected an array of strings.");
+                for (const auto& entry : object.value("documentation").toArray()) {
+                    if (!entry.isString())
+                        return check.fail(context + ".documentation", "Every documentation entry must be a string.");
+                    task->documentation.append(entry.toString());
                 }
             }
-            if (jsontask.contains("exclusive"))
-                task->exclusive = jsontask["exclusive"].toVariant();
-            if (!task->id.isEmpty() && !task->name.isEmpty() && !task->command.isEmpty() && !task->extension.isEmpty()
-                && !task->arguments.isEmpty()) {
-                // validation
-                for (QSharedPointer<Task> other : tasks) {
-                    if (other->id == task->id) {
-                        error = QString("Json for task: \"%1\" contain a duplicate id: %2").arg(i + 1).arg(other->id);
-                        valid = false;
-                        return valid;
-                    }
-                }
-                if (task->dependson.length() > 0) {
-                    bool found = false;
-                    for (int j = 0; j < tasks.size(); ++j) {
-                        if (tasks[j]->id == task->dependson) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        error = QString("Json for task: \"%1\" contains a dependson id that can not be found")
-                                    .arg(task->name);
-                        valid = false;
-                        return valid;
-                    }
-                }
-                tasks.append(task);
-            }
-            else {
-                QList<QString> attributes;
-                if (task->id.isEmpty()) {
-                    attributes.append("id");
-                }
-                if (task->name.isEmpty()) {
-                    attributes.append("name");
-                }
-                if (task->command.isEmpty()) {
-                    attributes.append("command");
-                }
-                if (task->extension.isEmpty()) {
-                    attributes.append("extension");
-                }
-                if (task->arguments.isEmpty()) {
-                    attributes.append("arguments");
-                }
-                error = QString("Json for task is missing required attributes\n"
-                                "Attributes: %1")
-                            .arg(attributes.join(", "));
-                valid = false;
-                return valid;
-            }
-            if (task->exclusive.isNull()) {
-                task->exclusive = false;
-            }
+            bool exclusive = false;
+            if (object.contains("exclusive")
+                && !check.boolean(object.value("exclusive"), exclusive, context + ".exclusive"))
+                return false;
+            task->exclusive = exclusive;
+            records.append({ task, context });
         }
-    }
-    else {
-        error = QString("Json contains no tasks");
-        valid = false;
-        return valid;
-    }
-    valid = true;
+        QMap<QString, QString> parents;
+        for (const auto& record : records) {
+            const auto& dependency = record.task->dependson;
+            if (!dependency.isEmpty() && !taskIds.contains(dependency))
+                return check.fail(record.context + ".dependson", "Undefined task id: " + dependency);
+            if (dependency == record.task->id)
+                return check.fail(record.context + ".dependson", "A task cannot depend on itself.");
+            parents.insert(record.task->id, dependency);
+        }
+        QSet<QString> visited;
+        for (const auto& record : records) {
+            QString current = record.task->id;
+            QStringList chain;
+            QSet<QString> path;
+            while (!current.isEmpty() && !visited.contains(current)) {
+                if (path.contains(current))
+                    return check.fail(record.context + ".dependson",
+                                      "Dependency cycle: " + (chain + QStringList { current }).join(" -> "));
+                path.insert(current);
+                chain.append(current);
+                current = parents.value(current);
+            }
+            for (const auto& member : chain)
+                visited.insert(member);
+        }
+        std::sort(records.begin(), records.end(), [](const auto& a, const auto& b) { return a.task->id < b.task->id; });
+        QList<QSharedPointer<Task>> parsedTasks;
+        for (const auto& record : records) {
+            const auto& task = record.task;
+            if (!task->dependson.isEmpty() && task->dependson >= task->id)
+                return check.fail(
+                    record.context + ".dependson",
+                    "Dependency must sort before this task by string id; use ordered ids such as 01, 02, 03.");
+            for (const auto& field : { QString("command"), QString("extension"), QString("output"), QString("startin"),
+                                       QString("arguments") }) {
+                const QString source = field == "command"     ? task->command
+                                       : field == "extension" ? task->extension
+                                       : field == "output"    ? task->output
+                                       : field == "startin"   ? task->startin
+                                                              : task->arguments;
+                const auto tokens = field == "arguments" ? source.split(' ', Qt::SkipEmptyParts)
+                                                         : QStringList { source };
+                for (const auto& token : tokens) {
+                    if (!check.variables(token, field, record.context + '.' + field, parsedOptions,
+                                         !task->dependson.isEmpty()))
+                        return false;
+                }
+            }
+            parsedTasks.append(task);
+        }
+        // Commit only a completely validated definition.
+        id = parsedId;
+        name = parsedName;
+        type = parsedType;
+        filter = parsedFilter;
+        description = parsedDescription;
+        options = parsedOptions;
+        tasks = parsedTasks;
+        return true;
+    };
+    valid = parse();
+    error = check.error;
     return valid;
 }
 

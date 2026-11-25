@@ -17,6 +17,8 @@ public:
 
 public:
     QDateTime created;
+    QDateTime started;
+    QDateTime finished;
     QUuid uuid;
     QUuid dependson;
     QString id;
@@ -83,8 +85,22 @@ Job::command() const
 QDateTime
 Job::created() const
 {
-    QMutexLocker locker(&p->mutex);  // Lock the mutex
+    QMutexLocker locker(&p->mutex);
     return p->created;
+}
+
+QDateTime
+Job::started() const
+{
+    QMutexLocker locker(&p->mutex);
+    return p->started;
+}
+
+QDateTime
+Job::finished() const
+{
+    QMutexLocker locker(&p->mutex);
+    return p->finished;
 }
 
 QUuid
@@ -350,9 +366,27 @@ Job::setStartin(const QString& startin)
 void
 Job::setStatus(Status status)
 {
-    QMutexLocker locker(&p->mutex);
-    if (p->status != status) {
-        p->status = status;
-        statusChanged(status);
+    bool changed = false;
+
+    {
+        QMutexLocker locker(&p->mutex);
+
+        if (p->status != status) {
+            const QDateTime now = QDateTime::currentDateTime();
+
+            if (status == Running) {
+                p->started = now;
+                p->finished = QDateTime();
+            }
+            else if (status == Completed || status == Failed || status == DependencyFailed || status == Stopped) {
+                p->finished = now;
+            }
+
+            p->status = status;
+            changed = true;
+        }
     }
+
+    if (changed)
+        statusChanged(status);
 }

@@ -65,7 +65,7 @@ ProcessorPrivate::submit(const QList<QString>& files, const QSharedPointer<Prese
                 = updateOptions(preset->options(), updateFiles(task->command, inputinfo, outputinfo)).join(" ");
             QString output
                 = updateOptions(preset->options(), updateFiles(task->output, inputinfo, outputinfo)).join(" ");
-            QStringList argumentlist = task->arguments.split(" ");
+            QStringList argumentlist = task->arguments.split(" ", Qt::SkipEmptyParts);
             QStringList replacedlist;
             for (QString& argument : argumentlist) {
                 replacedlist.append(
@@ -163,7 +163,7 @@ ProcessorPrivate::submit(const QSharedPointer<Preset>& preset, const Paths& path
         QFileInfo outputinfo(outputfile);
         QString command = updateOptions(preset->options(), updateFiles(task->command, inputinfo, outputinfo)).join(" ");
         QString output = updateOptions(preset->options(), updateFiles(task->output, inputinfo, outputinfo)).join(" ");
-        QStringList argumentlist = task->arguments.split(" ");
+        QStringList argumentlist = task->arguments.split(" ", Qt::SkipEmptyParts);
         QStringList replacedlist;
         for (QString& argument : argumentlist) {
             replacedlist.append(
@@ -182,16 +182,17 @@ ProcessorPrivate::submit(const QSharedPointer<Preset>& preset, const Paths& path
             job->setCommand(command);
             job->setArguments(replacedlist);
             job->setOutput(output);
+            job->setExclusive(task->exclusive.toBool());
             job->setOverwrite(paths.overwrite);
             job->setStartin(startin);
             job->setStatus(Job::Waiting);
         }
         updateEnvironment(job, paths);
 
+        joboutputs[task->id] = job->output();
         if (task->dependson.isEmpty()) {
             QUuid uuid = queue->submit(job);
             jobuuids[task->id] = uuid;
-            joboutputs[task->id] = job->output();
             uuids.append(uuid);
         }
         else {
@@ -275,7 +276,7 @@ ProcessorPrivate::updateOptions(QList<QSharedPointer<Option>> options, const QSt
                     else {
                         replacement += option->value.toString();
                     }
-                    result.append(QString(input).replace(pattern, replacement).split(" "));
+                    result.append(QString(input).replace(pattern, replacement).split(" ", Qt::SkipEmptyParts));
                 }
             }
             found = true;

@@ -3,6 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "filedrop.h"
+#include "ui.h"
 
 #include <QDragEnterEvent>
 #include <QFileInfo>
@@ -31,14 +32,13 @@ FiledropPrivate::FiledropPrivate() {}
 void
 FiledropPrivate::init()
 {
+    ::ui();
     widget->setAcceptDrops(true);
     widget->setAttribute(Qt::WA_StyledBackground, true);  // needed for stylesheet
     // layout
     QVBoxLayout* layout = new QVBoxLayout(widget);
     label = new QLabel(widget);
-    QPixmap pixmap(":/icons/resources/Arrow.png");
-    label->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    label->setFixedSize(64, 64);
+    ::ui()->setPixmap(label, UI::Arrow);
     QGraphicsOpacityEffect* opacityEffect = new QGraphicsOpacityEffect(label);
     label->setGraphicsEffect(opacityEffect);
     layout->addWidget(label, 0, Qt::AlignHCenter);

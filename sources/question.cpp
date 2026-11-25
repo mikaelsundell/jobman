@@ -3,6 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "question.h"
+#include "ui.h"
 
 #include <QPointer>
 
@@ -25,9 +26,11 @@ QuestionPrivate::QuestionPrivate() {}
 void
 QuestionPrivate::init()
 {
+    ::ui();
     // ui
     ui.reset(new Ui_Question());
     ui->setupUi(dialog);
+    ::ui()->setPixmap(ui->label, UI::AppIcon);
     // connect
     connect(ui->yes, &QPushButton::clicked, this, [this]() { dialog->done(QDialog::Accepted); });
     connect(ui->no, &QPushButton::clicked, this, [this]() { dialog->done(QDialog::Rejected); });

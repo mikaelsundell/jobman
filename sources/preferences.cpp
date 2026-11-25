@@ -3,6 +3,7 @@
 // https://github.com/mikaelsundell/jobman
 
 #include "preferences.h"
+#include "ui.h"
 #include "urlfilter.h"
 
 #include <QCheckBox>
@@ -49,6 +50,7 @@ PreferencesPrivate::PreferencesPrivate() {}
 void
 PreferencesPrivate::init()
 {
+    ::ui();
     // ui
     ui.reset(new Ui_Preferences());
     ui->setupUi(dialog);

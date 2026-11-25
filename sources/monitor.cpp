@@ -6,6 +6,7 @@
 #include "platform.h"
 #include "question.h"
 #include "queue.h"
+#include "ui.h"
 
 #include <QClipboard>
 #include <QDateTime>
@@ -30,13 +31,17 @@ public:
     enum Priority { Critical = 1000, High = 100, Medium = 10, Low = 0 };
     Q_ENUM(Priority)
 
-    enum Column { Name = 0, Filename = 1, Created = 2, Priority_ = 3, Status = 4, Progress = 5 };
+    enum Column { Name = 0, Filename = 1, Time = 2, Priority_ = 3, Status = 4, Progress = 5 };
     Q_ENUM(Column)
 
 public:
     MonitorPrivate();
     void init();
     void updateJob(QTreeWidgetItem* item);
+    void updateTime(QTreeWidgetItem* item);
+    void updateRunningTimes();
+    QString formatClockTime(const QDateTime& dateTime) const;
+    QString formatDuration(qint64 seconds) const;
     void updateProgress(QTreeWidgetItem* item);
     void updatePriority(Priority priority);
     void updateMetrics();
@@ -60,8 +65,8 @@ public Q_SLOTS:
     void copyCommand();
     void copyFilename();
     void copyLog();
-    void showFilename();
-    void showOutputDir();
+    void showInputFile();
+    void showOutputFile();
     void running();
     void restore();
     void stopped();
@@ -84,19 +89,19 @@ public:
             QColor color;
             QString status = index.data().toString();
             if (status == "Dependency failed" || status == "Failed" || status == "Cancelled") {
-                color = QColor::fromHsl(359, 90, 40).rgb();
+                color = ::ui()->color(UI::Error);
             }
             else if (status == "Waiting") {
-                color = QColor::fromHsl(309, 150, 50).rgb();
+                color = ::ui()->color(UI::Waiting);
             }
             else if (status == "Stopped") {
-                color = QColor::fromHsl(309, 90, 40).rgb();
+                color = ::ui()->color(UI::Stopped);
             }
             else if (status == "Running") {
-                color = QColor::fromHsl(120, 150, 50).rgb();
+                color = ::ui()->color(UI::Running);
             }
             else if (status == "Completed") {
-                color = QColor::fromHsl(120, 90, 40).rgb();
+                color = ::ui()->color(UI::Success);
             }
             else {
                 color = Qt::transparent;
@@ -113,7 +118,7 @@ public:
             painter->setPen(Qt::NoPen);
             painter->drawRoundedRect(textRect.adjusted(-5, -5, 5, 5), 8, 8);
             // text
-            painter->setPen(Qt::white);
+            painter->setPen(::ui()->color(UI::StatusText));
             painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, status);
             painter->restore();
         }
@@ -200,6 +205,7 @@ public:
     QPointer<Queue> queue;
     QPointer<Monitor> dialog;
     QScopedPointer<Ui_Monitor> ui;
+    QTimer timer;
 };
 
 MonitorPrivate::MonitorPrivate() { qRegisterMetaType<QSharedPointer<Job>>("QSharedPointer<Job>"); }
@@ -207,32 +213,51 @@ MonitorPrivate::MonitorPrivate() { qRegisterMetaType<QSharedPointer<Job>>("QShar
 void
 MonitorPrivate::init()
 {
+    ::ui();
     // queue
     queue = Queue::instance();
     // ui
     ui.reset(new Ui_Monitor());
     ui->setupUi(dialog);
+    ::ui()->setIcon(ui->start, UI::Start);
+    ::ui()->setIcon(ui->stop, UI::Stop);
+    ::ui()->setIcon(ui->restart, UI::Restart);
+    ::ui()->setIcon(ui->priority, UI::Priority);
+    ::ui()->setIcon(ui->remove, UI::Delete);
+    ::ui()->setIcon(ui->clear, UI::Cleanup);
+    ::ui()->setIcon(ui->running, UI::RunningIcon);
+    ::ui()->setIcon(ui->stopped, UI::StoppedIcon);
+    ::ui()->setIcon(ui->restore, UI::Restore);
+    ::ui()->setIcon(ui->cleanup, UI::Cleanup);
+
     ui->items->setHeaderLabels(QStringList() << "Name"
                                              << "Filename"
-                                             << "Created"
+                                             << "Time"
                                              << "Priority"
                                              << "Status"
                                              << "Progress");
     ui->items->setColumnWidth(Name, 160);
     ui->items->setColumnWidth(Filename, 130);
-    ui->items->setColumnWidth(Created, 140);
+    ui->items->setColumnWidth(Time, 140);
     ui->items->setColumnWidth(Priority_, 75);
     ui->items->setColumnWidth(Status, 115);
     ui->items->setColumnWidth(Progress, 40);
-    ui->items->sortByColumn(Created, Qt::AscendingOrder);
+    ui->items->sortByColumn(Time, Qt::AscendingOrder);
     ui->items->header()->setStretchLastSection(true);
     ui->items->setItemDelegateForColumn(3, new PriorityDelegate(ui->items));
     ui->items->setItemDelegateForColumn(4, new StatusDelegate(ui->items));
     ui->items->setContextMenuPolicy(Qt::CustomContextMenu);
-    QPalette palette = ui->job->palette();  // workaround for unfocused textbrowser
-    QColor textcolor = QColor::fromHslF(0.0, 0.0, 0.8);
-    palette.setColor(QPalette::Inactive, QPalette::HighlightedText, textcolor);
-    ui->job->setPalette(palette);
+    const auto updateTextPalette = [this]() {
+        QPalette palette = ui->job->palette();  // workaround for unfocused textbrowser
+        palette.setColor(QPalette::Inactive, QPalette::HighlightedText, ::ui()->color(UI::ButtonText));
+        ui->job->setPalette(palette);
+    };
+    updateTextPalette();
+    connect(::ui(), &UI::colorChanged, this, [this, updateTextPalette](UI::ColorRole role) {
+        if (role == UI::ButtonText)
+            updateTextPalette();
+        ui->items->viewport()->update();
+    });
     // event filter
     dialog->installEventFilter(this);
     // layout
@@ -254,6 +279,8 @@ MonitorPrivate::init()
     connect(queue.data(), &Queue::batchSubmitted, this, &MonitorPrivate::batchSubmitted);
     connect(queue.data(), &Queue::jobsSubmitted, this, &MonitorPrivate::jobsSubmitted);
     connect(queue.data(), &Queue::jobsRemoved, this, &MonitorPrivate::jobsRemoved);
+    timer.setInterval(1000);
+    connect(&timer, &QTimer::timeout, this, &MonitorPrivate::updateRunningTimes);
 }
 
 void
@@ -263,7 +290,7 @@ MonitorPrivate::updateJob(QTreeWidgetItem* item)
     QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
     item->setText(Name, job->name());
     item->setText(Filename, QFileInfo(job->filename()).fileName());
-    item->setText(Created, job->created().toString("yyyy-MM-dd HH:mm:ss"));
+    updateTime(item);
     item->setText(Priority_, QString::number(job->priority()));
     switch (job->status()) {
     case Job::Waiting: {
@@ -285,6 +312,103 @@ MonitorPrivate::updateJob(QTreeWidgetItem* item)
         item->setText(Status, "Stopped");
     } break;
     }
+}
+
+
+QString
+MonitorPrivate::formatClockTime(const QDateTime& dateTime) const
+{
+    if (!dateTime.isValid())
+        return QString();
+
+    const QDate today = QDate::currentDate();
+    if (dateTime.date() == today)
+        return dateTime.toString("HH:mm:ss");
+
+    return dateTime.toString("yyyy-MM-dd HH:mm:ss");
+}
+
+QString
+MonitorPrivate::formatDuration(qint64 seconds) const
+{
+    if (seconds < 0)
+        seconds = 0;
+
+    const qint64 hours = seconds / 3600;
+    const qint64 minutes = (seconds % 3600) / 60;
+    const qint64 secs = seconds % 60;
+
+    return QString("%1:%2:%3").arg(hours, 2, 10, QChar('0')).arg(minutes, 2, 10, QChar('0')).arg(secs, 2, 10, QChar('0'));
+}
+
+void
+MonitorPrivate::updateTime(QTreeWidgetItem* item)
+{
+    const QSharedPointer<Job> job = itemJob(item);
+    if (!job)
+        return;
+
+    QString text;
+
+    switch (job->status()) {
+    case Job::Waiting: text = formatClockTime(job->created()); break;
+
+    case Job::Running: {
+        const QDateTime started = job->started();
+        if (started.isValid())
+            text = formatDuration(started.secsTo(QDateTime::currentDateTime()));
+        else
+            text = formatDuration(0);
+    } break;
+
+    case Job::Completed:
+    case Job::Failed:
+    case Job::DependencyFailed:
+    case Job::Stopped: {
+        const QDateTime started = job->started();
+        const QDateTime finished = job->finished();
+        if (started.isValid() && finished.isValid())
+            text = formatDuration(started.secsTo(finished));
+        else
+            text = formatClockTime(finished);
+    } break;
+    }
+
+    item->setText(Time, text);
+
+    QStringList tooltip;
+    tooltip << QString("Created: %1").arg(job->created().toString("yyyy-MM-dd HH:mm:ss"));
+
+    if (job->started().isValid())
+        tooltip << QString("Started: %1").arg(job->started().toString("yyyy-MM-dd HH:mm:ss"));
+
+    if (job->finished().isValid())
+        tooltip << QString("Finished: %1").arg(job->finished().toString("yyyy-MM-dd HH:mm:ss"));
+
+    if (job->started().isValid()) {
+        const QDateTime end = job->finished().isValid() ? job->finished() : QDateTime::currentDateTime();
+        tooltip << QString("Duration: %1").arg(formatDuration(job->started().secsTo(end)));
+    }
+
+    item->setToolTip(Time, tooltip.join('\n'));
+}
+
+void
+MonitorPrivate::updateRunningTimes()
+{
+    bool hasRunningJobs = false;
+
+    for (auto it = jobitems.constBegin(); it != jobitems.constEnd(); ++it) {
+        QTreeWidgetItem* item = it.value();
+        const QSharedPointer<Job> job = itemJob(item);
+        if (job && job->status() == Job::Running) {
+            updateTime(item);
+            hasRunningJobs = true;
+        }
+    }
+
+    if (!hasRunningJobs)
+        timer.stop();
 }
 
 void
@@ -352,10 +476,12 @@ MonitorPrivate::updateMetrics()
     int stoppedCount = 0;
     int runningCount = 0;
     int failedCount = 0;
+
     for (auto it = jobitems.constBegin(); it != jobitems.constEnd(); ++it) {
-        QTreeWidgetItem* item = it.value();
-        QVariant data = item->data(0, Qt::UserRole);
-        QSharedPointer<Job> job = data.value<QSharedPointer<Job>>();
+        const QSharedPointer<Job> job = itemJob(it.value());
+        if (!job)
+            continue;
+
         switch (job->status()) {
         case Job::Waiting: waitingCount++; break;
         case Job::Running: runningCount++; break;
@@ -363,30 +489,42 @@ MonitorPrivate::updateMetrics()
         case Job::DependencyFailed: dependencyFailedCount++; break;
         case Job::Failed: failedCount++; break;
         case Job::Stopped: stoppedCount++; break;
-        default: break;
         }
     }
-    QStringList parts;
+
+    const int fileCount = ui->items->topLevelItemCount();
+    const qsizetype jobCount = jobitems.size();
+    const qsizetype selectedCount = ui->items->selectedItems().count();
+    const int finishedCount = completedCount + failedCount + dependencyFailedCount + stoppedCount;
+
+    QString jobsText = QString("Jobs: %1").arg(jobCount);
+    if (selectedCount > 0)
+        jobsText.append(QString(" (%1)").arg(selectedCount));
+
+    QStringList statusParts;
     if (waitingCount > 0)
-        parts << QString("waiting: %1").arg(waitingCount);
+        statusParts << QString("waiting: %1").arg(waitingCount);
     if (runningCount > 0)
-        parts << QString("running: %1").arg(runningCount);
+        statusParts << QString("running: %1").arg(runningCount);
     if (completedCount > 0)
-        parts << QString("completed: %1").arg(completedCount);
+        statusParts << QString("completed: %1").arg(completedCount);
     if (stoppedCount > 0)
-        parts << QString("stopped: %1").arg(stoppedCount);
+        statusParts << QString("stopped: %1").arg(stoppedCount);
     if (failedCount > 0)
-        parts << QString("failed: %1").arg(failedCount);
-    QString metricsText = QString("Files: %1").arg(ui->items->topLevelItemCount());
-    if (parts.count()) {
-        QString text = "Jobs: " + parts.join(", ");
-        metricsText.append(QString(" (%1)").arg(text));
-    }
-    int total = waitingCount + runningCount + completedCount;
-    int percentage = (total > 0) ? (completedCount * 100) / total : 0;
-    if (percentage > 0 && percentage < 100) {
+        statusParts << QString("failed: %1").arg(failedCount);
+    if (dependencyFailedCount > 0)
+        statusParts << QString("dependency failed: %1").arg(dependencyFailedCount);
+
+    QString metricsText = QString("Files: %1 - %2").arg(fileCount).arg(jobsText);
+
+    if (!statusParts.isEmpty())
+        metricsText.append(QString(" - (%1)").arg(statusParts.join(", ")));
+
+    if (jobCount > 0 && finishedCount > 0 && finishedCount < jobCount) {
+        const qsizetype percentage = qsizetype(finishedCount) * 100 / jobCount;
         metricsText.append(QString(" - %1%").arg(percentage));
     }
+
     ui->metrics->setText(metricsText);
 }
 
@@ -436,6 +574,16 @@ MonitorPrivate::batchSubmitted(const QList<QSharedPointer<Job>>& jobs)
 
     ui->items->setUpdatesEnabled(true);
     ui->items->viewport()->update();
+
+    bool hasRunningJobs = false;
+    for (const QSharedPointer<Job>& job : jobs) {
+        if (job && job->status() == Job::Running) {
+            hasRunningJobs = true;
+            break;
+        }
+    }
+    if (hasRunningJobs && !timer.isActive())
+        timer.start();
 
     updateMetrics();
 }
@@ -533,8 +681,14 @@ MonitorPrivate::priorityChanged(int priority)
 void
 MonitorPrivate::statusChanged(Job::Status status)
 {
-    QUuid uuid = qobject_cast<Job*>(sender())->uuid();
+    const auto* job = qobject_cast<Job*>(sender());
+    if (!job)
+        return;
+    const QUuid uuid = job->uuid();
     if (jobitems.contains(uuid)) {
+        // Concurrent setters can enqueue older notifications after newer ones.
+        // Render the current model state rather than replaying the signal payload.
+        status = job->status();
         QTreeWidgetItem* item = jobitems[uuid];
         switch (status) {
         case Job::Waiting: {
@@ -556,6 +710,9 @@ MonitorPrivate::statusChanged(Job::Status status)
             item->setText(Status, "Stopped");
         } break;
         }
+        updateTime(item);
+        if (status == Job::Running && !timer.isActive())
+            timer.start();
         updateProgress(item);
         updateMetrics();
         toggleButtons();
@@ -593,6 +750,7 @@ MonitorPrivate::selectionChanged()
         ui->job->setText(QString());
     }
 
+    updateMetrics();
     toggleButtons();
 }
 
@@ -830,7 +988,7 @@ MonitorPrivate::copyLog()
 }
 
 void
-MonitorPrivate::showFilename()
+MonitorPrivate::showInputFile()
 {
     QList<QString> filenames;
     selectedItems([this, &filenames](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
@@ -852,7 +1010,7 @@ MonitorPrivate::showFilename()
 }
 
 void
-MonitorPrivate::showOutputDir()
+MonitorPrivate::showOutputFile()
 {
     QList<QString> outputs;
     selectedItems([this, &outputs](const QTreeWidgetItem* item, const QSharedPointer<Job>& job) {
@@ -863,11 +1021,10 @@ MonitorPrivate::showOutputDir()
         return false;
     });
     if (outputs.count() > 10) {
-        if (!Question::askQuestion(
-                dialog.data(),
-                QString("%1 jobs are selected. Are you sure you want to show all output directories in %2?")
-                    .arg(outputs.count())
-                    .arg(platform::getFileBrowser()))) {
+        if (!Question::askQuestion(dialog.data(),
+                                   QString("%1 jobs are selected. Are you sure you want to show all output files in %2?")
+                                       .arg(outputs.count())
+                                       .arg(platform::getFileBrowser()))) {
             return;
         }
     }
@@ -1073,15 +1230,14 @@ MonitorPrivate::showMenu(const QPoint& pos)
         QAction* show = new QAction(QString("Show in %1").arg(platform::getFileBrowser()), this);
         {
             QMenu* showMenu = new QMenu(ui->items);
-            QAction* filename = new QAction("Filename", this);
-            QAction* outputdir = new QAction("Output", this);
+            QAction* inputFile = new QAction(tr("Input file"), this);
+            QAction* outputFile = new QAction(tr("Output file"), this);
 
             // connect
-            connect(filename, &QAction::triggered, this, &MonitorPrivate::showFilename);
-            connect(outputdir, &QAction::triggered, this, &MonitorPrivate::showOutputDir);
-            showMenu->addAction(filename);
-            showMenu->addSeparator();
-            showMenu->addAction(outputdir);
+            connect(inputFile, &QAction::triggered, this, &MonitorPrivate::showInputFile);
+            connect(outputFile, &QAction::triggered, this, &MonitorPrivate::showOutputFile);
+            showMenu->addAction(inputFile);
+            showMenu->addAction(outputFile);
             show->setMenu(showMenu);
         }
         contextMenu.addAction(show);

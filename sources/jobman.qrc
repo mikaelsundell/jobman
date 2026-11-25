@@ -41,6 +41,9 @@
     <file>../resources/StoppedDisabled.png</file>
     <file>../resources/Tooltip.png</file>
   </qresource>
+  <qresource prefix="style">
+    <file>../resources/App.css</file>
+  </qresource>
   <qresource prefix="files">
     <file>../resources/Copyright.txt</file>
   </qresource>

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <QDateTime>
 #include <QList>
 #include <QObject>
 #include <QPair>
@@ -40,6 +41,8 @@ public:
     QStringList arguments() const;
     QString command() const;
     QDateTime created() const;
+    QDateTime started() const;
+    QDateTime finished() const;
     QUuid dependson() const;
     QString dir() const;
     QString filename() const;

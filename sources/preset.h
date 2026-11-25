@@ -51,6 +51,11 @@ class Preset : public QObject {
 public:
     Preset();
     virtual ~Preset();
+    /**
+     * @brief Read and validate a preset without exposing partial or stale definitions.
+     *
+     * @return False on failure; error() identifies the file, field, and problem.
+     */
     bool read(const QString& filename);
     bool valid() const;
     QString id() const;

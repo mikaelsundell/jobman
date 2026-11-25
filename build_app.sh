@@ -62,12 +62,29 @@ export CMAKE_OSX_DEPLOYMENT_TARGET=$major_version
 # exit on error
 set -e 
 
-# clear
-clear
+# Keep diagnostics visible in terminals and captured build logs.
 
 # build type
 if [ "$build_type" != "debug" ] && [ "$build_type" != "release" ] && [ "$build_type" != "all" ]; then
     echo "invalid build type: $build_type (use 'debug', 'release', or 'all')"
+    exit 1
+fi
+
+# Validate the dependency prefix before invoking tools or removing a build directory.
+if [ -z "${THIRDPARTY_DIR:-}" ]; then
+    echo "THIRDPARTY_DIR is not set." >&2
+    echo "Set it to the dependency install prefix matching your build configuration:" >&2
+    echo '  export THIRDPARTY_DIR="/path/to/3rdparty/install/prefix"' >&2
+    echo "The prefix must contain lib/cmake/Qt6/Qt6Config.cmake." >&2
+    exit 1
+fi
+if [ ! -d "$THIRDPARTY_DIR" ]; then
+    echo "THIRDPARTY_DIR does not point to a valid directory: $THIRDPARTY_DIR" >&2
+    exit 1
+fi
+if [ ! -f "$THIRDPARTY_DIR/lib/cmake/Qt6/Qt6Config.cmake" ]; then
+    echo "Qt6Config.cmake was not found under THIRDPARTY_DIR: $THIRDPARTY_DIR" >&2
+    echo "Select the dependency install prefix, rather than the 3rdparty source directory." >&2
     exit 1
 fi
 
@@ -111,15 +128,19 @@ if ! command -v cmake &> /dev/null; then
     echo "cmake not found in the PATH, will try to set to /Applications/CMake.app/Contents/bin"
     export PATH=$PATH:/Applications/CMake.app/Contents/bin
     if ! command -v cmake &> /dev/null; then
-        echo "cmake could not be found, please make sure it's installed"
+        echo "CMake is required. Install CMake 3.27 and add its bin directory to PATH." >&2
         exit 1
     fi
 fi
 
-# check if cmake version is compatible
-if ! [[ $(cmake --version | grep -o '[0-9]\+\(\.[0-9]\+\)*' | head -n1) < "3.28.0" ]]; then
-    echo "cmake version is not compatible with Qt, must be before 3.28.0 for multi configuration"
-    exit 1;
+# Keep the existing pre-3.28 Xcode/Qt constraint, and enforce the project's minimum.
+cmake_version=$(cmake --version | sed -n '1s/[^0-9]*\([0-9][0-9.]*\).*/\1/p')
+cmake_major=${cmake_version%%.*}
+cmake_remainder=${cmake_version#*.}
+cmake_minor=${cmake_remainder%%.*}
+if [ "$cmake_major" != "3" ] || [ "$cmake_minor" != "27" ]; then
+    echo "CMake $cmake_version is unsupported by this build script; use CMake 3.27.x for Xcode/Qt." >&2
+    exit 1
 fi
 
 # build jobman
@@ -142,11 +163,6 @@ build_jobman() {
     mkdir -p "build.$build_type"
     cd "build.$build_type"
 
-    # prefix dir
-    if ! [ -d "$THIRDPARTY_DIR" ]; then
-        echo "could not find 3rdparty project in: $THIRDPARTY_DIR"
-        exit 1
-    fi
     prefix="$THIRDPARTY_DIR"
 
     # xcode build

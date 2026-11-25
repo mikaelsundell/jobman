@@ -75,9 +75,6 @@
           <property name="text">
            <string/>
           </property>
-          <property name="pixmap">
-           <pixmap resource="jobman.qrc">:/icons/resources/AppIcon.png</pixmap>
-          </property>
           <property name="scaledContents">
            <bool>true</bool>
           </property>

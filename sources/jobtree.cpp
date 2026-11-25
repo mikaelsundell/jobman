@@ -4,6 +4,7 @@
 
 #include "jobtree.h"
 #include "job.h"
+#include "ui.h"
 
 #include <QMouseEvent>
 #include <QPainter>
@@ -74,6 +75,7 @@ JobTreePrivate::JobTreePrivate() {}
 void
 JobTreePrivate::init()
 {
+    ::ui();
     ItemDelegate* delegate = new ItemDelegate(widget.data());
     widget->setItemDelegate(delegate);
     // connect

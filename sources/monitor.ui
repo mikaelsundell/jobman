@@ -3,7 +3,7 @@
  <class>Monitor</class>
  <widget class="QDialog" name="Monitor">
   <property name="windowModality">
-   <enum>Qt::NonModal</enum>
+   <enum>Qt::WindowModality::NonModal</enum>
   </property>
   <property name="enabled">
    <bool>true</bool>
@@ -39,16 +39,16 @@
     <number>0</number>
    </property>
    <property name="leftMargin">
-    <number>12</number>
+    <number>8</number>
    </property>
    <property name="topMargin">
-    <number>12</number>
+    <number>8</number>
    </property>
    <property name="rightMargin">
-    <number>12</number>
+    <number>8</number>
    </property>
    <property name="bottomMargin">
-    <number>12</number>
+    <number>8</number>
    </property>
    <item>
     <widget class="QWidget" name="monitorWidget" native="true">
@@ -62,14 +62,17 @@
       <string notr="true"/>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
+      <property name="spacing">
+       <number>0</number>
+      </property>
       <property name="leftMargin">
-       <number>4</number>
+       <number>0</number>
       </property>
       <property name="topMargin">
-       <number>8</number>
+       <number>0</number>
       </property>
       <property name="rightMargin">
-       <number>4</number>
+       <number>0</number>
       </property>
       <property name="bottomMargin">
        <number>0</number>
@@ -124,13 +127,13 @@
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <property name="leftMargin">
-          <number>10</number>
+          <number>8</number>
          </property>
          <property name="topMargin">
-          <number>0</number>
+          <number>8</number>
          </property>
          <property name="rightMargin">
-          <number>10</number>
+          <number>8</number>
          </property>
          <property name="bottomMargin">
           <number>0</number>
@@ -146,11 +149,6 @@
            <property name="text">
             <string>...</string>
            </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Start.png</normaloff>
-             <disabledoff>:/icons/resources/StartDisabled.png</disabledoff>:/icons/resources/Start.png</iconset>
-           </property>
           </widget>
          </item>
          <item>
@@ -163,11 +161,6 @@
            </property>
            <property name="text">
             <string>...</string>
-           </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Stop.png</normaloff>
-             <disabledoff>:/icons/resources/StopDisabled.png</disabledoff>:/icons/resources/Stop.png</iconset>
            </property>
           </widget>
          </item>
@@ -182,11 +175,6 @@
            <property name="text">
             <string>...</string>
            </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Restart.png</normaloff>
-             <disabledoff>:/icons/resources/RestartDisabled.png</disabledoff>:/icons/resources/Restart.png</iconset>
-           </property>
           </widget>
          </item>
          <item>
@@ -200,11 +188,6 @@
            <property name="text">
             <string>...</string>
            </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Priority.png</normaloff>
-             <disabledoff>:/icons/resources/PriorityDisabled.png</disabledoff>:/icons/resources/Priority.png</iconset>
-           </property>
           </widget>
          </item>
          <item>
@@ -217,11 +200,6 @@
            </property>
            <property name="text">
             <string>...</string>
-           </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Delete.png</normaloff>
-             <disabledoff>:/icons/resources/DeleteDisabled.png</disabledoff>:/icons/resources/Delete.png</iconset>
            </property>
            <property name="shortcut">
             <string>Del</string>
@@ -267,11 +245,6 @@
            <property name="text">
             <string>...</string>
            </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Cleanup.png</normaloff>
-             <disabledoff>:/icons/resources/CleanupDisabled.png</disabledoff>:/icons/resources/Cleanup.png</iconset>
-           </property>
           </widget>
          </item>
          <item>
@@ -284,11 +257,6 @@
            </property>
            <property name="text">
             <string>...</string>
-           </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Running.png</normaloff>
-             <disabledoff>:/icons/resources/RunningDisabled.png</disabledoff>:/icons/resources/Running.png</iconset>
            </property>
           </widget>
          </item>
@@ -303,11 +271,6 @@
            <property name="text">
             <string>...</string>
            </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Stopped.png</normaloff>
-             <disabledoff>:/icons/resources/StoppedDisabled.png</disabledoff>:/icons/resources/Stopped.png</iconset>
-           </property>
           </widget>
          </item>
          <item>
@@ -321,11 +284,6 @@
            <property name="text">
             <string>...</string>
            </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Restore.png</normaloff>
-             <disabledoff>:/icons/resources/RestoreDisabled.png</disabledoff>:/icons/resources/Restore.png</iconset>
-           </property>
           </widget>
          </item>
          <item>
@@ -338,11 +296,6 @@
            </property>
            <property name="text">
             <string>...</string>
-           </property>
-           <property name="icon">
-            <iconset resource="jobman.qrc">
-             <normaloff>:/icons/resources/Cleanup.png</normaloff>
-             <disabledoff>:/icons/resources/CleanupDisabled.png</disabledoff>:/icons/resources/Cleanup.png</iconset>
            </property>
           </widget>
          </item>
@@ -370,7 +323,7 @@
          <item>
           <widget class="QSplitter" name="splitter">
            <property name="orientation">
-            <enum>Qt::Vertical</enum>
+            <enum>Qt::Orientation::Vertical</enum>
            </property>
            <property name="handleWidth">
             <number>20</number>
@@ -388,7 +341,7 @@
              <bool>true</bool>
             </property>
             <property name="selectionMode">
-             <enum>QAbstractItemView::ExtendedSelection</enum>
+             <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
             </property>
             <property name="uniformRowHeights">
              <bool>true</bool>
@@ -464,10 +417,25 @@
       </size>
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>8</number>
+      </property>
+      <property name="topMargin">
+       <number>8</number>
+      </property>
+      <property name="rightMargin">
+       <number>8</number>
+      </property>
+      <property name="bottomMargin">
+       <number>8</number>
+      </property>
       <item>
        <spacer name="horizontalSpacer_2">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -504,7 +472,7 @@
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>

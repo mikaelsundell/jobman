@@ -4,6 +4,8 @@
 
 #include "jobman.h"
 #include "clickfilter.h"
+#include "mcpserver.h"
+#include "mcptools.h"
 #include "message.h"
 #include "monitor.h"
 #include "optionsdialog.h"
@@ -15,10 +17,12 @@
 #include "processor.h"
 #include "question.h"
 #include "queue.h"
+#include "ui.h"
 #include "urlfilter.h"
 
+#include <QAbstractButton>
 #include <QAction>
-#include <QColorSpace>
+#include <QApplication>
 #include <QDesktopServices>
 #include <QDir>
 #include <QDirIterator>
@@ -29,12 +33,18 @@
 #include <QJsonObject>
 #include <QList>
 #include <QMessageBox>
+#include <QMetaEnum>
 #include <QPointer>
 #include <QProcess>
+#include <QPromise>
 #include <QRegularExpression>
+#include <QSet>
 #include <QSettings>
 #include <QSharedPointer>
+#include <QSignalBlocker>
 #include <QStandardPaths>
+#include <QStyledItemDelegate>
+#include <QTextBrowser>
 #include <QThread>
 #include <QTimer>
 #include <QWindow>
@@ -44,6 +54,33 @@
 // generated files
 #include "ui_about.h"
 #include "ui_jobman.h"
+
+namespace {
+class MaxJobsDelegate : public QStyledItemDelegate {
+public:
+    explicit MaxJobsDelegate(QComboBox* combo)
+        : QStyledItemDelegate(combo)
+        , combo(combo)
+    {}
+
+protected:
+    void initStyleOption(QStyleOptionViewItem* option, const QModelIndex& index) const override
+    {
+        QStyledItemDelegate::initStyleOption(option, index);
+        const int size = ::ui()->iconSize(UI::Small);
+        const qreal ratio = combo->devicePixelRatioF();
+        QPixmap mark = ::ui()->icon(UI::Checked, UI::Small, UI::Normal, ratio);
+        if (index.row() != combo->currentIndex())
+            mark.fill(Qt::transparent);
+        option->icon = QIcon(mark);
+        option->decorationSize = QSize(size, size);
+        option->features |= QStyleOptionViewItem::HasDecoration;
+    }
+
+private:
+    QComboBox* combo;
+};
+}  // namespace
 
 class JobmanPrivate : public QObject {
     Q_OBJECT
@@ -59,6 +96,8 @@ public:
     bool eventFilter(QObject* object, QEvent* event);
     void verifySaveTo();
     void loadSettings();
+    void initMcp();
+    QJsonObject callMcpTool(const QString& name, const QJsonObject& args);
     void saveSettings();
 
 public Q_SLOTS:
@@ -97,6 +136,7 @@ public Q_SLOTS:
     void presetsChanged(int index);
     void threadsChanged(int index);
     void openAbout();
+    void openMcpServer();
     void openGithubReadme();
     void openGithubIssues();
 
@@ -112,6 +152,7 @@ public:
             QScopedPointer<Ui_About> about;
             about.reset(new Ui_About());
             about->setupUi(this);
+            ::ui()->setPixmap(about->label, UI::AppIcon, UI::ExtraLarge);
             about->name->setText(APP_NAME);
             about->version->setText(APP_VERSION_STRING);
             about->copyright->setText(APP_COPYRIGHT);
@@ -167,6 +208,9 @@ public:
     QScopedPointer<Clickfilter> filedropfilter;
     QScopedPointer<Urlfilter> preseturlfilter;
     QScopedPointer<Urlfilter> savetourlfilter;
+    QScopedPointer<McpServer> mcpserver;
+    quint16 mcpport = McpServer::defaultPort;
+    QMap<QUuid, QSharedPointer<Job>> mcpjobs;
     QScopedPointer<Ui_Jobman> ui;
 };
 
@@ -175,11 +219,7 @@ JobmanPrivate::JobmanPrivate() { qRegisterMetaType<QSharedPointer<Preset>>("QSha
 void
 JobmanPrivate::init()
 {
-    platform::setDarkTheme();
-    // surface
-    QSurfaceFormat format = QSurfaceFormat::defaultFormat();
-    format.setColorSpace(QColorSpace::SRgb);
-    QSurfaceFormat::setDefaultFormat(format);
+    ::ui();
     // documents
     documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     // presets
@@ -189,6 +229,16 @@ JobmanPrivate::init()
     // ui
     ui.reset(new Ui_Jobman());
     ui->setupUi(window);
+    ::ui()->setIcon(ui->togglePreset, UI::Collapse);
+    ::ui()->setIcon(ui->toggleType, UI::Collapse);
+    ::ui()->setIcon(ui->showSaveto, UI::Link);
+    ::ui()->setIcon(ui->selectSaveto, UI::Folder);
+    ::ui()->setIcon(ui->openPreset, UI::File);
+    ::ui()->setIcon(ui->refreshPresets, UI::Refresh);
+    ::ui()->setIcon(ui->selectPresetsfrom, UI::Folder);
+    ::ui()->setIcon(ui->openOptions, UI::Options);
+    ::ui()->setIcon(ui->openMonitor, UI::Monitor);
+
     // preferences
     ui->editOpenPreferences->setMenuRole(QAction::PreferencesRole);
     // about
@@ -268,6 +318,7 @@ JobmanPrivate::init()
     connect(processor.data(), &Processor::fileSubmitted, this, &JobmanPrivate::fileSubmitted);
     size = window->size();
     // threads
+    ui->threads->setItemDelegate(new MaxJobsDelegate(ui->threads));
     int threadcount = QThread::idealThreadCount();
     for (int i = 1; i <= threadcount; ++i) {
         ui->threads->addItem(QString::number(i), i);
@@ -290,12 +341,14 @@ JobmanPrivate::init()
 #ifdef QT_DEBUG
     QMenu* menu = ui->menubar->addMenu("Debug");
     {
-        QAction* action = new QAction("Reload stylesheet...", this);
+        QAction* action = new QAction("Reload stylesheet...", window.data());
+        action->setObjectName("debugReloadStylesheet");
         action->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_S));
         menu->addAction(action);
-        connect(action, &QAction::triggered, [&]() { this->stylesheet(); });
+        connect(action, &QAction::triggered, this, &JobmanPrivate::stylesheet);
     }
 #endif
+    initMcp();
     // presets
     QTimer::singleShot(0, [this]() {
         this->loadPresets();
@@ -304,36 +357,309 @@ JobmanPrivate::init()
     });
 }
 
+namespace {
+QJsonObject
+mcpJobInfo(const QSharedPointer<Job>& job)
+{
+    const QMetaEnum statuses = QMetaEnum::fromType<Job::Status>();
+    QJsonArray arguments;
+    for (const QString& argument : job->arguments())
+        arguments.append(argument);
+    return { { "uuid", job->uuid().toString() },
+             { "name", job->name() },
+             { "filename", job->filename() },
+             { "status", statuses.valueToKey(job->status()) },
+             { "command", job->command() },
+             { "arguments", arguments },
+             { "output", job->output() },
+             { "priority", job->priority() },
+             { "pid", job->pid() },
+             { "dependson", job->dependson().toString() } };
+}
+
+bool
+ownsWidget(QWidget* root, QWidget* widget)
+{
+    // QDialog is a separate native window; QWidget::isAncestorOf stops at that boundary.
+    for (QObject* object = widget; object; object = object->parent()) {
+        if (object == root)
+            return true;
+    }
+    return false;
+}
+}  // namespace
+
+void
+JobmanPrivate::initMcp()
+{
+    QSettings settings(APP_IDENTIFIER, APP_NAME);
+    const bool restore = settings.value("mcpEnabled", false).toBool();
+    bool validPort = false;
+    const uint savedPort = settings.value("mcpPort", McpServer::defaultPort).toUInt(&validPort);
+    if (validPort && savedPort <= 65535)
+        mcpport = static_cast<quint16>(savedPort);
+    mcpserver.reset(new McpServer(this));
+    mcpserver->setTools(mcp::tools(), [this](const QString& name, const QJsonObject& arguments) {
+        return callMcpTool(name, arguments);
+    });
+    const auto rememberJobs = [this](const QList<QSharedPointer<Job>>& jobs) {
+        for (const auto& job : jobs) {
+            if (job)
+                mcpjobs.insert(job->uuid(), job);
+        }
+    };
+    connect(queue.data(), &Queue::jobsSubmitted, this, rememberJobs);
+    connect(queue.data(), &Queue::batchSubmitted, this, rememberJobs);
+    connect(queue.data(), &Queue::jobsRemoved, this, [this](const QList<QUuid>& uuids) {
+        for (const QUuid& uuid : uuids)
+            mcpjobs.remove(uuid);
+    });
+    connect(ui->helpMcpServer, &QAction::triggered, this, &JobmanPrivate::openMcpServer);
+    connect(ui->mcpEnabled, &QCheckBox::toggled, this, [this](bool enabled) {
+        if (!enabled) {
+            mcpserver->stop();
+        }
+        else if (!mcpserver->start(mcpport)) {
+            const QSignalBlocker blocker(ui->mcpEnabled);
+            ui->mcpEnabled->setChecked(false);
+            QSettings(APP_IDENTIFIER, APP_NAME).setValue("mcpEnabled", false);
+            Message::showMessage(window.data(), tr("MCP server could not start"), mcpserver->errorString());
+        }
+    });
+    connect(mcpserver.data(), &McpServer::runningChanged, this, [this](bool running) {
+        QSettings settings(APP_IDENTIFIER, APP_NAME);
+        settings.setValue("mcpEnabled", running);
+        settings.setValue("mcpPort", mcpport);
+        const QSignalBlocker blocker(ui->mcpEnabled);
+        ui->mcpEnabled->setChecked(running);
+        ui->mcpEnabled->setToolTip(running ? tr("MCP server listening at %1").arg(mcpserver->url().toString())
+                                           : tr("Enable the local MCP server for job control and Qt debugging"));
+        if (running)
+            qInfo().noquote() << "Jobman MCP:" << mcpserver->url().toString();
+    });
+    // Let explicit command-line startup choose its port before restoring the saved switch.
+    QTimer::singleShot(0, this, [this, restore]() {
+        if (restore && !mcpserver->isRunning() && !mcpserver->start(mcpport)) {
+            QSettings(APP_IDENTIFIER, APP_NAME).setValue("mcpEnabled", false);
+            Message::showMessage(window.data(), tr("MCP server could not start"), mcpserver->errorString());
+        }
+    });
+}
+
+void
+JobmanPrivate::openMcpServer()
+{
+    QDesktopServices::openUrl(QUrl(QStringLiteral(GITHUBURL "/blob/master/docs/MCP.md")));
+}
+
+QJsonObject
+JobmanPrivate::callMcpTool(const QString& name, const QJsonObject& args)
+{
+    Q_ASSERT(QThread::currentThread() == window->thread());
+    const bool scanning = filedropfuture.isRunning();
+    const bool submitting = submitfuture.isRunning();
+    const bool busy = scanning || submitting || ui->presettype->currentIndex() == static_cast<int>(Type::Progress);
+    QWidget* modal = QApplication::activeModalWidget();
+    if (name == "jobman_get_status") {
+        const auto preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
+        return mcp::result(QJsonObject { { "version", APP_VERSION_STRING },
+                                         { "scanning", scanning },
+                                         { "submitting", submitting },
+                                         { "readyForFiles", !busy && ui->filedrop->isEnabled() && !modal },
+                                         { "preset", preset ? preset->id() : QString() },
+                                         { "outputDirectory", saveto },
+                                         { "processing", queue->isProcessing() },
+                                         { "maxJobs", queue->threads() },
+                                         { "jobCount", qint64(mcpjobs.size()) },
+                                         { "filedropText", ui->filedropLabel->text() },
+                                         { "filedropPage", ui->presettype->currentIndex() },
+                                         { "endpoint", mcpserver->url().toString() } });
+    }
+    if (name == "jobman_list_presets") {
+        QJsonArray presets;
+        for (int i = 0; i < ui->presets->count(); ++i) {
+            const auto preset = ui->presets->itemData(i).value<QSharedPointer<Preset>>();
+            if (preset)
+                presets.append(QJsonObject { { "id", preset->id() },
+                                             { "name", preset->name() },
+                                             { "type", preset->type() },
+                                             { "filter", preset->filter() },
+                                             { "selected", i == ui->presets->currentIndex() } });
+        }
+        return mcp::result(presets);
+    }
+    if (name == "jobman_list_jobs") {
+        QJsonArray jobs;
+        const qint64 limit = args.contains("limit") ? args.value("limit").toInteger() : 100;
+        if (limit < 1)
+            return mcp::error("Limit must be a positive integer representable as a signed 64-bit value.");
+        auto position = mcpjobs.cbegin();
+        const QString cursor = args.value("cursor").toString();
+        if (!cursor.isEmpty()) {
+            const QUuid uuid(cursor);
+            if (uuid.isNull())
+                return mcp::error("Cursor must be a job UUID returned by jobman_list_jobs.");
+            position = mcpjobs.upperBound(uuid);
+        }
+        QString last;
+        for (; position != mcpjobs.cend(); ++position) {
+            if (jobs.size() >= limit)
+                break;
+            jobs.append(mcpJobInfo(position.value()));
+            last = position.key().toString();
+        }
+        const bool more = position != mcpjobs.cend();
+        return mcp::result(QJsonObject { { "jobs", jobs },
+                                         { "total", qint64(mcpjobs.size()) },
+                                         { "truncated", more },
+                                         { "nextCursor", more ? last : QString() } });
+    }
+    if (name == "jobman_get_job") {
+        const QUuid uuid(args.value("uuid").toString());
+        const auto job = mcpjobs.value(uuid);
+        if (!job)
+            return mcp::error("Job UUID was not found.");
+        QJsonObject info = mcpJobInfo(job);
+        const QString log = job->log();
+        const int limit = args.value("logLimit").toInt(65536);
+        info.insert("log", limit == 0 ? QString() : log.right(limit));
+        info.insert("logTruncated", log.size() > limit);
+        return mcp::result(info);
+    }
+    if (name == "jobman_get_dialog") {
+        if (!ownsWidget(window.data(), modal))
+            return mcp::result(QJsonObject { { "active", false } });
+        QStringList parts;
+        for (QObject* current = modal; current; current = current->parent()) {
+            parts.prepend(current->objectName());
+            if (current == window.data())
+                break;
+        }
+        QJsonArray buttons;
+        for (auto* button : modal->findChildren<QAbstractButton*>())
+            buttons.append(QJsonObject { { "objectName", button->objectName() },
+                                         { "text", button->text() },
+                                         { "enabled", button->isEnabled() } });
+        QString text;
+        if (auto* message = modal->findChild<QTextBrowser*>("message"))
+            text = message->toPlainText().left(65536);
+        else if (auto* question = modal->findChild<QLabel*>("question"))
+            text = question->text();
+        QString title = modal->windowTitle();
+        if (auto* label = modal->findChild<QLabel*>("title"))
+            title = label->text();
+        return mcp::result(QJsonObject { { "active", true },
+                                         { "class", modal->metaObject()->className() },
+                                         { "title", title },
+                                         { "text", text },
+                                         { "path", parts.join('/') },
+                                         { "buttons", buttons } });
+    }
+    if (name == "jobman_respond_dialog") {
+        if (!ownsWidget(window.data(), modal))
+            return mcp::error("No application-owned modal dialog is active.");
+        const QString response = args.value("response").toString();
+        if (auto* message = qobject_cast<Message*>(modal); message && response == "close")
+            message->accept();
+        else if (auto* question = qobject_cast<Question*>(modal); question && (response == "yes" || response == "no"))
+            question->done(response == "yes" ? QDialog::Accepted : QDialog::Rejected);
+        else
+            return mcp::error(
+                "Response must be close for a message, or yes/no for a confirmation. Other dialogs can be operated with Qt actions.");
+        return mcp::result(QJsonObject { { "responded", true } });
+    }
+    if (name == "jobman_get_qt_state" || name == "jobman_qt_action" || name == "jobman_capture_widget")
+        return mcp::qtTool(window.data(), name, args);
+    if (modal)
+        return mcp::error("Respond to the active modal dialog first.");
+    if (name == "jobman_select_preset") {
+        if (busy)
+            return mcp::error("Wait for the current file submission to finish.");
+        const QString id = args.value("id").toString();
+        for (int i = 0; i < ui->presets->count(); ++i) {
+            const auto preset = ui->presets->itemData(i).value<QSharedPointer<Preset>>();
+            if (preset && preset->id() == id) {
+                ui->presets->setCurrentIndex(i);
+                return mcp::result(QJsonObject { { "selected", id } });
+            }
+        }
+        return mcp::error("Preset id was not found.");
+    }
+    if (name == "jobman_set_output_directory") {
+        if (busy)
+            return mcp::error("Wait for the current file submission to finish.");
+        const QFileInfo info(args.value("path").toString());
+        if (!info.isAbsolute() || !info.isDir())
+            return mcp::error("Output path must be an absolute path to an existing directory.");
+        saveto = info.absoluteFilePath();
+        setSaveto(saveto);
+        activate();
+        return mcp::result(QJsonObject { { "outputDirectory", saveto } });
+    }
+    if (name == "jobman_submit_files") {
+        if (busy || !ui->filedrop->isEnabled())
+            return mcp::error("Jobman is not ready for another file drop.");
+        const auto preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
+        if (!preset || preset->type() != "file")
+            return mcp::error("Select a file preset first.");
+        const QJsonArray paths = args.value("paths").toArray();
+        if (paths.isEmpty())
+            return mcp::error("Submit at least one file/directory path.");
+        QList<QString> files;
+        for (const QJsonValue& value : paths) {
+            if (!value.isString())
+                return mcp::error("Each path must be a string.");
+            const QFileInfo info(value.toString());
+            if (!info.isAbsolute() || (!info.isFile() && !info.isDir()))
+                return mcp::error("Each path must be an absolute path to an existing local file or directory.");
+            files.append(info.absoluteFilePath());
+        }
+        processFiles(files);
+        return mcp::result(QJsonObject { { "acceptedForScanning", true } });
+    }
+    if (name == "jobman_control_job") {
+        const auto job = mcpjobs.value(QUuid(args.value("uuid").toString()));
+        if (!job)
+            return mcp::error("Job UUID was not found.");
+        const QString action = args.value("action").toString();
+        const auto status = job->status();
+        if (action == "start" && status == Job::Stopped)
+            queue->start(job->uuid());
+        else if (action == "stop" && status == Job::Running && job->pid() > 0)
+            queue->stop(job->uuid());
+        else if (action == "restart" && status != Job::Running && status != Job::Waiting) {
+            for (const auto& dependent : mcpjobs) {
+                QUuid parent = dependent->dependson();
+                QSet<QUuid> visited;
+                while (!parent.isNull() && !visited.contains(parent)) {
+                    visited.insert(parent);
+                    if (parent == job->uuid()
+                        && (dependent->status() == Job::Running || dependent->status() == Job::Waiting))
+                        return mcp::error("Wait for dependent jobs to finish before restarting this job.");
+                    const auto ancestor = mcpjobs.value(parent);
+                    parent = ancestor ? ancestor->dependson() : QUuid();
+                }
+            }
+            queue->restart(job->uuid());
+        }
+        else if (action == "remove")
+            queue->remove(job->uuid());
+        else
+            return mcp::error("Unsupported action, or the job is not in a valid state for that action.");
+        return mcp::result(QJsonObject { { "uuid", job->uuid().toString() }, { "action", action } });
+    }
+    if (name == "jobman_save_preferences") {
+        savePreferences();
+        return mcp::result(QJsonObject { { "saved", true } });
+    }
+    return mcp::error("Unknown Jobman tool.");
+}
+
+
 void
 JobmanPrivate::stylesheet()
 {
-    QFile stylesheet(platform::getApplicationPath() + "/Resources/App.css");
-    if (!stylesheet.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "could not open stylesheet:" << stylesheet.fileName() << stylesheet.errorString();
-        return;
-    }
-    QString qss = stylesheet.readAll();
-    QRegularExpression hslRegex("hsl\\(\\s*(\\d+)\\s*,\\s*(\\d+)%\\s*,\\s*(\\d+)%\\s*\\)");
-    QString transformqss = qss;
-    QRegularExpressionMatchIterator i = hslRegex.globalMatch(transformqss);
-    while (i.hasNext()) {
-        QRegularExpressionMatch match = i.next();
-        if (match.hasMatch()) {
-            if (!match.captured(1).isEmpty() && !match.captured(2).isEmpty() && !match.captured(3).isEmpty()) {
-                int h = match.captured(1).toInt();
-                int s = match.captured(2).toInt();
-                int l = match.captured(3).toInt();
-                QColor color = QColor::fromHslF(h / 360.0f, s / 100.0f, l / 100.0f);
-                QString hsl = QString("hsl(%1, %2%, %3%)")
-                                  .arg(color.hue() == -1 ? 0 : color.hue())
-                                  .arg(static_cast<int>(color.hslSaturationF() * 100))
-                                  .arg(static_cast<int>(color.lightnessF() * 100));
-
-                transformqss.replace(match.captured(0), hsl);
-            }
-        }
-    }
-    window->setStyleSheet(transformqss);
+    ::ui()->loadStyleSheet();
 }
 
 Paths
@@ -693,10 +1019,17 @@ JobmanPrivate::loadPresets()
     QFileInfoList presetfiles = presets.entryInfoList(QStringList("*.json"));
     QString error;
     if (presetfiles.count() > 0) {
+        QMap<QString, QString> presetIds;
         for (QFileInfo presetfile : presetfiles) {
             QSharedPointer<Preset> preset(new Preset());
             QString filename = presetfile.absoluteFilePath();
             if (preset->read(filename)) {
+                if (presetIds.contains(preset->id())) {
+                    error += QString("%1\n\nDuplicate preset id \"%2\"; already used by %3.\n")
+                                 .arg(filename, preset->id(), presetIds.value(preset->id()));
+                    continue;
+                }
+                presetIds.insert(preset->id(), filename);
                 settings.beginGroup(QString("preset/%1").arg(preset->id()));
                 for (QSharedPointer<Option> option : preset->options()) {
                     QString valuekey = QString("option/%1/value").arg(option->id);
@@ -751,71 +1084,72 @@ JobmanPrivate::clearPresets()
 void
 JobmanPrivate::processFiles(const QList<QString>& files)
 {
+    if (filedropfuture.isRunning() || submitfuture.isRunning()
+        || ui->presettype->currentIndex() == static_cast<int>(Type::Progress)) {
+        return;
+    }
     QSharedPointer<Preset> preset = ui->presets->currentData().value<QSharedPointer<Preset>>();
-    QString filter = preset->filter().toLower();
+    if (!preset)
+        return;
+    const QString filter = preset->filter().toLower();
+    const QStringList filters = filter.split(';', Qt::SkipEmptyParts);
+    const auto finishDrop = [this]() {
+        ui->filedropLabel->clear();
+        ui->filedropProgress->setValue(0);
+        ui->filedropProgress->setVisible(false);
+        ui->presettype->setCurrentIndex(static_cast<int>(Type::File));
+        ui->progressWidget->setVisible(true);
+    };
     ui->presettype->setCurrentIndex(static_cast<int>(Type::Progress));
+    ui->filedropLabel->setText(tr("Checking files..."));
+    ui->filedropProgress->setValue(0);
     ui->filedropProgress->setVisible(false);
     ui->progressWidget->setVisible(false);
-    filedropfuture = QtConcurrent::run([=]() -> FileDrop {
+    // Scan and filter without accessing widgets or the shared future from the worker.
+    filedropfuture = QtConcurrent::run([files, filters](QPromise<FileDrop>& promise) {
         FileDrop result;
         QList<QString> allItems;
         for (const QString& path : files) {
+            if (promise.isCanceled())
+                return;
             QFileInfo info(path);
             if (info.isDir()) {
                 result.hasDir = true;
-                QStringList filters = filter.split(';', Qt::SkipEmptyParts);
                 QDirIterator it(path, filters, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
                 while (it.hasNext()) {
-                    it.next();
-                    QFileInfo fileinfo = it.fileInfo();
-                    QTimer::singleShot(0, this, [=]() {
-                        QString filename = fileinfo.fileName();
-                        QString label = "Added file: ";
-                        int width = ui->filedropLabel->width();
-                        QFontMetrics metrics(ui->filedropLabel->font());
-                        QString text = metrics.elidedText(filename, Qt::ElideMiddle,
-                                                          width - metrics.horizontalAdvance(label));
-                        ui->filedropLabel->setText(QString("%1%2").arg(label).arg(text));
-                    });
-                    if (filedropfuture.isCanceled()) {
-                        break;
-                    }
-                    allItems.append(fileinfo.filePath());
+                    if (promise.isCanceled())
+                        return;
+                    allItems.append(it.next());
                 }
             }
             else if (info.isFile()) {
-                QString filename = info.fileName();
-                QString label = "Added file: ";
-                int width = ui->filedropLabel->width();
-                QFontMetrics metrics(ui->filedropLabel->font());
-                QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
-                ui->filedropLabel->setText(QString("%1%2").arg(label).arg(text));
                 allItems.append(path);
             }
-            if (filedropfuture.isCanceled()) {
-                break;
-            }
         }
-        int count = 0;
         for (const QString& path : allItems) {
+            if (promise.isCanceled())
+                return;
             QFileInfo info(path);
-            QString suffix = info.suffix().toLower();
-            if (filter.contains(suffix) || filter.contains("*.*")) {
+            if (filters.contains("*.*") || QDir::match(filters, info.fileName().toLower())) {
                 result.submitfiles.append(info.absoluteFilePath());
             }
             else {
                 result.rejectedfiles.append(info.fileName());
             }
-            int progress = static_cast<int>((++count * 100.0) / allItems.size());
-            QTimer::singleShot(0, this, [=]() { ui->filedropProgress->setValue(progress); });
         }
-        return result;
+        promise.addResult(result);
     });
     QFutureWatcher<FileDrop>* filedropwatcher = new QFutureWatcher<FileDrop>(this);
-    connect(filedropwatcher, &QFutureWatcher<FileDrop>::finished, this, [=]() {
-        filedropwatcher->deleteLater();
-        if (!filedropfuture.isCanceled()) {
-            FileDrop result = filedropfuture.result();
+    connect(
+        filedropwatcher, &QFutureWatcher<FileDrop>::finished, this,
+        [this, filedropwatcher, preset, filter, finishDrop]() {
+            const QFuture<FileDrop> future = filedropwatcher->future();
+            filedropwatcher->deleteLater();
+            if (future.isCanceled()) {
+                finishDrop();
+                return;
+            }
+            const FileDrop result = future.result();
             if (!result.rejectedfiles.isEmpty()) {
                 Message::showMessage(
                     window.data(), "Files Skipped",
@@ -824,37 +1158,36 @@ JobmanPrivate::processFiles(const QList<QString>& files)
                         .arg(result.rejectedfiles.join("\n"))
                         .arg(filter));
             }
-            bool submit = true;
-            if (result.submitfiles.size() > 10 && result.hasDir) {
-                submit = Question::askQuestion(
+            if (result.submitfiles.isEmpty()) {
+                finishDrop();
+                return;
+            }
+            if (result.submitfiles.size() > 10 && result.hasDir
+                && !Question::askQuestion(
                     window.data(),
                     QString("You are about to submit %1 files for processing from one or more directories.\n"
                             "Do you want to continue?")
-                        .arg(result.submitfiles.size()));
+                        .arg(result.submitfiles.size()))) {
+                finishDrop();
+                return;
             }
-            if (submit && !result.submitfiles.isEmpty()) {
-                submittotal = result.submitfiles.size();
-                submitcount = 0;
-
-                ui->filedropProgress->setVisible(true);
-
-                submitfuture = QtConcurrent::run(
-                    [=]() { return processor->submit(result.submitfiles, preset, paths()); });
-
-                QFutureWatcher<QList<QUuid>>* submitwatcher = new QFutureWatcher<QList<QUuid>>(this);
-                connect(submitwatcher, &QFutureWatcher<QList<QUuid>>::finished, this, [=]() {
-                    submitwatcher->deleteLater();
-                    if (!submitfuture.isCanceled()) {
-                        QList<QUuid> uuids = submitfuture.result();
-                        processUuids(uuids);
-                        ui->presettype->setCurrentIndex(static_cast<int>(Type::File));
-                        ui->progressWidget->setVisible(true);
-                    }
-                });
-                submitwatcher->setFuture(submitfuture);
-            }
-        }
-    });
+            submittotal = static_cast<int>(result.submitfiles.size());
+            submitcount = 0;
+            ui->filedropProgress->setVisible(true);
+            const Paths submissionPaths = paths();
+            submitfuture = QtConcurrent::run([this, result, preset, submissionPaths]() {
+                return processor->submit(result.submitfiles, preset, submissionPaths);
+            });
+            QFutureWatcher<QList<QUuid>>* submitwatcher = new QFutureWatcher<QList<QUuid>>(this);
+            connect(submitwatcher, &QFutureWatcher<QList<QUuid>>::finished, this, [this, submitwatcher, finishDrop]() {
+                const QFuture<QList<QUuid>> future = submitwatcher->future();
+                submitwatcher->deleteLater();
+                if (!future.isCanceled())
+                    processUuids(future.result());
+                finishDrop();
+            });
+            submitwatcher->setFuture(submitfuture);
+        });
     filedropwatcher->setFuture(filedropfuture);
 }
 
@@ -923,19 +1256,20 @@ JobmanPrivate::jobsProcessed(const QList<QUuid>& uuids)
 void
 JobmanPrivate::fileSubmitted(const QString& file)
 {
-    int progress = static_cast<int>((submitcount * 100) / submittotal);
-    QString filename = QFileInfo(file).fileName();
-    QString label = "Submitted file: ";
-    int width = ui->filedropLabel->width();
+    const int progress = (submittotal > 0) ? static_cast<int>((submitcount * 100) / submittotal) : 0;
+    const int percentage = progress;
+
+    const QString filename = QFileInfo(file).fileName();
+    const QString prefix = "Submitted file: ";
+    const QString suffix = QString(" - %1/%2 %3%").arg(submitcount).arg(submittotal).arg(percentage);
+
+    const int width = ui->filedropLabel->width();
     QFontMetrics metrics(ui->filedropLabel->font());
-    QString text = metrics.elidedText(filename, Qt::ElideMiddle, width - metrics.horizontalAdvance(label));
-    int percentage = (submittotal > 0) ? (submitcount * 100) / submittotal : 0;
-    ui->filedropLabel->setText(QString("%1%2 - %3/%4 %5%")
-                                   .arg(label)
-                                   .arg(QFileInfo(file).fileName())
-                                   .arg(submitcount)
-                                   .arg(submittotal)
-                                   .arg(percentage));
+    const int availableWidth = width - metrics.horizontalAdvance(prefix) - metrics.horizontalAdvance(suffix);
+
+    const QString text = metrics.elidedText(filename, Qt::ElideMiddle, qMax(0, availableWidth));
+
+    ui->filedropLabel->setText(prefix + text + suffix);
     ui->filedropProgress->setValue(progress);
     submitcount++;
 }
@@ -1236,12 +1570,12 @@ JobmanPrivate::togglePreset()
 {
     int height = ui->presetWidget->height();
     if (ui->togglePreset->isChecked()) {
-        ui->togglePreset->setIcon(QIcon(":/icons/resources/Collapse.png"));
+        ::ui()->setIcon(ui->togglePreset, UI::Collapse);
         ui->presetWidget->show();
         window->setFixedSize(window->width(), size.height() + height);
     }
     else {
-        ui->togglePreset->setIcon(QIcon(":/icons/resources/Expand.png"));
+        ::ui()->setIcon(ui->togglePreset, UI::Expand);
         ui->presetWidget->hide();
         window->setFixedSize(window->width(), size.height() - height);
     }
@@ -1253,12 +1587,12 @@ JobmanPrivate::toggleType()
 {
     int height = ui->typeWidget->height();
     if (ui->toggleType->isChecked()) {
-        ui->toggleType->setIcon(QIcon(":/icons/resources/Collapse.png"));
+        ::ui()->setIcon(ui->toggleType, UI::Collapse);
         ui->typeWidget->show();
         window->setFixedSize(window->width(), size.height() + height);
     }
     else {
-        ui->toggleType->setIcon(QIcon(":/icons/resources/Expand.png"));
+        ::ui()->setIcon(ui->toggleType, UI::Expand);
         ui->typeWidget->hide();
         window->setFixedSize(window->width(), size.height() - height);
     }
@@ -1332,3 +1666,35 @@ Jobman::Jobman()
 }
 
 Jobman::~Jobman() {}
+
+bool
+Jobman::startMcpServer(quint16 port)
+{
+    if (!p->mcpserver->isRunning())
+        p->mcpport = port;
+    return p->mcpserver->start(port);
+}
+
+void
+Jobman::stopMcpServer()
+{
+    p->mcpserver->stop();
+}
+
+bool
+Jobman::isMcpServerRunning() const
+{
+    return p->mcpserver->isRunning();
+}
+
+QUrl
+Jobman::mcpServerUrl() const
+{
+    return p->mcpserver->url();
+}
+
+QString
+Jobman::mcpServerError() const
+{
+    return p->mcpserver->errorString();
+}
