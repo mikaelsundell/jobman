@@ -173,8 +173,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo deployment successful
-
 REM create a zip file of the deployment folder
 
 REM extract version from CMakeLists.txt
@@ -191,12 +189,18 @@ if "%version%"=="" (
     endlocal & exit /b 1
 )
 
-for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value ^| find "LocalDateTime"') do set datetime=%%I
-set "current_date=%datetime:~2,6%"
+REM Match Stageviz: generate YYMMDD without depending on WMIC.
+set "current_date="
+for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyMMdd"') do set "current_date=%%I"
+
+if not defined current_date (
+    echo Failed to determine current date using PowerShell. 1>&2
+    endlocal & exit /b 1
+)
 
 set "zipfile=%deploy_dir%\%app_name%_%version%_%current_date%_%build_type%.zip"
 echo creating zip file: %zipfile%
-powershell -command "Compress-Archive -Path '%deploy_dir%\*' -DestinationPath '%zipfile%' -Force"
+powershell -NoProfile -Command "Compress-Archive -Path '%deploy_dir%\*' -DestinationPath '%zipfile%' -Force"
 
 if errorlevel 1 (
     echo failed to create ZIP file
@@ -204,5 +208,6 @@ if errorlevel 1 (
 )
 
 echo zip file created successfully: %zipfile%
+echo deployment successful
 
 endlocal & exit /b 0
